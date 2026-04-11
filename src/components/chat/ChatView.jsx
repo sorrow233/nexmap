@@ -22,6 +22,7 @@ import ShareModal from '../share/ShareModal';
 import ChatIndexSidebar from './ChatIndexSidebar';
 import ChatSelectionMenu from './ChatSelectionMenu';
 import ChatHeader from './ChatHeader';
+import { getSelectionSnapshot } from './selectionSnapshot';
 
 export default function ChatView({
     card,
@@ -78,6 +79,7 @@ export default function ChatView({
     // Text Selection State
     const [selection, setSelection] = useState(null);
     const { t } = useLanguage();
+    const hasActiveSelection = Boolean(selection?.text);
 
     // Quick Sprout Hook (for one-click topic decomposition)
     const { handleContinueTopic, handleBranch } = useAISprouting();
@@ -111,6 +113,10 @@ export default function ChatView({
     }, []);
 
     const scheduleScrollToBottom = React.useCallback((force = false) => {
+        if (!force && hasActiveSelection) {
+            return;
+        }
+
         cancelScheduledScrollToBottom();
         scrollRequestRef.current = requestAnimationFrame(() => {
             scrollRequestRef.current = null;
@@ -119,7 +125,7 @@ export default function ChatView({
                 scrollToBottom(force);
             });
         });
-    }, [cancelScheduledScrollToBottom, scrollToBottom]);
+    }, [cancelScheduledScrollToBottom, hasActiveSelection, scrollToBottom]);
 
     const clearQueueDispatchHint = React.useCallback(() => {
         if (queueDispatchNoticeTimerRef.current) {
@@ -263,14 +269,14 @@ export default function ChatView({
     }, [card.id, card.type, commitIsAtBottomState]);
 
     useEffect(() => {
-        if (!isResponseStreaming) return;
+        if (!isResponseStreaming || hasActiveSelection) return;
         scheduleScrollToBottom();
-    }, [isResponseStreaming, scheduleScrollToBottom, streamingCardVersion]);
+    }, [hasActiveSelection, isResponseStreaming, scheduleScrollToBottom, streamingCardVersion]);
 
     useEffect(() => {
-        if (!hasPendingMessages) return;
+        if (!hasPendingMessages || hasActiveSelection) return;
         scheduleScrollToBottom();
-    }, [hasPendingMessages, pendingCount, scheduleScrollToBottom]);
+    }, [hasActiveSelection, hasPendingMessages, pendingCount, scheduleScrollToBottom]);
 
     // Force scroll to bottom on initial open
     useEffect(() => {
@@ -404,48 +410,34 @@ export default function ChatView({
         resetQueue();
     };
 
-    const handleTextSelection = () => {
+    const handleTextSelection = React.useCallback(() => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
         setTimeout(() => {
-            const sel = window.getSelection();
-            if (sel && sel.toString().trim().length > 0 && !isResponseStreaming) {
-                try {
-                    const range = sel.getRangeAt(0);
-                    const rect = range.getBoundingClientRect();
-                    // Ensure the selection is within our messages container
-                    const container = modalRef.current?.querySelector('.messages-container');
-                    if (container && container.contains(range.commonAncestorContainer)) {
-                        setSelection({
-                            text: sel.toString().trim(),
-                            html: range.cloneContents(), // Store fragment
-                            rect: {
-                                top: rect.top,
-                                left: rect.left + rect.width / 2
-                            }
-                        });
-                        return;
-                    }
-                } catch (e) {
-                    console.warn('[Selection] Failed to get range/rect', e);
-                }
-            }
-            setSelection(null);
+            const container = modalRef.current?.querySelector('.messages-container');
+            const nextSelection = getSelectionSnapshot({
+                rootElement: container,
+                domSelection: window.getSelection()
+            });
+            setSelection(nextSelection);
         }, 10);
-    };
+    }, []);
 
     // Global selection change listener for iPad/Safari stability
     useEffect(() => {
         const handleSelectionChange = () => {
-            if (selection) {
-                // If we already have a selection UI, re-validate it
-                // This helps if the user adjusts handle bars on iPad
+            const hasDomSelection = Boolean(window.getSelection()?.toString().trim());
+
+            if (selection || hasDomSelection) {
                 handleTextSelection();
+                return;
             }
+
+            setSelection(null);
         };
 
         document.addEventListener('selectionchange', handleSelectionChange);
         return () => document.removeEventListener('selectionchange', handleSelectionChange);
-    }, [selection]);
+    }, [handleTextSelection, selection]);
 
     const onSendClick = (overrideText) => {
         if (isReadOnly) return;
