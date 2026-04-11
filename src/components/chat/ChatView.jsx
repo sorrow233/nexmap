@@ -63,6 +63,7 @@ export default function ChatView({
     const scrollRequestRef = useRef(null);
     const scrollCommitRef = useRef(null);
     const queueDispatchNoticeTimerRef = useRef(null);
+    const selectionGestureActiveRef = useRef(false);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const scrollToMessageIndexRef = useRef(null);
@@ -113,7 +114,7 @@ export default function ChatView({
     }, []);
 
     const scheduleScrollToBottom = React.useCallback((force = false) => {
-        if (!force && hasActiveSelection) {
+        if (!force && (hasActiveSelection || selectionGestureActiveRef.current)) {
             return;
         }
 
@@ -403,6 +404,10 @@ export default function ChatView({
         resetQueue();
     };
 
+    const beginSelectionGesture = React.useCallback(() => {
+        selectionGestureActiveRef.current = true;
+    }, []);
+
     const handleTextSelection = React.useCallback(() => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
         setTimeout(() => {
@@ -411,6 +416,7 @@ export default function ChatView({
                 rootElement: container,
                 domSelection: window.getSelection()
             });
+            selectionGestureActiveRef.current = Boolean(nextSelection);
             setSelection(nextSelection);
         }, 10);
     }, []);
@@ -425,6 +431,7 @@ export default function ChatView({
                 return;
             }
 
+            selectionGestureActiveRef.current = false;
             setSelection(null);
         };
 
@@ -471,6 +478,7 @@ export default function ChatView({
 
         // Clear selection
         window.getSelection()?.removeAllRanges();
+        selectionGestureActiveRef.current = false;
         setSelection(null);
     };
 
@@ -511,6 +519,7 @@ export default function ChatView({
 
         // Clear selection
         window.getSelection()?.removeAllRanges();
+        selectionGestureActiveRef.current = false;
         setSelection(null);
     };
 
@@ -528,7 +537,9 @@ export default function ChatView({
                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
                 }`}
             style={{ willChange: 'auto' }}
+            onMouseDownCapture={beginSelectionGesture}
             onMouseUp={handleTextSelection}
+            onTouchStartCapture={beginSelectionGesture}
             onTouchEnd={handleTextSelection}
         >
             {/* Floating Action Menu */}
