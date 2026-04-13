@@ -7,9 +7,7 @@ const MessageList = React.memo(function MessageList({
     messagesEndRef,
     scrollContainerRef,
     scrollToMessageIndexRef,
-    onSelectionGestureStart,
-    onSelectionGestureEnd,
-    isResponseStreaming,
+    isStreaming,
     handleRetry,
     parseModelOutput,
     onUpdate,
@@ -44,10 +42,6 @@ const MessageList = React.memo(function MessageList({
         <div
             ref={scrollContainerRef}
             className="chat-messages-viewport messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y min-w-0"
-            onMouseDownCapture={onSelectionGestureStart}
-            onMouseUp={onSelectionGestureEnd}
-            onTouchStartCapture={onSelectionGestureStart}
-            onTouchEnd={onSelectionGestureEnd}
         >
             <div className="w-full max-w-6xl mx-auto">
                 {card.type === 'note' ? (
@@ -67,7 +61,7 @@ const MessageList = React.memo(function MessageList({
                         scrollContainerRef={scrollContainerRef}
                         messagesEndRef={messagesEndRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        isResponseStreaming={isResponseStreaming}
+                        isStreaming={isStreaming}
                         handleRetry={handleRetry}
                         marks={card.data.marks}
                         capturedNotes={card.data.capturedNotes}
