@@ -599,6 +599,7 @@ export default function ChatView({
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
+                        onSelectionComplete={handleTextSelection}
                         isStreaming={isStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
