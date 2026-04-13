@@ -413,21 +413,38 @@ export default function ChatView({
                 rootElement: container,
                 domSelection: window.getSelection()
             });
-            setSelection(nextSelection);
+            setSelection((prevSelection) => {
+                if (!prevSelection && !nextSelection) {
+                    return prevSelection;
+                }
+
+                if (
+                    prevSelection &&
+                    nextSelection &&
+                    prevSelection.text === nextSelection.text &&
+                    Math.abs((prevSelection.rect?.top || 0) - (nextSelection.rect?.top || 0)) < 1 &&
+                    Math.abs((prevSelection.rect?.left || 0) - (nextSelection.rect?.left || 0)) < 1
+                ) {
+                    return prevSelection;
+                }
+
+                return nextSelection;
+            });
         }, 10);
     }, []);
 
     // Global selection change listener for iPad/Safari stability
     useEffect(() => {
         const handleSelectionChange = () => {
-            const hasDomSelection = Boolean(window.getSelection()?.toString().trim());
+            if (selection) {
+                const hasDomSelection = Boolean(window.getSelection()?.toString().trim());
+                if (!hasDomSelection) {
+                    setSelection(null);
+                    return;
+                }
 
-            if (selection || hasDomSelection) {
                 handleTextSelection();
-                return;
             }
-
-            setSelection(null);
         };
 
         document.addEventListener('selectionchange', handleSelectionChange);
