@@ -70,8 +70,6 @@ export default function ChatView({
     const modalRef = useRef(null);
     const perfMountedCardIdRef = useRef('');
     const perfInteractiveCardIdRef = useRef('');
-    const hasActiveSelectionRef = useRef(false);
-    const selectionGestureActiveRef = useRef(false);
 
     // Sprout Feature State
     const [isSprouting, setIsSprouting] = useState(false);
@@ -95,12 +93,7 @@ export default function ChatView({
     }, [card.id, onGenerateResponse]);
 
     const scrollToBottom = React.useCallback((force = false) => {
-        if (
-            hasActiveSelectionRef.current ||
-            selectionGestureActiveRef.current ||
-            (!force && !isAtBottomRef.current) ||
-            !scrollContainerRef.current
-        ) {
+        if (hasActiveSelection || (!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
             return;
         }
 
@@ -120,7 +113,7 @@ export default function ChatView({
     }, []);
 
     const scheduleScrollToBottom = React.useCallback((force = false) => {
-        if (!force && (hasActiveSelectionRef.current || selectionGestureActiveRef.current)) {
+        if (!force && hasActiveSelection) {
             return;
         }
 
@@ -132,14 +125,7 @@ export default function ChatView({
                 scrollToBottom(force);
             });
         });
-    }, [cancelScheduledScrollToBottom, scrollToBottom]);
-
-    useEffect(() => {
-        hasActiveSelectionRef.current = hasActiveSelection;
-        if (hasActiveSelection) {
-            cancelScheduledScrollToBottom();
-        }
-    }, [cancelScheduledScrollToBottom, hasActiveSelection]);
+    }, [cancelScheduledScrollToBottom, hasActiveSelection, scrollToBottom]);
 
     const clearQueueDispatchHint = React.useCallback(() => {
         if (queueDispatchNoticeTimerRef.current) {
@@ -291,7 +277,7 @@ export default function ChatView({
     useEffect(() => {
         scheduleScrollToBottom(true);
         return () => cancelScheduledScrollToBottom();
-    }, [card.id, cancelScheduledScrollToBottom, scheduleScrollToBottom]);
+    }, [cancelScheduledScrollToBottom, scheduleScrollToBottom]);
 
     useEffect(() => () => {
         cancelScheduledScrollToBottom();
@@ -444,18 +430,8 @@ export default function ChatView({
 
                 return nextSelection;
             });
-            selectionGestureActiveRef.current = false;
         }, 10);
     }, []);
-
-    const handleSelectionGestureStart = React.useCallback((event) => {
-        if (event?.button != null && event.button !== 0) {
-            return;
-        }
-
-        selectionGestureActiveRef.current = true;
-        cancelScheduledScrollToBottom();
-    }, [cancelScheduledScrollToBottom]);
 
     // Global selection change listener for iPad/Safari stability
     useEffect(() => {
@@ -463,7 +439,6 @@ export default function ChatView({
             if (selection) {
                 const hasDomSelection = Boolean(window.getSelection()?.toString().trim());
                 if (!hasDomSelection) {
-                    selectionGestureActiveRef.current = false;
                     setSelection(null);
                     return;
                 }
@@ -475,24 +450,6 @@ export default function ChatView({
         document.addEventListener('selectionchange', handleSelectionChange);
         return () => document.removeEventListener('selectionchange', handleSelectionChange);
     }, [handleTextSelection, selection]);
-
-    useEffect(() => {
-        const handleGlobalSelectionGestureEnd = () => {
-            if (!selectionGestureActiveRef.current) {
-                return;
-            }
-
-            handleTextSelection();
-        };
-
-        document.addEventListener('mouseup', handleGlobalSelectionGestureEnd);
-        document.addEventListener('touchend', handleGlobalSelectionGestureEnd);
-
-        return () => {
-            document.removeEventListener('mouseup', handleGlobalSelectionGestureEnd);
-            document.removeEventListener('touchend', handleGlobalSelectionGestureEnd);
-        };
-    }, [handleTextSelection]);
 
     const onSendClick = (overrideText) => {
         if (isReadOnly) return;
@@ -642,7 +599,6 @@ export default function ChatView({
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        onSelectionGestureStart={handleSelectionGestureStart}
                         isStreaming={isStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}

@@ -7,7 +7,6 @@ const MessageList = React.memo(function MessageList({
     messagesEndRef,
     scrollContainerRef,
     scrollToMessageIndexRef,
-    onSelectionGestureStart,
     isStreaming,
     handleRetry,
     parseModelOutput,
@@ -38,18 +37,11 @@ const MessageList = React.memo(function MessageList({
             }))
         });
     };
-    const selectionInteractionProps = card.type === 'note'
-        ? {}
-        : {
-            onMouseDown: onSelectionGestureStart,
-            onTouchStart: onSelectionGestureStart
-        };
 
     return (
         <div
             ref={scrollContainerRef}
             className="chat-messages-viewport messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y min-w-0"
-            {...selectionInteractionProps}
         >
             <div className="w-full max-w-6xl mx-auto">
                 {card.type === 'note' ? (
