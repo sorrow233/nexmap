@@ -23,6 +23,11 @@ import ChatIndexSidebar from './ChatIndexSidebar';
 import ChatSelectionMenu from './ChatSelectionMenu';
 import ChatHeader from './ChatHeader';
 import { getSelectionSnapshot } from './selectionSnapshot';
+import {
+    buildDeleteMessageConfirmText,
+    removeMessageFavoriteSnapshot,
+    removeMessageFromCardData
+} from './messageDeletion';
 
 export default function ChatView({
     card,
@@ -548,6 +553,25 @@ export default function ChatView({
         handleBranch(card.id, msgId);
     }, [card.id, handleBranch, isReadOnly]);
 
+    const handleDeleteMessage = React.useCallback((message, messageIndex) => {
+        if (isReadOnly || !message) return;
+
+        const confirmed = window.confirm(buildDeleteMessageConfirmText(message));
+        if (!confirmed) return;
+
+        removeMessageFavoriteSnapshot({
+            cardId: card.id,
+            message,
+            messageIndex
+        });
+        useStore.setState({ favoritesLastUpdate: Date.now() });
+
+        onUpdate(card.id, (currentData) => removeMessageFromCardData(currentData, {
+            messageId: message?.id || null,
+            messageIndex
+        }));
+    }, [card.id, isReadOnly, onUpdate]);
+
     return (
         <div
             ref={modalRef}
@@ -605,6 +629,7 @@ export default function ChatView({
                         onUpdate={onUpdate}
                         onShare={handleShareOpen}
                         onToggleFavorite={onToggleFavorite}
+                        onDeleteMessage={isReadOnly || isStreaming ? null : handleDeleteMessage}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
                         onContinueTopic={isReadOnly ? null : handleContinueTopicForMessageList}

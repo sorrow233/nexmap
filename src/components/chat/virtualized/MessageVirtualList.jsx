@@ -57,6 +57,7 @@ export default function MessageVirtualList({
     parseModelOutput,
     onShare,
     onToggleFavorite,
+    onDeleteMessage,
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
@@ -223,6 +224,7 @@ export default function MessageVirtualList({
                                     handleRetry={handleRetry}
                                     onShare={onShare}
                                     onToggleFavorite={onToggleFavorite}
+                                    onDeleteMessage={onDeleteMessage}
                                     isFavorite={favoritesService.isFavorite(
                                         cardId,
                                         message?.id || null,
@@ -252,6 +254,7 @@ export default function MessageVirtualList({
                             handleRetry={handleRetry}
                             onShare={onShare}
                             onToggleFavorite={onToggleFavorite}
+                            onDeleteMessage={onDeleteMessage}
                             isFavorite={favoritesService.isFavorite(
                                 cardId,
                                 detachedStreamingMessage?.id || null,

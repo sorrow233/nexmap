@@ -13,6 +13,7 @@ const MessageList = React.memo(function MessageList({
     onUpdate,
     onShare,
     onToggleFavorite,
+    onDeleteMessage,
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
@@ -68,6 +69,7 @@ const MessageList = React.memo(function MessageList({
                         parseModelOutput={parseModelOutput}
                         onShare={onShare}
                         onToggleFavorite={onToggleFavorite}
+                        onDeleteMessage={onDeleteMessage}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
                         onContinueTopic={onContinueTopic}

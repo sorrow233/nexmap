@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe } from 'lucide-react';
+import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe, Trash2 } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { isShareableMessageContent, normalizeShareContent } from '../share/shareContent';
 import { buildStreamBufferKey } from '../../store/slices/utils/streamRenderBuffer';
@@ -32,7 +32,7 @@ const getLastSafeStreamingBoundary = (text = '') => {
     return boundary;
 };
 
-const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onContinueTopic, onBranch }) => {
+const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, onDeleteMessage, isFavorite, onContinueTopic, onBranch }) => {
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
@@ -176,6 +176,14 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
 
     const normalizedShareContent = React.useMemo(() => normalizeShareContent(content), [content]);
     const canShareMessage = React.useMemo(() => isShareableMessageContent(content), [content]);
+    const canDeleteMessage = Boolean(onDeleteMessage) && !isStreaming;
+    const showAssistantActionBar = !isUser && !isStreaming && (
+        Boolean(onToggleFavorite)
+        || canShareMessage
+        || Boolean(onContinueTopic)
+        || Boolean(onBranch)
+        || canDeleteMessage
+    );
     const stableMarks = marks || EMPTY_MESSAGE_ANNOTATIONS;
     const stableCapturedNotes = capturedNotes || EMPTY_MESSAGE_ANNOTATIONS;
     const renderedChunks = useMessageChunks(content);
@@ -209,13 +217,18 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
         copySelectionAsMarkdown(e);
     };
 
+    const handleDelete = () => {
+        if (!canDeleteMessage) return;
+        onDeleteMessage(message, index);
+    };
+
     return (
         <div
             id={`message-${index}`}
             className={`chat-message-frame ${isUser ? 'chat-message-frame--user justify-end' : 'chat-message-frame--assistant justify-start'} flex group relative`}
         >
             {isUser && (
-                <div className="flex flex-col justify-end pb-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-col justify-end gap-2 pb-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={handleCopy}
                         className={`p-2 rounded-full transition-all ring-1 ring-inset ${copySuccess
@@ -225,6 +238,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                     >
                         {copySuccess ? <Check size={14} /> : <Copy size={14} />}
                     </button>
+                    {canDeleteMessage && (
+                        <button
+                            onClick={handleDelete}
+                            className="p-2 rounded-full text-slate-400 hover:text-rose-500 bg-white/50 hover:bg-rose-50 ring-1 ring-transparent hover:ring-rose-200 dark:bg-white/5 dark:hover:bg-rose-500/10 transition-all ring-inset"
+                            title="删除消息"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
                 </div>
             )}
             <div className={`rounded-3xl p-6 shadow-sm relative ${isUser
@@ -336,17 +358,19 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                 </div>
 
                 {/* Action Bar (Share, etc.) */}
-                {!isUser && !isStreaming && canShareMessage && (
+                {showAssistantActionBar && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                            onClick={() => onToggleFavorite && onToggleFavorite(cardId, message?.id || null, index, textContent)}
-                            className={`p-2 rounded-full transition-all ring-1 ring-inset ${isFavorite
-                                ? 'text-orange-500 bg-orange-50/80 ring-orange-200 dark:bg-orange-500/20 dark:ring-orange-500/40'
-                                : 'text-slate-400 hover:text-orange-500 bg-slate-50/50 hover:bg-orange-50 ring-transparent hover:ring-orange-200 dark:bg-white/5 dark:hover:bg-orange-500/10'}`}
-                            title={isFavorite ? "Unfavorite" : "Favorite Message"}
-                        >
-                            <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
-                        </button>
+                        {onToggleFavorite && (
+                            <button
+                                onClick={() => onToggleFavorite(cardId, message?.id || null, index, textContent)}
+                                className={`p-2 rounded-full transition-all ring-1 ring-inset ${isFavorite
+                                    ? 'text-orange-500 bg-orange-50/80 ring-orange-200 dark:bg-orange-500/20 dark:ring-orange-500/40'
+                                    : 'text-slate-400 hover:text-orange-500 bg-slate-50/50 hover:bg-orange-50 ring-transparent hover:ring-orange-200 dark:bg-white/5 dark:hover:bg-orange-500/10'}`}
+                                title={isFavorite ? "Unfavorite" : "Favorite Message"}
+                            >
+                                <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
+                            </button>
+                        )}
                         <button
                             onClick={handleCopy}
                             className={`p-2 rounded-full transition-all ring-1 ring-inset ${copySuccess
@@ -356,13 +380,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                         >
                             {copySuccess ? <Check size={16} /> : <Copy size={16} />}
                         </button>
-                        <button
-                            onClick={() => onShare && onShare(normalizedShareContent)}
-                            className="p-2 rounded-full text-slate-400 hover:text-blue-500 bg-slate-50/50 hover:bg-blue-50 ring-1 ring-transparent hover:ring-blue-200 dark:bg-white/5 dark:hover:bg-blue-500/10 transition-all ring-inset"
-                            title="Share as Image"
-                        >
-                            <Share2 size={16} />
-                        </button>
+                        {canShareMessage && (
+                            <button
+                                onClick={() => onShare && onShare(normalizedShareContent)}
+                                className="p-2 rounded-full text-slate-400 hover:text-blue-500 bg-slate-50/50 hover:bg-blue-50 ring-1 ring-transparent hover:ring-blue-200 dark:bg-white/5 dark:hover:bg-blue-500/10 transition-all ring-inset"
+                                title="Share as Image"
+                            >
+                                <Share2 size={16} />
+                            </button>
+                        )}
                         {onContinueTopic && (
                             <button
                                 onClick={() => onContinueTopic()}
@@ -379,6 +405,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                                 title="Branch - Extract to card"
                             >
                                 <GitBranch size={16} />
+                            </button>
+                        )}
+                        {canDeleteMessage && (
+                            <button
+                                onClick={handleDelete}
+                                className="p-2 rounded-full text-slate-400 hover:text-rose-500 bg-slate-50/50 hover:bg-rose-50 ring-1 ring-transparent hover:ring-rose-200 dark:bg-white/5 dark:hover:bg-rose-500/10 transition-all ring-inset"
+                                title="删除消息"
+                            >
+                                <Trash2 size={16} />
                             </button>
                         )}
                     </div>
@@ -409,7 +444,8 @@ const areMessageItemPropsEqual = (prevProps, nextProps) => (
     prevProps.marks === nextProps.marks &&
     prevProps.capturedNotes === nextProps.capturedNotes &&
     prevProps.isStreaming === nextProps.isStreaming &&
-    prevProps.isFavorite === nextProps.isFavorite
+    prevProps.isFavorite === nextProps.isFavorite &&
+    Boolean(prevProps.onDeleteMessage) === Boolean(nextProps.onDeleteMessage)
 );
 
 const MessageItem = React.memo(MessageItemComponent, areMessageItemPropsEqual);
