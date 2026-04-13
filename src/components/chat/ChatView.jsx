@@ -94,7 +94,7 @@ export default function ChatView({
     };
 
     const scrollToBottom = React.useCallback((force = false) => {
-        if ((!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
+        if ((selectionGestureActiveRef.current || hasActiveSelection) || (!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
             return;
         }
 
@@ -413,7 +413,9 @@ export default function ChatView({
 
     const beginSelectionGesture = React.useCallback(() => {
         selectionGestureActiveRef.current = true;
-    }, []);
+        cancelScheduledScrollToBottom();
+        commitIsAtBottomState(false);
+    }, [cancelScheduledScrollToBottom, commitIsAtBottomState]);
 
     const handleTextSelection = React.useCallback(() => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
@@ -424,9 +426,12 @@ export default function ChatView({
                 domSelection: window.getSelection()
             });
             selectionGestureActiveRef.current = Boolean(nextSelection);
+            if (nextSelection) {
+                cancelScheduledScrollToBottom();
+            }
             setSelection(nextSelection);
         }, 10);
-    }, []);
+    }, [cancelScheduledScrollToBottom]);
 
     // Global selection change listener for iPad/Safari stability
     useEffect(() => {
@@ -544,10 +549,6 @@ export default function ChatView({
                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
                 }`}
             style={{ willChange: 'auto' }}
-            onMouseDownCapture={beginSelectionGesture}
-            onMouseUp={handleTextSelection}
-            onTouchStartCapture={beginSelectionGesture}
-            onTouchEnd={handleTextSelection}
         >
             {/* Floating Action Menu */}
             {!isReadOnly && (
@@ -590,6 +591,8 @@ export default function ChatView({
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
+                        onSelectionGestureStart={beginSelectionGesture}
+                        onSelectionGestureEnd={handleTextSelection}
                         isResponseStreaming={isResponseStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
