@@ -63,7 +63,6 @@ export default function ChatView({
     const scrollRequestRef = useRef(null);
     const scrollCommitRef = useRef(null);
     const queueDispatchNoticeTimerRef = useRef(null);
-    const selectionGestureActiveRef = useRef(false);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const scrollToMessageIndexRef = useRef(null);
@@ -85,16 +84,16 @@ export default function ChatView({
     // Quick Sprout Hook (for one-click topic decomposition)
     const { handleContinueTopic, handleBranch } = useAISprouting();
 
-    const dispatchMessage = async (text, imagesToSend = []) => {
+    const dispatchMessage = React.useCallback(async (text, imagesToSend = []) => {
         try {
             await onGenerateResponse(card.id, text, imagesToSend);
         } catch (error) {
             console.error('Failed to dispatch message:', error);
         }
-    };
+    }, [card.id, onGenerateResponse]);
 
     const scrollToBottom = React.useCallback((force = false) => {
-        if ((selectionGestureActiveRef.current || hasActiveSelection) || (!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
+        if (hasActiveSelection || (!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
             return;
         }
 
@@ -114,7 +113,7 @@ export default function ChatView({
     }, []);
 
     const scheduleScrollToBottom = React.useCallback((force = false) => {
-        if (!force && (hasActiveSelection || selectionGestureActiveRef.current)) {
+        if (!force && hasActiveSelection) {
             return;
         }
 
@@ -154,6 +153,22 @@ export default function ChatView({
         setIsAtBottom(nextAtBottom);
     }, []);
 
+    const handleBeforeQueueDispatch = React.useCallback(({ source }) => {
+        if (source === 'direct') {
+            clearQueueDispatchHint();
+            scheduleScrollToBottom(true);
+            return;
+        }
+
+        if (isAtBottomRef.current) {
+            clearQueueDispatchHint();
+            scheduleScrollToBottom();
+            return;
+        }
+
+        showQueueDispatchHint();
+    }, [clearQueueDispatchHint, scheduleScrollToBottom, showQueueDispatchHint]);
+
     const {
         isDispatching,
         isQueueRunning,
@@ -166,32 +181,18 @@ export default function ChatView({
         isReadOnly,
         isCardGenerating,
         onDispatch: dispatchMessage,
-        onBeforeDispatch: ({ source }) => {
-            if (source === 'direct') {
-                clearQueueDispatchHint();
-                scheduleScrollToBottom(true);
-                return;
-            }
-
-            if (isAtBottomRef.current) {
-                clearQueueDispatchHint();
-                scheduleScrollToBottom();
-                return;
-            }
-
-            showQueueDispatchHint();
-        }
+        onBeforeDispatch: handleBeforeQueueDispatch
     });
 
     const isStreaming = isDispatching || isQueueRunning || isCardGenerating;
 
     // Helper to send a message from Sprout (continue topic in current card)
-    const handleSendMessageFromSprout = (text) => {
+    const handleSendMessageFromSprout = React.useCallback((text) => {
         if (!text || isReadOnly) return;
         const normalizedText = text.trim();
         if (!normalizedText) return;
         sendMessage(normalizedText, []);
-    };
+    }, [isReadOnly, sendMessage]);
 
     const handleSproutClick = async () => {
         if (isSprouting || isReadOnly) return;
@@ -368,7 +369,7 @@ export default function ChatView({
             mimeType: img.mimeType
         }));
 
-    const handleRetry = async () => {
+    const handleRetry = React.useCallback(async () => {
         if (isReadOnly) return;
         const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
         if (!lastUserMessage) return;
@@ -394,7 +395,7 @@ export default function ChatView({
         } catch (e) {
             console.error('Failed to retry:', e);
         }
-    };
+    }, [card.data.messages, card.id, isReadOnly, onGenerateResponse]);
 
     // 停止生成
     const handleStop = () => {
@@ -404,12 +405,6 @@ export default function ChatView({
         resetQueue();
     };
 
-    const beginSelectionGesture = React.useCallback(() => {
-        selectionGestureActiveRef.current = true;
-        cancelScheduledScrollToBottom();
-        commitIsAtBottomState(false);
-    }, [cancelScheduledScrollToBottom, commitIsAtBottomState]);
-
     const handleTextSelection = React.useCallback(() => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
         setTimeout(() => {
@@ -418,13 +413,9 @@ export default function ChatView({
                 rootElement: container,
                 domSelection: window.getSelection()
             });
-            selectionGestureActiveRef.current = Boolean(nextSelection);
-            if (nextSelection) {
-                cancelScheduledScrollToBottom();
-            }
             setSelection(nextSelection);
         }, 10);
-    }, [cancelScheduledScrollToBottom]);
+    }, []);
 
     // Global selection change listener for iPad/Safari stability
     useEffect(() => {
@@ -436,7 +427,6 @@ export default function ChatView({
                 return;
             }
 
-            selectionGestureActiveRef.current = false;
             setSelection(null);
         };
 
@@ -483,7 +473,6 @@ export default function ChatView({
 
         // Clear selection
         window.getSelection()?.removeAllRanges();
-        selectionGestureActiveRef.current = false;
         setSelection(null);
     };
 
@@ -524,14 +513,23 @@ export default function ChatView({
 
         // Clear selection
         window.getSelection()?.removeAllRanges();
-        selectionGestureActiveRef.current = false;
         setSelection(null);
     };
 
-    const handleShareOpen = async (content) => {
+    const handleShareOpen = React.useCallback(async (content) => {
         await ensureLatestBuildOrRefresh({ force: true, reload: false });
         setShareContent(content);
-    };
+    }, []);
+
+    const handleContinueTopicForMessageList = React.useCallback(() => {
+        if (isReadOnly) return;
+        handleContinueTopic(card.id, handleSendMessageFromSprout);
+    }, [card.id, handleContinueTopic, handleSendMessageFromSprout, isReadOnly]);
+
+    const handleBranchForMessageList = React.useCallback((msgId) => {
+        if (isReadOnly) return;
+        handleBranch(card.id, msgId);
+    }, [card.id, handleBranch, isReadOnly]);
 
     return (
         <div
@@ -584,8 +582,6 @@ export default function ChatView({
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        onSelectionGestureStart={beginSelectionGesture}
-                        onSelectionGestureEnd={handleTextSelection}
                         isStreaming={isStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
@@ -594,8 +590,8 @@ export default function ChatView({
                         onToggleFavorite={onToggleFavorite}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
-                        onContinueTopic={isReadOnly ? null : () => handleContinueTopic(card.id, handleSendMessageFromSprout)}
-                        onBranch={isReadOnly ? null : (msgId) => handleBranch(card.id, msgId)}
+                        onContinueTopic={isReadOnly ? null : handleContinueTopicForMessageList}
+                        onBranch={isReadOnly ? null : handleBranchForMessageList}
                     />
 
                     {/* Sidebar Index for Quick Navigation */}
