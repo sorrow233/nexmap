@@ -450,5 +450,18 @@ export const mergeRuntimeCardBodies = (cards = [], options = {}) => {
 export const getCardBodyRuntimeCacheSnapshot = () => ({
     boardId: activeBoardId,
     entries: bodyRegistry.size,
-    hotEntries: hotTouchOrder.size
+    hotEntries: hotTouchOrder.size,
+    totalEstimatedChars: Array.from(bodyRegistry.values())
+        .reduce((total, entry) => total + (Number(entry?.estimatedChars) || 0), 0),
+    totalMessages: Array.from(bodyRegistry.values())
+        .reduce((total, entry) => total + (Number(entry?.messageCount) || 0), 0),
+    largestEntries: Array.from(bodyRegistry.values())
+        .map((entry) => ({
+            cardId: entry?.cardId || '',
+            estimatedChars: Number(entry?.estimatedChars) || 0,
+            messageCount: Number(entry?.messageCount) || 0,
+            userMessageCount: Number(entry?.userMessageCount) || 0
+        }))
+        .sort((left, right) => right.estimatedChars - left.estimatedChars)
+        .slice(0, 8)
 });
