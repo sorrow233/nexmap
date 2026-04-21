@@ -198,6 +198,8 @@ const Card = React.memo(function Card({
     return (
         <div
             ref={cardRef}
+            data-nexmap-card-id={data.id}
+            data-nexmap-card-type={data.type || 'card'}
             className="absolute top-0 left-0 pointer-events-auto group"
             style={{
                 transform: `translate3d(${data.x}px, ${data.y}px, 0)`,

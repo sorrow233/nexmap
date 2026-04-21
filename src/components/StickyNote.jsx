@@ -191,6 +191,8 @@ const StickyNote = React.memo(function StickyNote({
     return (
         <div
             ref={cardRef}
+            data-nexmap-card-id={data.id}
+            data-nexmap-card-type="note"
             className="absolute top-0 left-0 pointer-events-auto group"
             style={{
                 transform: `translate3d(${data.x}px, ${data.y}px, 0)`,

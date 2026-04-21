@@ -16,6 +16,7 @@ import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
 import InstantTooltip from './InstantTooltip';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { capturePerfSnapshot } from '../utils/perfProbe';
+import { captureMemoryTrace } from '../utils/memoryTrace';
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -154,6 +155,22 @@ export default function Canvas({
                 runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
                 isSuspended
             });
+            captureMemoryTrace('canvas-viewport-snapshot', {
+                offsetX: offset.x,
+                offsetY: offset.y,
+                scale,
+                viewportWidth: viewportSize.width,
+                viewportHeight: viewportSize.height,
+                visibleCardsCount: visibleCards.length,
+                visibleConnectionsCount: visibleConnections.length,
+                visibleGroupsCount: visibleGroups.length,
+                selectedCardsCount: selectedIds.length,
+                runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
+                isSuspended,
+                spatialIndexCards: cardSpatialIndex?.cardMap?.size || 0,
+                spatialIndexRects: cardSpatialIndex?.rectMap?.size || 0,
+                spatialIndexBuckets: cardSpatialIndex?.buckets?.size || 0
+            });
         }, 240);
 
         return () => {
@@ -173,7 +190,8 @@ export default function Canvas({
         selectedIds.length,
         visibleCards.length,
         visibleConnections.length,
-        visibleGroups.length
+        visibleGroups.length,
+        cardSpatialIndex
     ]);
 
     useEffect(() => {

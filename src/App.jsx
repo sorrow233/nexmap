@@ -118,6 +118,7 @@ import {
     primeCardBodyRuntimeCache,
     setCardBodyRuntimeBoard
 } from './services/cardBodyRuntimeCache';
+import { captureMemoryTrace } from './utils/memoryTrace';
 
 export default function App() {
     return (
@@ -334,6 +335,16 @@ function AppContent() {
                 keepHydratedIds: []
             }).cards
             : normalizedSnapshot.cards;
+        captureMemoryTrace('board-store-patch-built', {
+            boardId: targetBoardId,
+            source: options.source || 'unknown',
+            mode,
+            largeBoardMode,
+            inputCardsCount: normalizedSnapshot.cards.length,
+            runtimeCardsCount: runtimeCards.length,
+            connectionsCount: normalizedSnapshot.connections.length,
+            groupsCount: normalizedSnapshot.groups.length
+        });
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
         const currentBoardChangeState = useStore.getState().boardChangeState;
         const integrityHash = buildBoardChangeIntegrityHash(normalizedSnapshot);
@@ -774,6 +785,10 @@ function AppContent() {
             if (currentBoardId) {
                 clearCardBodyRuntimeCache();
                 setCardBodyRuntimeBoard(currentBoardId);
+                captureMemoryTrace('app-board-load-start', {
+                    boardId: currentBoardId,
+                    stage: 'clear-runtime-cache'
+                });
 
                 if (boardSyncControllerRef.current) {
                     unregisterActiveBoardRuntime({
@@ -787,6 +802,12 @@ function AppContent() {
                 // 1. Start loading state & clear existing data to prevent bleed-over
                 const storeState = useStore.getState();
                 const activeCardIds = (storeState.cards || []).map((card) => card?.id).filter(Boolean);
+                captureMemoryTrace('app-board-before-state-clear', {
+                    boardId: currentBoardId,
+                    previousCardsCount: activeCardIds.length,
+                    previousConnectionsCount: storeState.connections?.length || 0,
+                    previousGroupsCount: storeState.groups?.length || 0
+                });
                 activeCardIds.forEach((cardId) => {
                     aiManager.cancelByTags([`card:${cardId}`]);
                 });
@@ -804,10 +825,20 @@ function AppContent() {
                     setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
                     storeState.setBoardChangeState?.(createBoardChangeState());
                 });
+                captureMemoryTrace('app-board-after-state-clear', {
+                    boardId: currentBoardId
+                });
 
                 try {
                     // 2. Load new data
                     const data = await loadBoard(currentBoardId);
+                    captureMemoryTrace('app-board-local-data-loaded', {
+                        boardId: currentBoardId,
+                        loadedCardsCount: Array.isArray(data?.cards) ? data.cards.length : 0,
+                        loadedConnectionsCount: Array.isArray(data?.connections) ? data.connections.length : 0,
+                        loadedGroupsCount: Array.isArray(data?.groups) ? data.groups.length : 0,
+                        largeBoardMode: isLargeBoardCards(data?.cards || [])
+                    });
                     logPersistenceTrace('app:load-board-finished', {
                         boardId: currentBoardId,
                         cursor: buildBoardCursorTrace(data)
@@ -824,6 +855,9 @@ function AppContent() {
                         source: 'local_load',
                         boardId: currentBoardId
                     });
+                    captureMemoryTrace('app-board-local-snapshot-applied', {
+                        boardId: currentBoardId
+                    });
                     saveBoardInstructionSettingsCache(
                         currentBoardId,
                         normalizeBoardInstructionSettings(data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
@@ -833,6 +867,10 @@ function AppContent() {
                     // 3. Restore viewport state
                     const viewport = loadViewportState(currentBoardId);
                     useStore.getState().restoreViewport(viewport);
+                    captureMemoryTrace('app-board-viewport-restored', {
+                        boardId: currentBoardId,
+                        viewport
+                    });
 
                     if (user?.uid && !isSampleBoardId(currentBoardId)) {
                         const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
@@ -911,6 +949,12 @@ function AppContent() {
 
                         boardSyncControllerRef.current = syncController;
                         await syncController.start(data, { expectedCardCount });
+                        captureMemoryTrace('app-board-sync-controller-started', {
+                            boardId: currentBoardId,
+                            expectedCardCount,
+                            largeBoardMode,
+                            started: Boolean(syncController.started)
+                        });
                         if (syncController.started) {
                             registerActiveBoardRuntime({
                                 boardId: currentBoardId,
