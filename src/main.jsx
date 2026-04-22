@@ -8,6 +8,7 @@ import { setupMobileViewportFix } from './utils/browser.js';
 import { installChunkLoadRecovery } from './utils/chunkLoadRecovery.js';
 import { stripBuildReloadParams } from './utils/buildVersion.js';
 import { startSystemThemeSync } from './utils/theme.js';
+import { installBrowserPerformanceDiagnostics } from './utils/performanceDiagnostics.js';
 import {
     installFetchErrorLogging,
     installGlobalErrorLogging,
@@ -22,6 +23,7 @@ import packageJson from '../package.json';
 installRuntimeLoggingControls();
 installGlobalErrorLogging();
 installFetchErrorLogging();
+installBrowserPerformanceDiagnostics();
 stripBuildReloadParams();
 runtimeLog(`%c NexMap v${packageJson.version} - Loaded at ${new Date().toISOString()} (build ${__APP_BUILD_TIMESTAMP__})`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
 startSystemThemeSync();

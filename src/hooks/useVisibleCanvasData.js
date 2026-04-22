@@ -14,6 +14,7 @@ import {
     getVisibleConnectionDataFromIndex,
     resolveConnectionViewportMargin
 } from '../utils/connectionVisibility';
+import { measureSyncPerformance } from '../utils/performanceDiagnostics';
 
 const EMPTY_POSITION_OVERRIDES = new Map();
 
@@ -42,7 +43,15 @@ export function useVisibleCanvasData({
     const contentVersion = mutationVersion;
 
     const viewportRect = useMemo(
-        () => buildViewportRect(offset, scale, viewportSize),
+        () => measureSyncPerformance('canvas.visible.viewport-rect', () => (
+            buildViewportRect(offset, scale, viewportSize)
+        ), {
+            scale,
+            viewportWidth: viewportSize?.width || 0,
+            viewportHeight: viewportSize?.height || 0
+        }, {
+            thresholdMs: 2
+        }),
         [offset.x, offset.y, scale, viewportSize?.height, viewportSize?.width]
     );
     const connectionViewportMargin = useMemo(
@@ -56,7 +65,13 @@ export function useVisibleCanvasData({
         [positionOverrides]
     );
     const connectionIndex = useMemo(
-        () => createConnectionVisibilityIndex(connections),
+        () => measureSyncPerformance('canvas.visible.connection-index', () => (
+            createConnectionVisibilityIndex(connections)
+        ), {
+            connectionsCount: connections?.length || 0
+        }, {
+            thresholdMs: 6
+        }),
         [connections]
     );
 
@@ -70,8 +85,16 @@ export function useVisibleCanvasData({
     }, [generatingCardIds, positionOverrideIds, selectedIds]);
 
     const visibleCardIdList = useMemo(
-        () => getCardsInRect(cardSpatialIndex, viewportRect, persistentVisibleCardIds)
-            .map((card) => card.id),
+        () => measureSyncPerformance('canvas.visible.card-query', () => (
+            getCardsInRect(cardSpatialIndex, viewportRect, persistentVisibleCardIds)
+                .map((card) => card.id)
+        ), {
+            indexedCards: cardSpatialIndex?.cardMap?.size || 0,
+            indexedBuckets: cardSpatialIndex?.buckets?.size || 0,
+            persistentIdsCount: persistentVisibleCardIds.size
+        }, {
+            thresholdMs: 8
+        }),
         [cardSpatialIndex, geometryVersion, persistentVisibleCardIds, viewportRect]
     );
 
@@ -82,21 +105,42 @@ export function useVisibleCanvasData({
     }, [visibleCardIdList]);
 
     const visibleCards = useMemo(
-        () => getCardsByIds(cardSpatialIndex, visibleCardIdList)
-            .map((card) => applyCardPositionOverride(card, positionOverrides)),
+        () => measureSyncPerformance('canvas.visible.card-hydration', () => (
+            getCardsByIds(cardSpatialIndex, visibleCardIdList)
+                .map((card) => applyCardPositionOverride(card, positionOverrides))
+        ), {
+            visibleCardIdsCount: visibleCardIdList.length,
+            positionOverridesCount: positionOverrides?.size || 0
+        }, {
+            thresholdMs: 8
+        }),
         [cardSpatialIndex, contentVersion, positionOverrides, visibleCardIdList]
     );
 
     const targetCardIds = useMemo(() => {
         if (selectedIdSet.size === 0) return new Set();
-        return getTargetCardIdsFromIndex(connectionIndex, selectedIdSet);
+        return measureSyncPerformance('canvas.visible.target-card-query', () => (
+            getTargetCardIdsFromIndex(connectionIndex, selectedIdSet)
+        ), {
+            selectedIdsCount: selectedIdSet.size
+        }, {
+            thresholdMs: 4
+        });
     }, [connectionIndex, selectedIdSet]);
 
     const { visibleConnections, connectionCardIds } = useMemo(
-        () => getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, selectedIdSet, {
-            viewportRect,
-            cardRectMap: cardSpatialIndex.rectMap,
-            viewportMargin: connectionViewportMargin
+        () => measureSyncPerformance('canvas.visible.connection-query', () => (
+            getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, selectedIdSet, {
+                viewportRect,
+                cardRectMap: cardSpatialIndex.rectMap,
+                viewportMargin: connectionViewportMargin
+            })
+        ), {
+            visibleCardIdsCount: visibleCardIds.size,
+            selectedIdsCount: selectedIdSet.size,
+            indexedRects: cardSpatialIndex?.rectMap?.size || 0
+        }, {
+            thresholdMs: 8
         }),
         [
             cardSpatialIndex.rectMap,
@@ -110,39 +154,61 @@ export function useVisibleCanvasData({
     );
 
     const connectionCards = useMemo(
-        () => getCardsByIds(cardSpatialIndex, connectionCardIds)
-            .map((card) => applyCardPositionOverride(card, positionOverrides)),
+        () => measureSyncPerformance('canvas.visible.connection-card-hydration', () => (
+            getCardsByIds(cardSpatialIndex, connectionCardIds)
+                .map((card) => applyCardPositionOverride(card, positionOverrides))
+        ), {
+            connectionCardIdsCount: connectionCardIds?.size || connectionCardIds?.length || 0,
+            positionOverridesCount: positionOverrides?.size || 0
+        }, {
+            thresholdMs: 8
+        }),
         [cardSpatialIndex, connectionCardIds, geometryVersion, positionOverrides]
     );
 
     const connectionCardMap = useMemo(() => {
-        const cardMap = getCardMapByIds(cardSpatialIndex, connectionCardIds);
-        if (!positionOverrides || positionOverrides.size === 0) return cardMap;
+        return measureSyncPerformance('canvas.visible.connection-card-map', () => {
+            const cardMap = getCardMapByIds(cardSpatialIndex, connectionCardIds);
+            if (!positionOverrides || positionOverrides.size === 0) return cardMap;
 
-        const previewCardMap = new Map(cardMap);
-        positionOverrides.forEach((override, id) => {
-            const card = previewCardMap.get(id);
-            if (!card) return;
+            const previewCardMap = new Map(cardMap);
+            positionOverrides.forEach((override, id) => {
+                const card = previewCardMap.get(id);
+                if (!card) return;
 
-            previewCardMap.set(id, {
-                ...card,
-                x: override.x,
-                y: override.y
+                previewCardMap.set(id, {
+                    ...card,
+                    x: override.x,
+                    y: override.y
+                });
             });
-        });
 
-        return previewCardMap;
+            return previewCardMap;
+        }, {
+            connectionCardIdsCount: connectionCardIds?.size || connectionCardIds?.length || 0,
+            positionOverridesCount: positionOverrides?.size || 0
+        }, {
+            thresholdMs: 6
+        });
     }, [cardSpatialIndex, connectionCardIds, geometryVersion, positionOverrides]);
 
     const visibleGroups = useMemo(
-        () => getVisibleGroups(
-            groups,
-            cardSpatialIndex.cardMap,
-            viewportRect,
-            visibleCardIds,
-            groupGeometryCacheRef.current,
-            positionOverrides
-        ),
+        () => measureSyncPerformance('canvas.visible.group-query', () => (
+            getVisibleGroups(
+                groups,
+                cardSpatialIndex.cardMap,
+                viewportRect,
+                visibleCardIds,
+                groupGeometryCacheRef.current,
+                positionOverrides
+            )
+        ), {
+            groupsCount: groups?.length || 0,
+            visibleCardIdsCount: visibleCardIds.size,
+            indexedCards: cardSpatialIndex?.cardMap?.size || 0
+        }, {
+            thresholdMs: 8
+        }),
         [geometryVersion, groups, positionOverrides, viewportRect, visibleCardIds]
     );
 
