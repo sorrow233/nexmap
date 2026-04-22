@@ -48,6 +48,8 @@ export default function BoardPage({
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
     const getCardById = useStore(state => state.getCardById);
+    const isBoardLoading = useStore(state => state.isBoardLoading);
+    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
     const perfBoardIdRef = React.useRef('');
     const perfBoardReadyRef = React.useRef('');
     const perfExpandedCardIdRef = React.useRef('');
@@ -168,7 +170,14 @@ export default function BoardPage({
     }, [currentBoardId]);
 
     useEffect(() => {
-        if (!currentBoardId || !currentBoard || perfBoardReadyRef.current === currentBoardId) {
+        const hasLoadedBoardData = cards.length > 0 || Number(activeBoardPersistence?.updatedAt) > 0;
+        if (
+            !currentBoardId
+            || !currentBoard
+            || isBoardLoading
+            || !hasLoadedBoardData
+            || perfBoardReadyRef.current === currentBoardId
+        ) {
             return;
         }
 
@@ -192,7 +201,7 @@ export default function BoardPage({
             cardsCount: cards.length,
             expandedCardId: expandedCardId || ''
         });
-    }, [cards.length, currentBoard, currentBoardId, expandedCardId]);
+    }, [activeBoardPersistence?.updatedAt, cards.length, currentBoard, currentBoardId, expandedCardId, isBoardLoading]);
 
     useEffect(() => {
         if (!expandedCardId) {

@@ -217,6 +217,7 @@ function AppContent() {
     const boardsListRef = useRef(boardsList);
     const activeBoardPersistenceRef = useRef(activeBoardPersistence);
     const pendingRemoteSnapshotRef = useRef(null);
+    const loadedBoardRuntimeRef = useRef({ boardId: '', loadedAt: 0 });
 
     useBuildVersionRefresh();
 
@@ -792,6 +793,131 @@ function AppContent() {
 
         const load = async () => {
             if (currentBoardId) {
+                const startRemoteSync = async (localSnapshot, source = 'local_load') => {
+                    if (!user?.uid || isSampleBoardId(currentBoardId)) {
+                        return;
+                    }
+
+                    if (
+                        boardSyncControllerRef.current
+                        && boardSyncControllerRef.current.boardId === currentBoardId
+                        && boardSyncControllerRef.current.started
+                    ) {
+                        captureMemoryTrace('app-board-sync-controller-reused', {
+                            boardId: currentBoardId,
+                            source
+                        });
+                        return;
+                    }
+
+                    const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
+                    const expectedCardCount = Number(currentBoardMeta?.cardCount) || 0;
+                    const largeBoardMode = isLargeBoardCards(localSnapshot?.cards || []);
+                    const syncController = new BoardSyncController({
+                        boardId: currentBoardId,
+                        user,
+                        onSnapshot: (nextSnapshot, meta = {}) => {
+                            if (isCancelled) return;
+                            const remoteLane = normalizeSyncLane(meta.lane || SYNC_LANES.FULL);
+                            const remoteSourceSnapshot = meta.partialSnapshot || nextSnapshot;
+                            const remoteResolution = resolveRemoteSnapshotToStore(
+                                remoteSourceSnapshot,
+                                remoteLane
+                            );
+                            if (remoteResolution.action === 'defer') {
+                                if (activeBoardPersistenceRef.current?.dirty === true) {
+                                    const normalizedPendingSnapshot = normalizeBoardSnapshot(remoteResolution.snapshot);
+                                    const currentPendingSnapshot = pendingRemoteSnapshotRef.current?.snapshot || null;
+                                    const nextPendingSnapshot = (
+                                        currentPendingSnapshot
+                                        && pendingRemoteSnapshotRef.current?.boardId === currentBoardId
+                                    )
+                                        ? mergeBoardSnapshotsConservatively(
+                                            currentPendingSnapshot,
+                                            normalizedPendingSnapshot
+                                        ).snapshot
+                                        : normalizedPendingSnapshot;
+                                    pendingRemoteSnapshotRef.current = {
+                                        boardId: currentBoardId,
+                                        snapshot: nextPendingSnapshot
+                                    };
+                                    logPersistenceTrace('sync:remote-snapshot-deferred', {
+                                        boardId: currentBoardId,
+                                        safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                        lane: remoteLane,
+                                        reason: remoteResolution.reason,
+                                        cursor: buildBoardCursorTrace(nextPendingSnapshot)
+                                    });
+                                }
+                                return;
+                            }
+                            if (remoteResolution.action !== 'apply') {
+                                return;
+                            }
+                            logPersistenceTrace('sync:remote-snapshot-apply', {
+                                boardId: currentBoardId,
+                                safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                lane: remoteLane,
+                                reason: remoteResolution.reason,
+                                cursor: buildBoardCursorTrace(remoteResolution.snapshot)
+                            });
+                            if (remoteLane === SYNC_LANES.SKELETON || remoteLane === SYNC_LANES.BODY) {
+                                applyRemoteLaneSnapshotToStore(remoteResolution.snapshot, remoteLane, {
+                                    source: 'remote_sync',
+                                    boardId: currentBoardId
+                                });
+                            } else {
+                                applyBoardSnapshotToStore(remoteResolution.snapshot, {
+                                    source: 'remote_sync',
+                                    boardId: currentBoardId
+                                });
+                            }
+                            syncBoardSnapshotMetadataIntoList(currentBoardId, remoteResolution.snapshot);
+                        },
+                        onSyncStateChange: (state) => {
+                            logPersistenceTrace('sync:controller-state', {
+                                boardId: currentBoardId,
+                                safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                ...state
+                            });
+                        }
+                    });
+                    syncController.largeBoardMode = largeBoardMode;
+
+                    boardSyncControllerRef.current = syncController;
+                    await syncController.start(localSnapshot, { expectedCardCount });
+                    captureMemoryTrace('app-board-sync-controller-started', {
+                        boardId: currentBoardId,
+                        expectedCardCount,
+                        largeBoardMode,
+                        started: Boolean(syncController.started),
+                        source
+                    });
+                    if (syncController.started) {
+                        registerActiveBoardRuntime({
+                            boardId: currentBoardId,
+                            controller: syncController
+                        });
+                    }
+                };
+
+                const currentStoreState = useStore.getState();
+                const alreadyLoadedCurrentBoard = (
+                    loadedBoardRuntimeRef.current.boardId === currentBoardId
+                    && loadedBoardRuntimeRef.current.loadedAt > 0
+                    && currentStoreState.isBoardLoading !== true
+                );
+
+                if (alreadyLoadedCurrentBoard) {
+                    captureMemoryTrace('app-board-load-reused-loaded-state', {
+                        boardId: currentBoardId,
+                        reason: 'effect-rerun-with-same-board',
+                        userReady: Boolean(user?.uid)
+                    });
+                    await startRemoteSync(buildCurrentStoreSnapshot(), 'reuse_loaded_board');
+                    return;
+                }
+
                 clearCardBodyRuntimeCache();
                 setCardBodyRuntimeBoard(currentBoardId);
                 captureMemoryTrace('app-board-load-start', {
@@ -864,6 +990,10 @@ function AppContent() {
                         source: 'local_load',
                         boardId: currentBoardId
                     });
+                    loadedBoardRuntimeRef.current = {
+                        boardId: currentBoardId,
+                        loadedAt: Date.now()
+                    };
                     captureMemoryTrace('app-board-local-snapshot-applied', {
                         boardId: currentBoardId
                     });
@@ -881,96 +1011,7 @@ function AppContent() {
                         viewport
                     });
 
-                    if (user?.uid && !isSampleBoardId(currentBoardId)) {
-                        const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
-                        const expectedCardCount = Number(currentBoardMeta?.cardCount) || 0;
-                        const largeBoardMode = isLargeBoardCards(data?.cards || []);
-                        const syncController = new BoardSyncController({
-                            boardId: currentBoardId,
-                            user,
-                            onSnapshot: (nextSnapshot, meta = {}) => {
-                                if (isCancelled) return;
-                                const remoteLane = normalizeSyncLane(meta.lane || SYNC_LANES.FULL);
-                                const remoteSourceSnapshot = meta.partialSnapshot || nextSnapshot;
-                                const remoteResolution = resolveRemoteSnapshotToStore(
-                                    remoteSourceSnapshot,
-                                    remoteLane
-                                );
-                                if (remoteResolution.action === 'defer') {
-                                    if (activeBoardPersistenceRef.current?.dirty === true) {
-                                        const normalizedPendingSnapshot = normalizeBoardSnapshot(remoteResolution.snapshot);
-                                        const currentPendingSnapshot = pendingRemoteSnapshotRef.current?.snapshot || null;
-                                        const nextPendingSnapshot = (
-                                            currentPendingSnapshot
-                                            && pendingRemoteSnapshotRef.current?.boardId === currentBoardId
-                                        )
-                                            ? mergeBoardSnapshotsConservatively(
-                                                currentPendingSnapshot,
-                                                normalizedPendingSnapshot
-                                            ).snapshot
-                                            : normalizedPendingSnapshot;
-                                        pendingRemoteSnapshotRef.current = {
-                                            boardId: currentBoardId,
-                                            snapshot: nextPendingSnapshot
-                                        };
-                                        logPersistenceTrace('sync:remote-snapshot-deferred', {
-                                            boardId: currentBoardId,
-                                            safeMode: FIREBASE_SYNC_SAFE_MODE,
-                                            lane: remoteLane,
-                                            reason: remoteResolution.reason,
-                                            cursor: buildBoardCursorTrace(nextPendingSnapshot)
-                                        });
-                                    }
-                                    return;
-                                }
-                                if (remoteResolution.action !== 'apply') {
-                                    return;
-                                }
-                                logPersistenceTrace('sync:remote-snapshot-apply', {
-                                    boardId: currentBoardId,
-                                    safeMode: FIREBASE_SYNC_SAFE_MODE,
-                                    lane: remoteLane,
-                                    reason: remoteResolution.reason,
-                                    cursor: buildBoardCursorTrace(remoteResolution.snapshot)
-                                });
-                                if (remoteLane === SYNC_LANES.SKELETON || remoteLane === SYNC_LANES.BODY) {
-                                    applyRemoteLaneSnapshotToStore(remoteResolution.snapshot, remoteLane, {
-                                        source: 'remote_sync',
-                                        boardId: currentBoardId
-                                    });
-                                } else {
-                                    applyBoardSnapshotToStore(remoteResolution.snapshot, {
-                                        source: 'remote_sync',
-                                        boardId: currentBoardId
-                                    });
-                                }
-                                syncBoardSnapshotMetadataIntoList(currentBoardId, remoteResolution.snapshot);
-                            },
-                            onSyncStateChange: (state) => {
-                                logPersistenceTrace('sync:controller-state', {
-                                    boardId: currentBoardId,
-                                    safeMode: FIREBASE_SYNC_SAFE_MODE,
-                                    ...state
-                                });
-                            }
-                        });
-                        syncController.largeBoardMode = largeBoardMode;
-
-                        boardSyncControllerRef.current = syncController;
-                        await syncController.start(data, { expectedCardCount });
-                        captureMemoryTrace('app-board-sync-controller-started', {
-                            boardId: currentBoardId,
-                            expectedCardCount,
-                            largeBoardMode,
-                            started: Boolean(syncController.started)
-                        });
-                        if (syncController.started) {
-                            registerActiveBoardRuntime({
-                                boardId: currentBoardId,
-                                controller: syncController
-                            });
-                        }
-                    }
+                    await startRemoteSync(data, 'local_load');
                 } catch (error) {
                     console.error(`[Board] Failed to load board ${currentBoardId}:`, error);
                 } finally {
@@ -981,6 +1022,7 @@ function AppContent() {
                 }
             } else {
                 clearCardBodyRuntimeCache();
+                loadedBoardRuntimeRef.current = { boardId: '', loadedAt: 0 };
             }
         };
         load();
@@ -1001,6 +1043,7 @@ function AppContent() {
     }, [
         applyBoardSnapshotToStore,
         applyRemoteLaneSnapshotToStore,
+        buildCurrentStoreSnapshot,
         currentBoardId,
         setActiveBoardPersistence,
         setBoardInstructionSettings,
