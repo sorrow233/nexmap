@@ -6,6 +6,7 @@ import {
     createConnectionStrokePalette,
     normalizeConnectionColorKey
 } from './connectionLayer/renderCache';
+import { recordPerformanceDiagnostic } from '../utils/performanceDiagnostics';
 
 /**
  * ConnectionLayer
@@ -73,6 +74,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({
     // It must NEVER depend on offset/scale.
     // =========================================================================
     useEffect(() => {
+        const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
         const pathCache = pathCacheRef.current;
         const prevCardsMap = prevCardsMapRef.current;
         const nextCardsMap = cardMap || new Map();
@@ -102,6 +104,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({
         }
 
         let hasUpdates = false;
+        let recalculatedPathCount = 0;
         const activeKeys = new Set();
 
         // 2. Update connections
@@ -138,6 +141,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({
                         toId: conn.to,
                         cardColor: cardColor
                     });
+                    recalculatedPathCount += 1;
                     hasUpdates = true;
                 }
             }
@@ -167,6 +171,22 @@ const ConnectionLayer = React.memo(function ConnectionLayer({
             pathVersionRef.current += 1;
         }
 
+        const durationMs = typeof performance !== 'undefined'
+            ? performance.now() - startedAt
+            : 0;
+        recordPerformanceDiagnostic('connection.path-cache-update', {
+            durationMs,
+            cardsCount: nextCardsMap.size,
+            connectionsCount: connections?.length || 0,
+            movedCardIdsCount: movedCardIds.size,
+            recalculatedPathCount,
+            cachedPathCount: pathCache.size,
+            strokeGroupCount: strokeGroupsRef.current.size,
+            hasUpdates
+        }, {
+            thresholdMs: 10
+        });
+
     }, [cardMap, cards, connections]); // <--- STRICT DEPENDENCIES
 
 
@@ -182,6 +202,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({
         if (!ctx) return;
 
         const draw = () => {
+            const drawStartedAt = typeof performance !== 'undefined' ? performance.now() : 0;
             renderRequestRef.current = 0;
 
             const { x: cx, y: cy, s: cs } = transformRef.current;
@@ -226,6 +247,21 @@ const ConnectionLayer = React.memo(function ConnectionLayer({
             }
 
             renderStateRef.current = { x: cx, y: cy, s: cs, v: cv, d: isDark };
+            const durationMs = typeof performance !== 'undefined'
+                ? performance.now() - drawStartedAt
+                : 0;
+            recordPerformanceDiagnostic('connection.canvas-draw', {
+                durationMs,
+                width,
+                height,
+                dpr,
+                scale: cs,
+                strokeGroupCount: strokeGroupsRef.current.size,
+                pathVersion: cv,
+                isDark
+            }, {
+                thresholdMs: 8
+            });
         };
 
         const scheduleRender = () => {

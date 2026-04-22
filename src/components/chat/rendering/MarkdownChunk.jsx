@@ -13,6 +13,7 @@ import {
     MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS,
     MESSAGE_CHUNK_LAZY_ROOT_MARGIN
 } from './useMessageChunks';
+import { measureSyncPerformance } from '../../../utils/performanceDiagnostics';
 
 let codeBlockCounter = 0;
 let codeBlocks = [];
@@ -266,7 +267,18 @@ function MarkdownChunkComponent({
             return [];
         }
 
-        return renderMarkdownChunk(chunk, marks, capturedNotes);
+        return measureSyncPerformance('chat.markdown-chunk-render', () => (
+            renderMarkdownChunk(chunk, marks, capturedNotes)
+        ), {
+            chunkId: chunk?.id || '',
+            chunkType: chunk?.type || '',
+            markdownLength: String(chunk?.markdown || '').length,
+            marksCount: marks?.length || 0,
+            capturedNotesCount: capturedNotes?.length || 0,
+            deferCodeHighlight: Boolean(chunk?.deferCodeHighlight)
+        }, {
+            thresholdMs: 12
+        });
     }, [capturedNotes, chunk, isRendered, marks]);
 
     if (!isRendered) {
