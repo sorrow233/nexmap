@@ -26,7 +26,6 @@ import {
     isLargeBoardCards,
     resolveBoardHistoryLimit
 } from '../utils/boardPerformance';
-import { recordPerformanceDiagnostic } from '../utils/performanceDiagnostics';
 
 const DEFAULT_HISTORY_DEBOUNCE_MS = 180;
 const CARD_CONTENT_HISTORY_DEBOUNCE_MS = 900;
@@ -159,7 +158,6 @@ const useStoreBase = create(
     temporal(
         (rawSet, get) => {
             const set = (partial, replace, meta = {}) => {
-                const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
                 const currentState = get();
                 const nextPartial = typeof partial === 'function'
                     ? partial(currentState)
@@ -170,27 +168,7 @@ const useStoreBase = create(
                 }
 
                 setHistoryBehavior(resolveHistoryBehavior(currentState, nextPartial, replace, meta));
-                const result = rawSet(nextPartial, replace);
-                const durationMs = typeof performance !== 'undefined'
-                    ? performance.now() - startedAt
-                    : 0;
-                const changedKeys = nextPartial && typeof nextPartial === 'object'
-                    ? Object.keys(nextPartial)
-                    : [];
-                recordPerformanceDiagnostic('zustand.set-state', {
-                    durationMs,
-                    changedKeys,
-                    replace: replace === true,
-                    skipHistory: meta?.skipHistory === true,
-                    skipBoardRuntime: meta?.skipBoardRuntime === true,
-                    changeType: meta?.changeType || nextPartial?.boardChangeState?.lastChangeType || '',
-                    cardsCount: Array.isArray(nextPartial?.cards) ? nextPartial.cards.length : null,
-                    connectionsCount: Array.isArray(nextPartial?.connections) ? nextPartial.connections.length : null,
-                    groupsCount: Array.isArray(nextPartial?.groups) ? nextPartial.groups.length : null
-                }, {
-                    thresholdMs: 8
-                });
-                return result;
+                return rawSet(nextPartial, replace);
             };
 
             return {

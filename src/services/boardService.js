@@ -26,7 +26,6 @@ import {
     persistBoardsMetadataList,
     readBoardsMetadataListFromStorage
 } from './boardPersistence/boardsListStorage';
-import { recordPerformanceDiagnostic } from '../utils/performanceDiagnostics';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
@@ -46,14 +45,6 @@ const BOARD_PERSISTED_METADATA_KEYS = [
 ];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-const estimateJsonBytes = (value) => {
-    try {
-        return new TextEncoder().encode(JSON.stringify(value)).length;
-    } catch {
-        return null;
-    }
-};
 
 const loadLegacyBoardSnapshot = (id) => {
     try {
@@ -212,7 +203,6 @@ export const updateBoardMetadata = (id, metadata) => {
 };
 
 export const saveBoard = async (id, data) => {
-    const saveStartedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     // data: { cards, connections, updatedAt? }
     const timestamp = Number.isFinite(Number(data?.updatedAt))
         ? Number(data.updatedAt)
@@ -291,18 +281,6 @@ export const saveBoard = async (id, data) => {
                 boardId: id,
                 cursor: buildBoardCursorTrace(payload)
             });
-            recordPerformanceDiagnostic('storage.save-board', {
-                boardId: id,
-                durationMs: typeof performance !== 'undefined' ? performance.now() - saveStartedAt : 0,
-                source: 'idb',
-                attempts: attempt,
-                payloadBytes: estimateJsonBytes(payload),
-                cardsCount: payload.cards?.length || 0,
-                connectionsCount: payload.connections?.length || 0,
-                groupsCount: payload.groups?.length || 0
-            }, {
-                thresholdMs: 20
-            });
             return;
         } catch (e) {
             lastError = e;
@@ -323,22 +301,9 @@ export const saveBoard = async (id, data) => {
     if (!fallbackOk) {
         throw (lastError || new Error(`Failed to save board ${id}`));
     }
-    recordPerformanceDiagnostic('storage.save-board', {
-        boardId: id,
-        durationMs: typeof performance !== 'undefined' ? performance.now() - saveStartedAt : 0,
-        source: 'legacy-fallback',
-        attempts: MAX_IDB_SAVE_RETRIES,
-        payloadBytes: estimateJsonBytes(payload),
-        cardsCount: payload.cards?.length || 0,
-        connectionsCount: payload.connections?.length || 0,
-        groupsCount: payload.groups?.length || 0
-    }, {
-        force: true
-    });
 };
 
 export const loadBoard = async (id) => {
-    const loadStartedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     debugLog.storage(`Loading board: ${id}`);
 
     // Handle sample boards - return static sample data
@@ -359,10 +324,8 @@ export const loadBoard = async (id) => {
         debugLog.error(`IDB read failed for board ${id}`, e);
     }
 
-    const legacySnapshot = stored ? null : loadLegacyBoardSnapshot(id);
-    const { snapshot: shadowSnapshot, source: shadowSource } = await loadMostRecentBoardShadowSnapshot(id, {
-        persistedSnapshot: stored
-    });
+    const legacySnapshot = loadLegacyBoardSnapshot(id);
+    const { snapshot: shadowSnapshot, source: shadowSource } = await loadMostRecentBoardShadowSnapshot(id);
     const { snapshot: preferredSnapshot, source: preferredSource } = pickMostRecentBoardSnapshot([
         { snapshot: stored, source: 'idb' },
         { snapshot: legacySnapshot, source: 'legacy' },
@@ -423,7 +386,9 @@ export const loadBoard = async (id) => {
             });
         }
     } else {
-        clearLegacyBoardSnapshot(id);
+        if (legacySnapshot) {
+            clearLegacyBoardSnapshot(id);
+        }
         if (shadowSnapshot) {
             await clearBoardShadowSnapshot(id);
         }
@@ -467,27 +432,14 @@ export const loadBoard = async (id) => {
     }
 
     debugLog.storage(`Board ${id} loaded successfully`, { cards: finalBoard.cards?.length || 0 });
-    const normalizedBoard = {
+    return {
         ...finalBoard,
         boardInstructionSettings: normalizeBoardInstructionSettings(finalBoard.boardInstructionSettings)
     };
-    recordPerformanceDiagnostic('storage.load-board', {
-        boardId: id,
-        durationMs: typeof performance !== 'undefined' ? performance.now() - loadStartedAt : 0,
-        preferredSource,
-        payloadBytes: estimateJsonBytes(normalizedBoard),
-        cardsCount: normalizedBoard.cards?.length || 0,
-        connectionsCount: normalizedBoard.connections?.length || 0,
-        groupsCount: normalizedBoard.groups?.length || 0
-    }, {
-        thresholdMs: 20
-    });
-    return normalizedBoard;
 };
 
 // Optimized loader for Search (Direct IDB access, NO S3 processing)
 export const loadBoardDataForSearch = async (id) => {
-    const loadStartedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     try {
         let stored = await idbGet(BOARD_PREFIX + id);
         if (!stored) {
@@ -496,15 +448,6 @@ export const loadBoardDataForSearch = async (id) => {
             if (legacy) stored = JSON.parse(legacy);
         }
         // Return raw stored data (we just need text content for search, no base64 conversion needed)
-        recordPerformanceDiagnostic('storage.load-board-search', {
-            boardId: id,
-            durationMs: typeof performance !== 'undefined' ? performance.now() - loadStartedAt : 0,
-            source: stored ? 'idb-or-legacy' : 'missing',
-            payloadBytes: estimateJsonBytes(stored),
-            cardsCount: stored?.cards?.length || 0
-        }, {
-            thresholdMs: 25
-        });
         return stored;
     } catch (e) {
         console.warn(`[Search] Failed to load board ${id}`, e);
