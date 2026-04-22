@@ -37,7 +37,7 @@ import {
 } from './protocol/syncLane';
 import {
     buildBodySyncSnapshotFromEntries,
-    buildCardBodyHashMap,
+    buildCardBodySyncEntry,
     buildCardBodySyncEntries,
     buildCompleteCardBodySyncEntries,
     mergeCardBodyEntriesIntoSnapshot,
@@ -102,6 +102,17 @@ const buildSkeletonVersionKey = (snapshot = {}) => (
     buildPersistenceVersionKey(buildSkeletonSyncSnapshot(snapshot))
 );
 
+const buildBodyEntryVersionKey = (entry = {}) => (
+    `${entry?.bodyRevision || 0}:${entry?.bodyUpdatedAt || 0}:${entry?.bodyHash || ''}`
+);
+
+const buildBodyEntriesEventKey = (entries = []) => (
+    normalizeCardBodySyncJobs(entries)
+        .map((entry) => `${entry.cardId}:${buildBodyEntryVersionKey(entry)}`)
+        .sort()
+        .join('|')
+);
+
 const buildMissingRemoteBodyEntries = (localSnapshot = {}, remoteEntries = []) => {
     const normalizedLocalSnapshot = normalizeBoardSnapshot(localSnapshot);
     const localEntries = buildCardBodySyncEntries(normalizedLocalSnapshot.cards, {
@@ -162,6 +173,31 @@ const partitionMissingRemoteBodyEntries = (entries = []) => {
     return {
         inlineEntries,
         checkpointFallbackEntries
+    };
+};
+
+const partitionCheckpointFallbackEntriesByCurrentBody = (entries = [], currentSnapshot = {}) => {
+    const currentCardsById = new Map(
+        normalizeBoardSnapshot(currentSnapshot).cards
+            .map((card) => [card?.id, card])
+            .filter(([cardId]) => Boolean(cardId))
+    );
+    const localPresentEntries = [];
+    const checkpointNeededEntries = [];
+
+    normalizeCardBodySyncJobs(entries).forEach((entry) => {
+        const currentEntry = buildCardBodySyncEntry(currentCardsById.get(entry.cardId));
+        if (currentEntry?.bodyHash && currentEntry.bodyHash === entry.bodyHash) {
+            localPresentEntries.push(entry);
+            return;
+        }
+
+        checkpointNeededEntries.push(entry);
+    });
+
+    return {
+        localPresentEntries,
+        checkpointNeededEntries
     };
 };
 
@@ -250,6 +286,7 @@ export class FirestoreBoardSync {
             lane: payload.lane || SYNC_LANES.FULL,
             source: payload.source || 'remote_sync',
             reason: payload.reason || '',
+            eventKey: typeof payload.eventKey === 'string' ? payload.eventKey : '',
             partialSnapshot,
             mergedSnapshot
         });
@@ -303,6 +340,13 @@ export class FirestoreBoardSync {
 
         const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
         const currentVersionKey = buildSkeletonVersionKey(currentSnapshot);
+        const remoteDeviceId = typeof rootData?.lastDeviceId === 'string'
+            ? rootData.lastDeviceId
+            : '';
+        if (remoteDeviceId && remoteDeviceId === this.deviceId && currentVersionKey === nextVersionKey) {
+            this.latestSkeletonVersionKey = nextVersionKey;
+            return null;
+        }
         if (
             currentVersionKey
             && (Number(skeletonSnapshot.clientRevision) || 0) < (Number(currentSnapshot.clientRevision) || 0)
@@ -320,6 +364,7 @@ export class FirestoreBoardSync {
             lane: SYNC_LANES.SKELETON,
             source: 'remote_skeleton',
             reason: 'remote_skeleton_applied',
+            eventKey: `skeleton:${nextVersionKey}`,
             partialSnapshot: skeletonSnapshot,
             mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
         };
@@ -344,18 +389,13 @@ export class FirestoreBoardSync {
         const currentCardIds = new Set(
             currentSnapshot.cards.map((card) => card?.id).filter(Boolean)
         );
-        const currentBodyHashMap = buildCardBodyHashMap(currentSnapshot.cards);
 
         const normalizedEntries = entries
             .map((entry) => normalizeCardBodySyncEntry(entry))
             .filter(Boolean)
             .filter((entry) => {
-                const nextVersionKey = `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`;
+                const nextVersionKey = buildBodyEntryVersionKey(entry);
                 if (this.latestBodyVersionKeys.get(entry.cardId) === nextVersionKey) {
-                    return false;
-                }
-                if (currentCardIds.has(entry.cardId) && currentBodyHashMap.get(entry.cardId) === entry.bodyHash) {
-                    this.latestBodyVersionKeys.set(entry.cardId, nextVersionKey);
                     return false;
                 }
                 return true;
@@ -388,7 +428,7 @@ export class FirestoreBoardSync {
         applicableEntries.forEach((entry) => {
             this.latestBodyVersionKeys.set(
                 entry.cardId,
-                `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`
+                buildBodyEntryVersionKey(entry)
             );
         });
 
@@ -396,6 +436,7 @@ export class FirestoreBoardSync {
             lane: SYNC_LANES.BODY,
             source: 'remote_body',
             reason: 'remote_body_applied',
+            eventKey: `body:${buildBodyEntriesEventKey(applicableEntries)}`,
             partialSnapshot: buildBodySyncSnapshotFromEntries(applicableEntries),
             mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
         };
@@ -444,7 +485,7 @@ export class FirestoreBoardSync {
             if (!entry) return;
             this.latestBodyVersionKeys.set(
                 cardId,
-                `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`
+                buildBodyEntryVersionKey(entry)
             );
         });
 
@@ -646,21 +687,38 @@ export class FirestoreBoardSync {
 
             if (checkpointFallbackEntries.length > 0) {
                 try {
-                    const fallbackResult = await this.applyCheckpointBodyFallback(
-                        rootData,
-                        checkpointFallbackEntries
+                    const {
+                        localPresentEntries,
+                        checkpointNeededEntries
+                    } = partitionCheckpointFallbackEntriesByCurrentBody(
+                        checkpointFallbackEntries,
+                        readBoardSnapshotFromDoc(this.doc)
                     );
 
-                    if (fallbackResult.appliedCardIds.length > 0) {
-                        this.emitState('warning', {
-                            message: `Oversized card bodies restored from checkpoint for ${fallbackResult.appliedCardIds.length} cards`
+                    if (localPresentEntries.length > 0) {
+                        captureMemoryTrace('firebase-checkpoint-body-fallback-skipped-local-present', {
+                            boardId: this.boardId,
+                            skippedCardIds: localPresentEntries.map((entry) => entry.cardId)
                         });
                     }
 
-                    if (fallbackResult.missingCardIds.length > 0) {
-                        console.warn(
-                            `[FirebaseSync] ${fallbackResult.missingCardIds.length} oversized card bodies still missing on board ${this.boardId}; checkpoint fallback unavailable`
+                    if (checkpointNeededEntries.length > 0) {
+                        const fallbackResult = await this.applyCheckpointBodyFallback(
+                            rootData,
+                            checkpointNeededEntries
                         );
+
+                        if (fallbackResult.appliedCardIds.length > 0) {
+                            this.emitState('warning', {
+                                message: `Oversized card bodies restored from checkpoint for ${fallbackResult.appliedCardIds.length} cards`
+                            });
+                        }
+
+                        if (fallbackResult.missingCardIds.length > 0) {
+                            console.warn(
+                                `[FirebaseSync] ${fallbackResult.missingCardIds.length} oversized card bodies still missing on board ${this.boardId}; checkpoint fallback unavailable`
+                            );
+                        }
                     }
                 } catch (error) {
                     console.warn(
@@ -805,6 +863,7 @@ export class FirestoreBoardSync {
                     lane: SYNC_LANES.FULL,
                     source: options.recoveryOnly ? 'checkpoint_recovery' : 'remote_checkpoint',
                     reason: options.recoveryOnly ? 'checkpoint_recovery_applied' : applyResult.reason,
+                    eventKey: `full:${buildPersistenceVersionKey(applyResult.snapshot)}:${options.recoveryOnly ? 'checkpoint_recovery' : 'remote_checkpoint'}`,
                     partialSnapshot: applyResult.snapshot,
                     mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
                 });

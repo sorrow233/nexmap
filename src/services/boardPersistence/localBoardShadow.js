@@ -13,7 +13,6 @@ import { normalizeBoardSnapshot } from '../sync/boardSnapshot';
 
 const BOARD_SHADOW_PREFIX = 'mixboard_board_shadow_';
 const BOARD_SHADOW_IDB_PREFIX = 'mixboard_shadow_snapshot_';
-const BOARD_SHADOW_META_PREFIX = 'mixboard_board_shadow_meta_';
 const SHADOW_SCOPE_SESSION = 'session';
 const SHADOW_SCOPE_LOCAL = 'local';
 const SHADOW_SCOPE_BOTH = 'both';
@@ -28,7 +27,6 @@ const RECOVERY_TRACKED_KEYS = Object.freeze([
 const shadowOperationChains = new Map();
 
 const getBoardShadowStorageKey = (boardId) => `${BOARD_SHADOW_PREFIX}${boardId}`;
-const getBoardShadowMetaKey = (boardId) => `${BOARD_SHADOW_META_PREFIX}${boardId}`;
 const getBoardShadowIdbKey = (boardId, scope = SHADOW_SCOPE_SESSION) => (
     `${BOARD_SHADOW_IDB_PREFIX}${scope}:${boardId}`
 );
@@ -84,73 +82,14 @@ const withShadowOperationQueue = (boardId, scope, operation) => {
     });
 };
 
-const normalizeShadowRecord = (boardId, scope, snapshot = {}) => ({
+const normalizeShadowRecord = (boardId, scope, snapshot = {}, options = {}) => ({
     boardId,
     scope,
     savedAt: toEpochMillis(snapshot.updatedAt ?? Date.now()),
-    snapshot: buildBoardRecoverySnapshot(snapshot)
+    snapshot: buildBoardRecoverySnapshot(snapshot, {
+        normalized: Boolean(options.normalized)
+    })
 });
-
-const readShadowMeta = (boardId, scope = SHADOW_SCOPE_SESSION) => {
-    const storage = getScopedStorage(scope);
-    if (!storage || !boardId) return null;
-
-    try {
-        const raw = storage.getItem(getBoardShadowMetaKey(boardId));
-        if (!raw) return null;
-        return JSON.parse(raw);
-    } catch {
-        return null;
-    }
-};
-
-const writeShadowMeta = (boardId, scope = SHADOW_SCOPE_SESSION, snapshot = {}) => {
-    const storage = getScopedStorage(scope);
-    if (!storage || !boardId) return;
-
-    try {
-        storage.setItem(getBoardShadowMetaKey(boardId), JSON.stringify({
-            updatedAt: toEpochMillis(snapshot.updatedAt),
-            clientRevision: toSafeClientRevision(snapshot.clientRevision),
-            savedAt: Date.now()
-        }));
-    } catch {
-        // Metadata is only a fast-path hint; failing to write it should not block recovery.
-    }
-};
-
-const clearShadowMeta = (boardId, scope = SHADOW_SCOPE_BOTH) => {
-    getScopesToHandle(scope).forEach((currentScope) => {
-        const storage = getScopedStorage(currentScope);
-        if (!storage || !boardId) return;
-
-        try {
-            storage.removeItem(getBoardShadowMetaKey(boardId));
-        } catch {
-            // Best-effort cleanup only.
-        }
-    });
-};
-
-const isShadowMetaNewerThanSnapshot = (meta = {}, persistedSnapshot = {}) => {
-    if (!meta || !persistedSnapshot) return false;
-
-    const metaRevision = toSafeClientRevision(meta.clientRevision);
-    const persistedRevision = toSafeClientRevision(persistedSnapshot.clientRevision);
-    if (metaRevision !== persistedRevision) {
-        return metaRevision > persistedRevision;
-    }
-
-    return toEpochMillis(meta.updatedAt) > toEpochMillis(persistedSnapshot.updatedAt);
-};
-
-const shouldLoadShadowSnapshots = (boardId, persistedSnapshot = null) => {
-    if (!persistedSnapshot) return true;
-
-    return getScopesToHandle(SHADOW_SCOPE_BOTH).some((scope) => (
-        isShadowMetaNewerThanSnapshot(readShadowMeta(boardId, scope), persistedSnapshot)
-    ));
-};
 
 const loadLegacyBoardShadowSnapshot = (boardId, scope = SHADOW_SCOPE_SESSION) => {
     const storage = getScopedStorage(scope);
@@ -180,7 +119,9 @@ const clearLegacyBoardShadowSnapshot = (boardId, scope = SHADOW_SCOPE_BOTH) => {
 };
 
 export const buildBoardRecoverySnapshot = (payload = {}, options = {}) => {
-    const normalized = normalizeBoardSnapshot(payload);
+    const normalized = options.normalized
+        ? payload
+        : normalizeBoardSnapshot(payload);
 
     return {
         ...buildRecoverySnapshotExtras(payload),
@@ -194,7 +135,9 @@ export const persistBoardShadowSnapshot = async (boardId, payload, options = {})
     const scope = options.scope || SHADOW_SCOPE_SESSION;
     if (!boardId || !payload) return false;
 
-    const nextSnapshot = buildBoardRecoverySnapshot(payload);
+    const nextSnapshot = buildBoardRecoverySnapshot(payload, {
+        normalized: Boolean(options.normalized)
+    });
     const idbKey = getBoardShadowIdbKey(boardId, scope);
 
     return withShadowOperationQueue(boardId, scope, async () => {
@@ -204,9 +147,9 @@ export const persistBoardShadowSnapshot = async (boardId, payload, options = {})
             if (currentSnapshot && !isPersistenceSnapshotNewer(nextSnapshot, currentSnapshot)) {
                 return true;
             }
-
-            await idbSet(idbKey, normalizeShadowRecord(boardId, scope, nextSnapshot));
-            writeShadowMeta(boardId, scope, nextSnapshot);
+            await idbSet(idbKey, normalizeShadowRecord(boardId, scope, nextSnapshot, {
+                normalized: true
+            }));
             clearLegacyBoardShadowSnapshot(boardId, scope);
             debugLog.storage(`[Storage] ${scope} shadow snapshot saved to IndexedDB for board ${boardId}`);
             return true;
@@ -264,7 +207,6 @@ export const clearBoardShadowSnapshot = async (boardId, options = {}) => {
     )));
 
     clearLegacyBoardShadowSnapshot(boardId, scope);
-    clearShadowMeta(boardId, scope);
 };
 
 export const pickMostRecentBoardSnapshot = (candidates = []) => {
@@ -290,11 +232,7 @@ export const pickMostRecentBoardSnapshot = (candidates = []) => {
     };
 };
 
-export const loadMostRecentBoardShadowSnapshot = async (boardId, options = {}) => {
-    if (!shouldLoadShadowSnapshots(boardId, options.persistedSnapshot || null)) {
-        return { snapshot: null, source: 'shadow_skipped' };
-    }
-
+export const loadMostRecentBoardShadowSnapshot = async (boardId) => {
     const [sessionSnapshot, localSnapshot] = await Promise.all([
         loadBoardShadowSnapshot(boardId, { scope: SHADOW_SCOPE_SESSION }),
         loadBoardShadowSnapshot(boardId, { scope: SHADOW_SCOPE_LOCAL })

@@ -5,7 +5,6 @@ import {
     syncCardSpatialIndex
 } from '../utils/canvasSpatialIndex';
 import { useStore } from '../store/useStore';
-import { measureSyncPerformance } from '../utils/performanceDiagnostics';
 
 export function useIncrementalCardSpatialIndex(cardIndexMutation) {
     const spatialIndexRef = useRef(createEmptyCardSpatialIndex());
@@ -14,15 +13,7 @@ export function useIncrementalCardSpatialIndex(cardIndexMutation) {
     const nextVersion = Number(cardIndexMutation?.version) || 0;
 
     if (lastMutationVersionRef.current === null) {
-        const cards = useStore.getState().cards || [];
-        measureSyncPerformance('canvas.spatial-index.initial-sync', () => {
-            syncCardSpatialIndex(spatialIndexRef.current, cards);
-        }, {
-            cardsCount: cards.length,
-            mutationVersion: nextVersion
-        }, {
-            thresholdMs: 8
-        });
+        syncCardSpatialIndex(spatialIndexRef.current, useStore.getState().cards || []);
         lastMutationVersionRef.current = nextVersion;
         return spatialIndexRef.current;
     }
@@ -33,28 +24,9 @@ export function useIncrementalCardSpatialIndex(cardIndexMutation) {
             const updatedCards = updatedIds.length > 0
                 ? useStore.getState().getCardsByIds?.(updatedIds) || []
                 : [];
-            measureSyncPerformance('canvas.spatial-index.patch', () => {
-                patchCardSpatialIndex(spatialIndexRef.current, updatedCards);
-            }, {
-                updatedIdsCount: updatedIds.length,
-                updatedCardsCount: updatedCards.length,
-                mutationVersion: nextVersion,
-                mutationScope: cardIndexMutation?.scope || '',
-                mutationReason: cardIndexMutation?.reason || ''
-            }, {
-                thresholdMs: 6
-            });
+            patchCardSpatialIndex(spatialIndexRef.current, updatedCards);
         } else {
-            const cards = useStore.getState().cards || [];
-            measureSyncPerformance('canvas.spatial-index.bulk-sync', () => {
-                syncCardSpatialIndex(spatialIndexRef.current, cards);
-            }, {
-                cardsCount: cards.length,
-                mutationVersion: nextVersion,
-                mutationReason: cardIndexMutation?.reason || ''
-            }, {
-                thresholdMs: 8
-            });
+            syncCardSpatialIndex(spatialIndexRef.current, useStore.getState().cards || []);
         }
         lastMutationVersionRef.current = nextVersion;
     }
