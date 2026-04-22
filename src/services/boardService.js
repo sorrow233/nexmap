@@ -359,8 +359,10 @@ export const loadBoard = async (id) => {
         debugLog.error(`IDB read failed for board ${id}`, e);
     }
 
-    const legacySnapshot = loadLegacyBoardSnapshot(id);
-    const { snapshot: shadowSnapshot, source: shadowSource } = await loadMostRecentBoardShadowSnapshot(id);
+    const legacySnapshot = stored ? null : loadLegacyBoardSnapshot(id);
+    const { snapshot: shadowSnapshot, source: shadowSource } = await loadMostRecentBoardShadowSnapshot(id, {
+        persistedSnapshot: stored
+    });
     const { snapshot: preferredSnapshot, source: preferredSource } = pickMostRecentBoardSnapshot([
         { snapshot: stored, source: 'idb' },
         { snapshot: legacySnapshot, source: 'legacy' },
@@ -421,9 +423,7 @@ export const loadBoard = async (id) => {
             });
         }
     } else {
-        if (legacySnapshot) {
-            clearLegacyBoardSnapshot(id);
-        }
+        clearLegacyBoardSnapshot(id);
         if (shadowSnapshot) {
             await clearBoardShadowSnapshot(id);
         }

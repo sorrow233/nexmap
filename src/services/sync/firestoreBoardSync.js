@@ -37,6 +37,7 @@ import {
 } from './protocol/syncLane';
 import {
     buildBodySyncSnapshotFromEntries,
+    buildCardBodyHashMap,
     buildCardBodySyncEntries,
     buildCompleteCardBodySyncEntries,
     mergeCardBodyEntriesIntoSnapshot,
@@ -363,6 +364,7 @@ export class FirestoreBoardSync {
         const currentCardIds = new Set(
             currentSnapshot.cards.map((card) => card?.id).filter(Boolean)
         );
+        const currentBodyHashMap = buildCardBodyHashMap(currentSnapshot.cards);
 
         const normalizedEntries = entries
             .map((entry) => normalizeCardBodySyncEntry(entry))
@@ -370,6 +372,10 @@ export class FirestoreBoardSync {
             .filter((entry) => {
                 const nextVersionKey = buildBodyEntryVersionKey(entry);
                 if (this.latestBodyVersionKeys.get(entry.cardId) === nextVersionKey) {
+                    return false;
+                }
+                if (currentCardIds.has(entry.cardId) && currentBodyHashMap.get(entry.cardId) === entry.bodyHash) {
+                    this.latestBodyVersionKeys.set(entry.cardId, nextVersionKey);
                     return false;
                 }
                 return true;
