@@ -2,7 +2,7 @@ import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
 } from '../customInstructionsService';
-import { normalizeCardsTimestamps } from '../cards/cardTimestamps';
+import { normalizeCardTimestamps } from '../cards/cardTimestamps';
 import { logBoardLoadStage } from '../../utils/boardLoadDebug';
 
 const DEFAULT_BOARD_SNAPSHOT = Object.freeze({
@@ -27,17 +27,36 @@ export const cloneSerializable = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
-const stripRuntimeBodyStateFromCard = (card = {}) => {
-    if (!card?.data?.runtimeBodyState) {
-        return card;
+const normalizeCardDataForSnapshot = (data) => {
+    if (!data || typeof data !== 'object') {
+        return data;
     }
 
-    const { runtimeBodyState, ...nextData } = card.data;
+    const { runtimeBodyState, ...nextData } = data;
+    return nextData;
+};
+
+const normalizeCardForSnapshot = (card = {}, options = {}) => {
+    const normalizedCard = normalizeCardTimestamps(card, options);
+    if (!normalizedCard || typeof normalizedCard !== 'object') {
+        return normalizedCard;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(normalizedCard, 'data')) {
+        return { ...normalizedCard };
+    }
+
     return {
-        ...card,
-        data: nextData
+        ...normalizedCard,
+        data: normalizeCardDataForSnapshot(normalizedCard.data)
     };
 };
+
+const normalizeCardsForSnapshot = (cards = [], options = {}) => (
+    Array.isArray(cards)
+        ? cards.map((card) => normalizeCardForSnapshot(card, options))
+        : []
+);
 
 const getNormalizedBoardSnapshot = (snapshot = {}, options = {}) => (
     options.normalized ? snapshot : normalizeBoardSnapshot(snapshot)
@@ -148,10 +167,10 @@ const areSerializableValuesEqual = (left, right) => {
 export const normalizeBoardSnapshot = (snapshot = {}) => {
     const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const normalized = {
-        cards: normalizeCardsTimestamps(
-            Array.isArray(snapshot.cards) ? cloneSerializable(snapshot.cards) : [],
+        cards: normalizeCardsForSnapshot(
+            snapshot.cards,
             { boardCreatedAt: Number(snapshot.createdAt) || 0 }
-        ).map((card) => stripRuntimeBodyStateFromCard(card)),
+        ),
         connections: Array.isArray(snapshot.connections) ? cloneSerializable(snapshot.connections) : [],
         groups: Array.isArray(snapshot.groups) ? cloneSerializable(snapshot.groups) : [],
         boardPrompts: Array.isArray(snapshot.boardPrompts) ? cloneSerializable(snapshot.boardPrompts) : [],
