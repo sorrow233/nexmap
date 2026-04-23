@@ -6,8 +6,11 @@ const LONG_TASK_THRESHOLD_MS = 50;
 const CRITICAL_LONG_TASK_THRESHOLD_MS = 250;
 const EVENT_LOOP_LAG_THRESHOLD_MS = 150;
 const CRITICAL_EVENT_LOOP_LAG_THRESHOLD_MS = 500;
+const EVENT_LOOP_SAMPLE_INTERVAL_MS = 1000;
+const BACKGROUND_TIMER_THROTTLE_GAP_MS = 30000;
 const FRAME_STALL_THRESHOLD_MS = 80;
 const CRITICAL_FRAME_STALL_THRESHOLD_MS = 250;
+const FRAME_SAMPLER_RESET_GAP_MS = 5000;
 const FPS_WINDOW_MS = 5000;
 const LOW_FPS_THRESHOLD = 45;
 const RESOURCE_SLOW_THRESHOLD_MS = 1500;
@@ -19,15 +22,17 @@ const FRAME_STALL_BATCH_WINDOW_MS = 160;
 const DEFAULT_CONSOLE_LOG_THROTTLE_MS = 300;
 const CONSOLE_LOG_THROTTLE_MS_BY_LABEL = {
     'cpu.long-task': 500,
-    'cpu.event-loop-lag': 1000,
+    'cpu.event-loop-lag': 3000,
     'input.slow-event-batch': 700,
     'render.frame-stall-batch': 1200,
     'render.fps-window': 2500,
-    'resource.slow-or-large': 1200,
+    'resource.slow-or-large': 5000,
     'memory.heap-pressure': 2000
 };
 
 const isBrowser = typeof window !== 'undefined';
+const FIRESTORE_CHANNEL_RESOURCE_PATTERN = /firestore\.googleapis\.com\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel/i;
+const STREAMING_RESOURCE_PATTERN = /(?::streamGenerateContent|\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel)/i;
 const consoleLogAtByKey = new Map();
 const consoleSuppressedByKey = new Map();
 
@@ -229,6 +234,18 @@ const sanitizeUrl = (value = '') => {
     } catch {
         return String(value).slice(0, 240);
     }
+};
+
+const isDocumentHidden = () => (
+    isBrowser &&
+    typeof document !== 'undefined' &&
+    document.visibilityState === 'hidden'
+);
+
+const isLongLivedStreamingResource = (entry) => {
+    const name = String(entry?.name || '');
+    if (!name) return false;
+    return FIRESTORE_CHANNEL_RESOURCE_PATTERN.test(name) || STREAMING_RESOURCE_PATTERN.test(name);
 };
 
 const severityForDuration = (durationMs, criticalMs, warningMs) => {
@@ -649,6 +666,10 @@ const installResourceObserver = () => installObserver(['resource'], (entry) => {
         return;
     }
 
+    if (isLongLivedStreamingResource(entry)) {
+        return;
+    }
+
     recordPerformanceDiagnostic('resource.slow-or-large', {
         durationMs,
         name: sanitizeUrl(entry.name),
@@ -701,7 +722,18 @@ const installFrameSampler = () => {
         totalFrameMs = 0;
     };
 
+    const resetSampler = (timestamp = 0) => {
+        lastFrameTime = timestamp;
+        resetWindow(timestamp);
+    };
+
     const onFrame = (timestamp) => {
+        if (isDocumentHidden()) {
+            resetSampler(0);
+            window.requestAnimationFrame(onFrame);
+            return;
+        }
+
         if (!lastFrameTime) {
             lastFrameTime = timestamp;
             resetWindow(timestamp);
@@ -710,6 +742,12 @@ const installFrameSampler = () => {
         }
 
         const frameMs = timestamp - lastFrameTime;
+        if (frameMs > FRAME_SAMPLER_RESET_GAP_MS) {
+            resetSampler(timestamp);
+            window.requestAnimationFrame(onFrame);
+            return;
+        }
+
         lastFrameTime = timestamp;
         frames += 1;
         totalFrameMs += frameMs;
@@ -747,20 +785,29 @@ const installFrameSampler = () => {
         window.requestAnimationFrame(onFrame);
     };
 
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+            resetSampler(isDocumentHidden() ? 0 : performance.now());
+        });
+    }
+
     window.requestAnimationFrame(onFrame);
 };
 
 const installEventLoopLagSampler = () => {
     if (!isBrowser) return;
 
-    let expectedAt = performance.now() + 1000;
+    let lastSampleAt = performance.now();
     window.setInterval(() => {
         const now = performance.now();
-        const lagMs = now - expectedAt;
-        expectedAt += 1000;
-        if (lagMs > 5000) {
-            expectedAt = now + 1000;
+        const elapsedMs = now - lastSampleAt;
+        lastSampleAt = now;
+
+        if (isDocumentHidden() || elapsedMs > BACKGROUND_TIMER_THROTTLE_GAP_MS) {
+            return;
         }
+
+        const lagMs = elapsedMs - EVENT_LOOP_SAMPLE_INTERVAL_MS;
         if (lagMs < EVENT_LOOP_LAG_THRESHOLD_MS) return;
 
         recordPerformanceDiagnostic('cpu.event-loop-lag', {
@@ -771,7 +818,7 @@ const installEventLoopLagSampler = () => {
         }, {
             severity: lagMs >= CRITICAL_EVENT_LOOP_LAG_THRESHOLD_MS ? 'critical' : 'warning'
         });
-    }, 1000);
+    }, EVENT_LOOP_SAMPLE_INTERVAL_MS);
 };
 
 const installMemoryPressureSampler = () => {

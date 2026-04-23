@@ -120,6 +120,7 @@ import {
     setCardBodyRuntimeBoard
 } from './services/cardBodyRuntimeCache';
 import { captureMemoryTrace } from './utils/memoryTrace';
+import { recordPerformanceDiagnostic } from './utils/performanceDiagnostics';
 
 export default function App() {
     return (
@@ -136,9 +137,18 @@ export default function App() {
 const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
+const BOARD_SNAPSHOT_BUILD_DIAGNOSTIC_THRESHOLD_MS = 40;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
 );
+
+const readPerformanceNow = () => (
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : 0
+);
+
+const roundPerformanceDuration = (value) => Math.round(value * 100) / 100;
 
 const isBoardMetadataValueEqual = (left, right) => {
     if (left === right) return true;
@@ -283,10 +293,14 @@ function AppContent() {
     }, [setBoardsList]);
 
     const buildCurrentStoreSnapshot = useCallback(() => {
+        const startedAt = readPerformanceNow();
         const currentCursor = activeBoardPersistenceRef.current || {};
         const currentStoreState = useStore.getState();
-        return normalizeBoardSnapshot({
-            cards: mergeRuntimeCardBodies(currentStoreState.cards, { boardId: currentBoardId }),
+        const mergeStartedAt = readPerformanceNow();
+        const mergedCards = mergeRuntimeCardBodies(currentStoreState.cards, { boardId: currentBoardId });
+        const normalizeStartedAt = readPerformanceNow();
+        const snapshot = normalizeBoardSnapshot({
+            cards: mergedCards,
             connections: currentStoreState.connections,
             groups: currentStoreState.groups,
             boardPrompts: currentStoreState.boardPrompts,
@@ -294,6 +308,23 @@ function AppContent() {
             updatedAt: Number(currentCursor?.updatedAt) || 0,
             clientRevision: Number(currentCursor?.clientRevision) || 0
         });
+        const finishedAt = readPerformanceNow();
+        const durationMs = finishedAt - startedAt;
+        if (startedAt > 0 && durationMs >= BOARD_SNAPSHOT_BUILD_DIAGNOSTIC_THRESHOLD_MS) {
+            recordPerformanceDiagnostic('board.current-snapshot-build', {
+                durationMs: roundPerformanceDuration(durationMs),
+                boardId: currentBoardId || null,
+                cards: Array.isArray(snapshot.cards) ? snapshot.cards.length : 0,
+                connections: Array.isArray(snapshot.connections) ? snapshot.connections.length : 0,
+                phaseMs: {
+                    mergeRuntimeCardBodies: roundPerformanceDuration(normalizeStartedAt - mergeStartedAt),
+                    normalizeBoardSnapshot: roundPerformanceDuration(finishedAt - normalizeStartedAt)
+                }
+            }, {
+                severity: durationMs >= 250 ? 'critical' : 'warning'
+            });
+        }
+        return snapshot;
     }, [currentBoardId]);
 
     const resolveRemoteSnapshotToStore = useCallback((snapshot, lane = SYNC_LANES.FULL) => {
@@ -793,7 +824,7 @@ function AppContent() {
 
         const load = async () => {
             if (currentBoardId) {
-                const startRemoteSync = async (localSnapshot, source = 'local_load') => {
+                const startRemoteSync = async (localSnapshotOrFactory, source = 'local_load') => {
                     if (!user?.uid || isSampleBoardId(currentBoardId)) {
                         return;
                     }
@@ -810,6 +841,9 @@ function AppContent() {
                         return;
                     }
 
+                    const localSnapshot = typeof localSnapshotOrFactory === 'function'
+                        ? localSnapshotOrFactory()
+                        : localSnapshotOrFactory;
                     const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
                     const expectedCardCount = Number(currentBoardMeta?.cardCount) || 0;
                     const largeBoardMode = isLargeBoardCards(localSnapshot?.cards || []);
@@ -914,7 +948,7 @@ function AppContent() {
                         reason: 'effect-rerun-with-same-board',
                         userReady: Boolean(user?.uid)
                     });
-                    await startRemoteSync(buildCurrentStoreSnapshot(), 'reuse_loaded_board');
+                    await startRemoteSync(() => buildCurrentStoreSnapshot(), 'reuse_loaded_board');
                     return;
                 }
 

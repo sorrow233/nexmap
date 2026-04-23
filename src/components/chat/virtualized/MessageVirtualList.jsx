@@ -44,6 +44,10 @@ const estimateMessageHeight = (message) => {
     return Math.min(1200, 220 + Math.ceil(textLength / 90) * 28);
 };
 
+const getMessageFavoriteKey = (cardId, message, index) => (
+    message?.id || `${cardId}-${index}`
+);
+
 export default function MessageVirtualList({
     cardId,
     messages = [],
@@ -63,7 +67,7 @@ export default function MessageVirtualList({
     onContinueTopic,
     onBranch
 }) {
-    useStore((state) => state.favoritesLastUpdate);
+    const favoriteVersion = useStore((state) => state.favoritesLastUpdate);
 
     const activeRoute = isResponseStreaming && cardId
         ? getActiveStreamRouteDebug(cardId)
@@ -81,6 +85,21 @@ export default function MessageVirtualList({
     const virtualizedMessages = hasDetachedStreamingMessage
         ? messages.filter((_, index) => index !== detachedStreamingMessageIndex)
         : messages;
+    const favoriteStatusByMessageKey = React.useMemo(() => {
+        const nextMap = new Map();
+        messages.forEach((message, index) => {
+            nextMap.set(
+                getMessageFavoriteKey(cardId, message, index),
+                favoritesService.isFavorite(
+                    cardId,
+                    message?.id || null,
+                    index,
+                    message?.content
+                )
+            );
+        });
+        return nextMap;
+    }, [cardId, favoriteVersion, messages]);
 
     const rowVirtualizer = useVirtualizer({
         count: virtualizedMessages.length,
@@ -200,6 +219,10 @@ export default function MessageVirtualList({
             >
                 {virtualRows.map((virtualRow) => {
                     const message = virtualizedMessages[virtualRow.index];
+                    const messageIndex = hasDetachedStreamingMessage && virtualRow.index >= detachedStreamingMessageIndex
+                        ? virtualRow.index + 1
+                        : virtualRow.index;
+                    const favoriteKey = getMessageFavoriteKey(cardId, message, messageIndex);
 
                     return (
                         <div
@@ -216,7 +239,7 @@ export default function MessageVirtualList({
                                 <MessageItem
                                     cardId={cardId}
                                     message={message}
-                                    index={virtualRow.index}
+                                    index={messageIndex}
                                     marks={marks}
                                     capturedNotes={capturedNotes}
                                     parseModelOutput={parseModelOutput}
@@ -225,12 +248,7 @@ export default function MessageVirtualList({
                                     onShare={onShare}
                                     onToggleFavorite={onToggleFavorite}
                                     onDeleteMessage={onDeleteMessage}
-                                    isFavorite={favoritesService.isFavorite(
-                                        cardId,
-                                        message?.id || null,
-                                        virtualRow.index,
-                                        message?.content
-                                    )}
+                                    isFavorite={favoriteStatusByMessageKey.get(favoriteKey) === true}
                                     onContinueTopic={onContinueTopic}
                                     onBranch={onBranch}
                                 />
@@ -255,12 +273,9 @@ export default function MessageVirtualList({
                             onShare={onShare}
                             onToggleFavorite={onToggleFavorite}
                             onDeleteMessage={onDeleteMessage}
-                            isFavorite={favoritesService.isFavorite(
-                                cardId,
-                                detachedStreamingMessage?.id || null,
-                                detachedStreamingMessageIndex,
-                                detachedStreamingMessage?.content
-                            )}
+                            isFavorite={favoriteStatusByMessageKey.get(
+                                getMessageFavoriteKey(cardId, detachedStreamingMessage, detachedStreamingMessageIndex)
+                            ) === true}
                             onContinueTopic={onContinueTopic}
                             onBranch={onBranch}
                         />
