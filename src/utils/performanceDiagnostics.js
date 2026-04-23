@@ -14,8 +14,22 @@ const RESOURCE_SLOW_THRESHOLD_MS = 1500;
 const RESOURCE_LARGE_THRESHOLD_BYTES = 2 * 1024 * 1024;
 const HEAP_GROWTH_THRESHOLD_MB = 128;
 const HEAP_PRESSURE_RATIO = 0.65;
+const INPUT_EVENT_BATCH_WINDOW_MS = 160;
+const FRAME_STALL_BATCH_WINDOW_MS = 160;
+const DEFAULT_CONSOLE_LOG_THROTTLE_MS = 300;
+const CONSOLE_LOG_THROTTLE_MS_BY_LABEL = {
+    'cpu.long-task': 500,
+    'cpu.event-loop-lag': 1000,
+    'input.slow-event-batch': 700,
+    'render.frame-stall-batch': 1200,
+    'render.fps-window': 2500,
+    'resource.slow-or-large': 1200,
+    'memory.heap-pressure': 2000
+};
 
 const isBrowser = typeof window !== 'undefined';
+const consoleLogAtByKey = new Map();
+const consoleSuppressedByKey = new Map();
 
 const toRoundedNumber = (value, digits = 2) => {
     if (!Number.isFinite(value)) return null;
@@ -246,14 +260,37 @@ const pushEntry = (entry) => {
     return entry;
 };
 
-const logEntry = (entry) => {
-    if (!isBrowser || !isPerformanceDiagnosticsEnabled()) return;
+const getConsoleThrottleMs = (entry) => {
+    const labelThrottleMs = CONSOLE_LOG_THROTTLE_MS_BY_LABEL[entry.label];
+    if (Number.isFinite(labelThrottleMs)) return labelThrottleMs;
+    if (entry.severity === 'critical') return 500;
+    return DEFAULT_CONSOLE_LOG_THROTTLE_MS;
+};
+
+const logEntry = (entry, options = {}) => {
+    if (!isBrowser || (!isPerformanceDiagnosticsEnabled() && options.force !== true)) return;
+
+    const now = performance.now();
+    const consoleKey = `${entry.label}:${entry.severity}`;
+    const throttleMs = options.force === true ? 0 : getConsoleThrottleMs(entry);
+    const lastLoggedAt = consoleLogAtByKey.get(consoleKey) || 0;
+    if (throttleMs > 0 && now - lastLoggedAt < throttleMs) {
+        consoleSuppressedByKey.set(consoleKey, (consoleSuppressedByKey.get(consoleKey) || 0) + 1);
+        return;
+    }
+    consoleLogAtByKey.set(consoleKey, now);
+    const suppressedSinceLastLog = consoleSuppressedByKey.get(consoleKey) || 0;
+    consoleSuppressedByKey.delete(consoleKey);
 
     const summary = {
         severity: entry.severity,
-        durationMs: entry.meta?.durationMs,
+        durationMs: entry.meta?.durationMs ?? entry.meta?.maxDurationMs ?? entry.meta?.maxFrameMs,
+        count: entry.meta?.count,
         lagMs: entry.meta?.lagMs,
         fps: entry.meta?.fps,
+        maxFrameMs: entry.meta?.maxFrameMs,
+        maxInputDelayMs: entry.meta?.maxInputDelayMs,
+        suppressedSinceLastLog: suppressedSinceLastLog || undefined,
         usedMB: entry.heap?.usedJSHeapSizeMB,
         domNodes: entry.dom?.totalNodes,
         cards: entry.store?.cards,
@@ -262,17 +299,13 @@ const logEntry = (entry) => {
         gpuProxy: entry.meta?.gpuProxy
     };
 
-    if (entry.severity === 'critical') {
-        console.warn(`[NexMap PerformanceDiag] ${entry.label}`, summary, entry);
-    } else {
-        console.info(`[NexMap PerformanceDiag] ${entry.label}`, summary, entry);
-    }
+    console.info(`[NexMap PerformanceDiag] ${entry.label}`, summary);
 };
 
 export const recordPerformanceDiagnostic = (label, meta = {}, options = {}) => {
-    if (!isBrowser || !isPerformanceDiagnosticsEnabled()) return null;
+    if (!isBrowser || (!isPerformanceDiagnosticsEnabled() && options.force !== true)) return null;
     const entry = pushEntry(buildEntry(label, meta, options));
-    logEntry(entry);
+    logEntry(entry, options);
     return entry;
 };
 
@@ -364,6 +397,178 @@ const installObserver = (entryTypes, callback) => {
     return observers.length > 0 ? observers : null;
 };
 
+let slowInputEventBatch = null;
+let slowInputEventFlushTimer = null;
+
+const createSlowInputEventBatch = () => ({
+    count: 0,
+    totalDurationMs: 0,
+    maxDurationMs: 0,
+    maxInputDelayMs: null,
+    maxProcessingMs: null,
+    firstStartTimeMs: null,
+    lastStartTimeMs: null,
+    eventCounts: {},
+    interactionIds: [],
+    samples: []
+});
+
+const rememberInteractionId = (batch, interactionId) => {
+    if (interactionId === null || interactionId === undefined || interactionId === 0) return;
+    if (batch.interactionIds.includes(interactionId)) return;
+    if (batch.interactionIds.length >= 8) return;
+    batch.interactionIds.push(interactionId);
+};
+
+const flushSlowInputEventBatch = () => {
+    if (slowInputEventFlushTimer !== null) {
+        window.clearTimeout(slowInputEventFlushTimer);
+        slowInputEventFlushTimer = null;
+    }
+
+    const batch = slowInputEventBatch;
+    slowInputEventBatch = null;
+    if (!batch || batch.count === 0) return;
+
+    const maxDurationMs = toRoundedNumber(batch.maxDurationMs, 2);
+    const avgDurationMs = toRoundedNumber(batch.totalDurationMs / batch.count, 2);
+    const eventCounts = Object.fromEntries(
+        Object.entries(batch.eventCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+    );
+
+    recordPerformanceDiagnostic('input.slow-event-batch', {
+        durationMs: maxDurationMs,
+        count: batch.count,
+        maxDurationMs,
+        avgDurationMs,
+        maxInputDelayMs: batch.maxInputDelayMs,
+        maxProcessingMs: batch.maxProcessingMs,
+        firstStartTimeMs: batch.firstStartTimeMs,
+        lastStartTimeMs: batch.lastStartTimeMs,
+        eventCounts,
+        interactionIds: batch.interactionIds,
+        samples: batch.samples,
+        cpuProxy: {
+            maxInputHandlerBlockedMs: maxDurationMs,
+            avgInputHandlerBlockedMs: avgDurationMs,
+            batchedEvents: batch.count
+        }
+    }, {
+        severity: severityForDuration(maxDurationMs, 250, 80)
+    });
+};
+
+const queueSlowInputEvent = (eventMeta) => {
+    if (!isBrowser || !isPerformanceDiagnosticsEnabled()) return;
+
+    if (!slowInputEventBatch) {
+        slowInputEventBatch = createSlowInputEventBatch();
+    }
+
+    const batch = slowInputEventBatch;
+    const durationMs = Number(eventMeta.durationMs) || 0;
+    const eventName = eventMeta.eventName || 'unknown';
+
+    batch.count += 1;
+    batch.totalDurationMs += durationMs;
+    batch.maxDurationMs = Math.max(batch.maxDurationMs, durationMs);
+    batch.firstStartTimeMs = batch.firstStartTimeMs ?? eventMeta.startTimeMs;
+    batch.lastStartTimeMs = eventMeta.startTimeMs;
+    batch.eventCounts[eventName] = (batch.eventCounts[eventName] || 0) + 1;
+    rememberInteractionId(batch, eventMeta.interactionId);
+
+    if (Number.isFinite(eventMeta.inputDelayMs)) {
+        batch.maxInputDelayMs = batch.maxInputDelayMs === null
+            ? eventMeta.inputDelayMs
+            : Math.max(batch.maxInputDelayMs, eventMeta.inputDelayMs);
+    }
+    if (Number.isFinite(eventMeta.processingMs)) {
+        batch.maxProcessingMs = batch.maxProcessingMs === null
+            ? eventMeta.processingMs
+            : Math.max(batch.maxProcessingMs, eventMeta.processingMs);
+    }
+
+    if (batch.samples.length < 6) {
+        batch.samples.push(eventMeta);
+    }
+
+    if (slowInputEventFlushTimer === null) {
+        slowInputEventFlushTimer = window.setTimeout(flushSlowInputEventBatch, INPUT_EVENT_BATCH_WINDOW_MS);
+    }
+};
+
+let frameStallBatch = null;
+let frameStallFlushTimer = null;
+
+const createFrameStallBatch = () => ({
+    count: 0,
+    totalFrameMs: 0,
+    maxFrameMs: 0,
+    maxDroppedFrameEstimate: 0,
+    firstFrameTimeMs: null,
+    lastFrameTimeMs: null
+});
+
+const flushFrameStallBatch = () => {
+    if (frameStallFlushTimer !== null) {
+        window.clearTimeout(frameStallFlushTimer);
+        frameStallFlushTimer = null;
+    }
+
+    const batch = frameStallBatch;
+    frameStallBatch = null;
+    if (!batch || batch.count === 0) return;
+
+    const maxFrameMs = toRoundedNumber(batch.maxFrameMs, 2);
+    const avgFrameMs = toRoundedNumber(batch.totalFrameMs / batch.count, 2);
+
+    recordPerformanceDiagnostic('render.frame-stall-batch', {
+        durationMs: maxFrameMs,
+        count: batch.count,
+        maxFrameMs,
+        avgFrameMs,
+        totalStallMs: toRoundedNumber(batch.totalFrameMs, 2),
+        maxDroppedFrameEstimate: batch.maxDroppedFrameEstimate,
+        firstFrameTimeMs: batch.firstFrameTimeMs,
+        lastFrameTimeMs: batch.lastFrameTimeMs,
+        cpuProxy: {
+            maxMainThreadOrSchedulerStallMs: maxFrameMs,
+            avgMainThreadOrSchedulerStallMs: avgFrameMs,
+            batchedFrames: batch.count
+        },
+        gpuProxy: {
+            maxRenderFrameOverBudgetMs: toRoundedNumber(Math.max(0, batch.maxFrameMs - 16.67), 2),
+            maxDroppedFrameEstimate: batch.maxDroppedFrameEstimate,
+            note: 'Browser APIs do not expose GPU percent; this is a render-frame pressure proxy.'
+        }
+    }, {
+        severity: batch.maxFrameMs >= CRITICAL_FRAME_STALL_THRESHOLD_MS ? 'critical' : 'warning'
+    });
+};
+
+const queueFrameStall = (frameMs, timestamp) => {
+    if (!isBrowser || !isPerformanceDiagnosticsEnabled()) return;
+
+    if (!frameStallBatch) {
+        frameStallBatch = createFrameStallBatch();
+    }
+
+    const batch = frameStallBatch;
+    const droppedFrameEstimate = Math.max(0, Math.floor(frameMs / 16.67) - 1);
+    batch.count += 1;
+    batch.totalFrameMs += frameMs;
+    batch.maxFrameMs = Math.max(batch.maxFrameMs, frameMs);
+    batch.maxDroppedFrameEstimate = Math.max(batch.maxDroppedFrameEstimate, droppedFrameEstimate);
+    batch.firstFrameTimeMs = batch.firstFrameTimeMs ?? toRoundedNumber(timestamp, 2);
+    batch.lastFrameTimeMs = toRoundedNumber(timestamp, 2);
+
+    if (frameStallFlushTimer === null) {
+        frameStallFlushTimer = window.setTimeout(flushFrameStallBatch, FRAME_STALL_BATCH_WINDOW_MS);
+    }
+};
+
 const installLongTaskObserver = () => installObserver(['longtask'], (entry) => {
     const durationMs = toRoundedNumber(entry.duration, 2);
     if (!Number.isFinite(durationMs) || durationMs < LONG_TASK_THRESHOLD_MS) return;
@@ -391,8 +596,9 @@ const installEventTimingObserver = () => installObserver(['event'], (entry) => {
     const durationMs = toRoundedNumber(entry.duration, 2);
     if (!Number.isFinite(durationMs) || durationMs < 80) return;
 
-    recordPerformanceDiagnostic('input.slow-event', {
+    queueSlowInputEvent({
         durationMs,
+        startTimeMs: toRoundedNumber(entry.startTime, 2),
         eventName: entry.name || '',
         interactionId: entry.interactionId || null,
         inputDelayMs: Number.isFinite(entry.processingStart)
@@ -404,8 +610,6 @@ const installEventTimingObserver = () => installObserver(['event'], (entry) => {
         cpuProxy: {
             inputHandlerBlockedMs: durationMs
         }
-    }, {
-        severity: severityForDuration(durationMs, 250, 80)
     });
 });
 
@@ -513,19 +717,7 @@ const installFrameSampler = () => {
 
         if (frameMs >= FRAME_STALL_THRESHOLD_MS) {
             longFrames += 1;
-            recordPerformanceDiagnostic('render.frame-stall', {
-                frameMs: toRoundedNumber(frameMs, 2),
-                droppedFrameEstimate: Math.max(0, Math.floor(frameMs / 16.67) - 1),
-                cpuProxy: {
-                    mainThreadOrSchedulerStallMs: toRoundedNumber(frameMs, 2)
-                },
-                gpuProxy: {
-                    renderFrameOverBudgetMs: toRoundedNumber(Math.max(0, frameMs - 16.67), 2),
-                    note: 'Browser APIs do not expose GPU percent; this is a render-frame pressure proxy.'
-                }
-            }, {
-                severity: frameMs >= CRITICAL_FRAME_STALL_THRESHOLD_MS ? 'critical' : 'warning'
-            });
+            queueFrameStall(frameMs, timestamp);
         }
 
         if (timestamp - windowStartedAt >= FPS_WINDOW_MS) {

@@ -4,9 +4,6 @@ export const MESSAGE_CHUNK_INITIAL_CHAR_BUDGET = 12_000;
 export const MESSAGE_CHUNK_MIN_INITIAL_COUNT = 2;
 export const MESSAGE_CHUNK_MAX_INITIAL_COUNT = 6;
 export const MESSAGE_CHUNK_LAZY_ROOT_MARGIN = '900px 0px';
-export const MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS = 180;
-export const MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS = 160;
-export const MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS = 2200;
 const SOFT_CHUNK_TARGET_CHARS = 4_000;
 const SOFT_CHUNK_MAX_CHARS = 6_000;
 
@@ -335,7 +332,6 @@ const splitMarkdownIntoChunks = (markdown = '') => {
 
     let accumulatedChars = 0;
     let initialVisibleCount = 0;
-    let deferredWarmupOrder = 0;
 
     return chunks.map((chunk, chunkIndex) => {
         const shouldRenderImmediately = (
@@ -351,13 +347,10 @@ const splitMarkdownIntoChunks = (markdown = '') => {
             initialVisibleCount += 1;
         }
 
-        const warmupOrder = shouldRenderImmediately ? -1 : deferredWarmupOrder++;
-
         return {
             ...chunk,
             chunkIndex,
-            shouldRenderImmediately,
-            warmupOrder
+            shouldRenderImmediately
         };
     });
 };
