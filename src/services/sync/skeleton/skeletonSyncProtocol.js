@@ -15,7 +15,13 @@ const BODY_DATA_FIELDS = new Set([
 export const pickSkeletonCardFields = (card = {}) => {
     if (!card || typeof card !== 'object') return card;
 
-    const nextCard = cloneSerializable(card);
+    const nextCard = Object.entries(card).reduce((accumulator, [key, value]) => {
+        if (key === 'data') {
+            return accumulator;
+        }
+        accumulator[key] = cloneSerializable(value);
+        return accumulator;
+    }, {});
     const nextData = Object.entries(card.data || {}).reduce((accumulator, [key, value]) => {
         if (BODY_DATA_FIELDS.has(key)) {
             return accumulator;

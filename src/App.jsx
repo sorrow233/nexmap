@@ -84,7 +84,6 @@ import {
     createBoardChangeState,
     syncBoardChangeStateToCursor
 } from './store/slices/utils/boardChangeState';
-import { buildBoardChangeIntegrityHash } from './store/slices/utils/boardChangeIntegrity';
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
@@ -319,10 +318,6 @@ function AppContent() {
             : normalizedSnapshot.cards;
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
         const currentBoardChangeState = useStore.getState().boardChangeState;
-        const integrityHash = buildBoardChangeIntegrityHash(normalizedSnapshot, {
-            normalized: true
-        });
-
         const patch = {
             cards: runtimeCards,
             lastSavedAt: normalizedSnapshot.updatedAt || 0,
@@ -336,7 +331,6 @@ function AppContent() {
                 normalizedSnapshot,
                 options.source === 'remote_sync' ? 'sync_apply' : 'local_load',
                 {
-                    integrityHash,
                     validatedAt: normalizedSnapshot.updatedAt || Date.now()
                 }
             ),
