@@ -12,7 +12,6 @@ import { ToastProvider, useToast } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
 import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
-import { useSearchShortcut } from './hooks/useSearchShortcut';
 import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
 import { useBackgroundBoardAutoGeneration } from './hooks/useBackgroundBoardAutoGeneration';
 import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceTrace';
@@ -32,7 +31,6 @@ const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
 const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
-const SearchModal = lazyWithRetry(() => import('./components/SearchModal'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -48,8 +46,7 @@ import {
     updateBoardMetadata,
     setCurrentBoardId as storageSetCurrentBoardId,
     getBoardsList,
-    loadViewportState,
-    loadBoardDataForSearch
+    loadViewportState
 } from './services/storage';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
@@ -62,7 +59,6 @@ import {
     normalizeBoardTitleMeta,
     pickBoardTitleMetadata
 } from './services/boardTitle/metadata';
-import { loadBoardsSearchData } from './services/search/searchDataLoader';
 import { BoardSyncController } from './services/sync/boardSyncController';
 import {
     FIREBASE_SYNC_SAFE_MODE,
@@ -133,7 +129,6 @@ export default function App() {
 }
 
 const SESSION_START_TIME = Date.now();
-const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
@@ -201,18 +196,6 @@ function AppContent() {
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const [forceSyncingBoardId, setForceSyncingBoardId] = useState(null);
 
-    // Search Modal State
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [allBoardsData, setAllBoardsData] = useState({});
-    const [searchLoadState, setSearchLoadState] = useState({
-        isLoading: false,
-        loadedCount: 0,
-        totalCount: 0
-    });
-    const allBoardsDataRef = useRef(allBoardsData);
-    const searchLoadTokenRef = useRef(0);
-    const searchBufferedDataRef = useRef({});
-    const searchFlushTimerRef = useRef(null);
     const boardsListRef = useRef(boardsList);
     const activeBoardPersistenceRef = useRef(activeBoardPersistence);
     const pendingRemoteSnapshotRef = useRef(null);
@@ -231,13 +214,6 @@ function AppContent() {
         boardInstructionSettings,
         isBoardLoading
     });
-
-    // Cmd+K shortcut for search
-    useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
-
-    useEffect(() => {
-        allBoardsDataRef.current = allBoardsData;
-    }, [allBoardsData]);
 
     useEffect(() => {
         boardsListRef.current = boardsList;
@@ -462,34 +438,6 @@ function AppContent() {
         syncBoardSnapshotMetadataIntoList
     ]);
 
-    const flushSearchDataBuffer = useCallback(() => {
-        const pendingChunk = searchBufferedDataRef.current;
-        if (Object.keys(pendingChunk).length === 0) return;
-
-        searchBufferedDataRef.current = {};
-        setAllBoardsData(prev => ({ ...prev, ...pendingChunk }));
-    }, []);
-
-    const queueSearchDataChunk = useCallback((boardId, data) => {
-        searchBufferedDataRef.current[boardId] = data;
-        if (searchFlushTimerRef.current) return;
-
-        searchFlushTimerRef.current = setTimeout(() => {
-            searchFlushTimerRef.current = null;
-            flushSearchDataBuffer();
-        }, SEARCH_DATA_FLUSH_DELAY_MS);
-    }, [flushSearchDataBuffer]);
-
-    useEffect(() => {
-        return () => {
-            if (searchFlushTimerRef.current) {
-                clearTimeout(searchFlushTimerRef.current);
-                searchFlushTimerRef.current = null;
-            }
-            flushSearchDataBuffer();
-        };
-    }, [flushSearchDataBuffer]);
-
     useEffect(() => {
         const unsubscribe = subscribeLocalSaveConfirmed((payload = {}) => {
             const boardId = typeof payload.boardId === 'string' ? payload.boardId : '';
@@ -631,76 +579,6 @@ function AppContent() {
             }
         };
     }, [boardsList, hasHydratedRemoteBoards, user?.uid]);
-
-    useEffect(() => {
-        if (!isSearchOpen) return;
-
-        const existingBoardIds = new Set(
-            boardsList
-                .filter(board => Object.prototype.hasOwnProperty.call(allBoardsDataRef.current, board.id))
-                .map(board => board.id)
-        );
-        const totalCount = boardsList.length;
-        const missingCount = boardsList.filter(board => (
-            board?.id && !existingBoardIds.has(board.id)
-        )).length;
-
-        if (missingCount === 0) {
-            setSearchLoadState({
-                isLoading: false,
-                loadedCount: existingBoardIds.size,
-                totalCount
-            });
-            return;
-        }
-
-        const loadToken = searchLoadTokenRef.current + 1;
-        searchLoadTokenRef.current = loadToken;
-        let loadedDelta = 0;
-
-        setSearchLoadState({
-            isLoading: true,
-            loadedCount: existingBoardIds.size,
-            totalCount
-        });
-
-        void loadBoardsSearchData({
-            boards: boardsList,
-            loadBoardData: loadBoardDataForSearch,
-            existingBoardIds,
-            shouldCancel: () => searchLoadTokenRef.current !== loadToken || !isSearchOpen,
-            onBoardLoaded: (boardId, data) => {
-                if (searchLoadTokenRef.current !== loadToken || !isSearchOpen) return;
-                loadedDelta += 1;
-                queueSearchDataChunk(boardId, data);
-                setSearchLoadState({
-                    isLoading: true,
-                    loadedCount: existingBoardIds.size + loadedDelta,
-                    totalCount
-                });
-            }
-        }).finally(() => {
-            if (searchLoadTokenRef.current !== loadToken || !isSearchOpen) return;
-
-            flushSearchDataBuffer();
-            setSearchLoadState({
-                isLoading: false,
-                loadedCount: existingBoardIds.size + loadedDelta,
-                totalCount
-            });
-        });
-
-        return () => {
-            if (searchLoadTokenRef.current === loadToken) {
-                searchLoadTokenRef.current += 1;
-            }
-            if (searchFlushTimerRef.current) {
-                clearTimeout(searchFlushTimerRef.current);
-                searchFlushTimerRef.current = null;
-            }
-            flushSearchDataBuffer();
-        };
-    }, [isSearchOpen, boardsList, queueSearchDataChunk, flushSearchDataBuffer]);
 
     const showDialog = (title, message, type = 'info', onConfirm = () => { }) => {
         setDialog({ isOpen: true, title, message, type, onConfirm });
@@ -1260,19 +1138,6 @@ function AppContent() {
                 message={dialog.message}
                 type={dialog.type}
             />
-
-            {/* Global Search Modal */}
-            {isSearchOpen && (
-                <Suspense fallback={null}>
-                    <SearchModal
-                        isOpen={isSearchOpen}
-                        onClose={() => setIsSearchOpen(false)}
-                        boardsList={boardsList}
-                        allBoardsData={allBoardsData}
-                        searchLoadState={searchLoadState}
-                    />
-                </Suspense>
-            )}
 
             {/* Logout Confirmation Dialog */}
             <ModernDialog
