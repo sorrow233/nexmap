@@ -7,6 +7,33 @@ import { useDraggable } from '../hooks/useDraggable';
 
 import { renderCachedMarkdownToHtml } from '../utils/markdownCache';
 import { handleMathRichPaste } from '../utils/richTextClipboard';
+import { recordPerformanceDiagnostic } from '../utils/performanceDiagnostics';
+
+const STICKY_NOTE_CANVAS_PREVIEW_CHAR_LIMIT = 5_000;
+const STICKY_NOTE_PREVIEW_DIAGNOSTIC_THRESHOLD_MS = 40;
+
+const readNow = () => (
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : 0
+);
+
+const roundDuration = (value) => Math.round(value * 100) / 100;
+
+const buildStickyNoteCanvasPreview = (content = '') => {
+    const normalized = typeof content === 'string' ? content : '';
+    if (normalized.length <= STICKY_NOTE_CANVAS_PREVIEW_CHAR_LIMIT) {
+        return {
+            content: normalized,
+            truncated: false
+        };
+    }
+
+    return {
+        content: `${normalized.slice(0, STICKY_NOTE_CANVAS_PREVIEW_CHAR_LIMIT).trimEnd()}\n\n...`,
+        truncated: true
+    };
+};
 
 const StickyNote = React.memo(function StickyNote({
     data,
@@ -182,9 +209,29 @@ const StickyNote = React.memo(function StickyNote({
         }
     };
 
-    const renderedContent = React.useMemo(() => ({
-        __html: renderCachedMarkdownToHtml(data.data?.content || '', 'sticky-note')
-    }), [data.data?.content]);
+    const renderedContent = React.useMemo(() => {
+        const sourceContent = data.data?.content || '';
+        const preview = buildStickyNoteCanvasPreview(sourceContent);
+        const startedAt = readNow();
+        const html = renderCachedMarkdownToHtml(preview.content, 'sticky-note-preview');
+        if (startedAt > 0) {
+            const durationMs = readNow() - startedAt;
+            if (durationMs >= STICKY_NOTE_PREVIEW_DIAGNOSTIC_THRESHOLD_MS) {
+                recordPerformanceDiagnostic('canvas.sticky-note-preview-render', {
+                    durationMs: roundDuration(durationMs),
+                    cardId: data.id || '',
+                    sourceLength: sourceContent.length,
+                    previewLength: preview.content.length,
+                    truncated: preview.truncated
+                }, {
+                    severity: durationMs >= 250 ? 'critical' : 'warning'
+                });
+            }
+        }
+        return {
+            __html: html
+        };
+    }, [data.data?.content, data.id]);
 
     const layerZIndex = isDragging ? 60 : (isSelected ? 50 : 10);
 
