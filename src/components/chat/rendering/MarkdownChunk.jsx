@@ -6,11 +6,7 @@ import {
     parseMarkdown,
     sanitizeMarkdownHtml
 } from '../../../utils/markdownRenderer';
-import { runWhenBrowserIdle } from '../../../utils/idleTask';
 import {
-    MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS,
-    MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS,
-    MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS,
     MESSAGE_CHUNK_LAZY_ROOT_MARGIN
 } from './useMessageChunks';
 
@@ -229,37 +225,6 @@ function MarkdownChunkComponent({
         observer.observe(placeholderRef.current);
         return () => observer.disconnect();
     }, [isRendered]);
-
-    React.useEffect(() => {
-        if (isRendered || shouldRenderImmediately) {
-            return undefined;
-        }
-
-        const normalizedWarmupOrder = Number.isFinite(Number(chunk?.warmupOrder))
-            ? Math.max(0, Number(chunk.warmupOrder))
-            : 0;
-        const warmupDelayMs = Math.min(
-            MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS,
-            MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS + normalizedWarmupOrder * MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS
-        );
-
-        let idleCancel = null;
-        const timeoutId = window.setTimeout(() => {
-            idleCancel = runWhenBrowserIdle(() => {
-                setIsRendered(true);
-            }, {
-                timeout: 900,
-                fallbackDelay: 120
-            });
-        }, warmupDelayMs);
-
-        return () => {
-            window.clearTimeout(timeoutId);
-            if (typeof idleCancel === 'function') {
-                idleCancel();
-            }
-        };
-    }, [chunk?.warmupOrder, isRendered, shouldRenderImmediately]);
 
     const parts = React.useMemo(() => {
         if (!isRendered) {

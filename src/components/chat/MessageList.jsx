@@ -7,13 +7,13 @@ const MessageList = React.memo(function MessageList({
     messagesEndRef,
     scrollContainerRef,
     scrollToMessageIndexRef,
-    onSelectionGestureStart,
     isStreaming,
     handleRetry,
     parseModelOutput,
     onUpdate,
     onShare,
     onToggleFavorite,
+    onDeleteMessage,
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
@@ -38,18 +38,11 @@ const MessageList = React.memo(function MessageList({
             }))
         });
     };
-    const selectionInteractionProps = card.type === 'note'
-        ? {}
-        : {
-            onMouseDown: onSelectionGestureStart,
-            onTouchStart: onSelectionGestureStart
-        };
 
     return (
         <div
             ref={scrollContainerRef}
             className="chat-messages-viewport messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y min-w-0"
-            {...selectionInteractionProps}
         >
             <div className="w-full max-w-6xl mx-auto">
                 {card.type === 'note' ? (
@@ -69,13 +62,14 @@ const MessageList = React.memo(function MessageList({
                         scrollContainerRef={scrollContainerRef}
                         messagesEndRef={messagesEndRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        isStreaming={isStreaming}
+                        isResponseStreaming={isStreaming}
                         handleRetry={handleRetry}
                         marks={card.data.marks}
                         capturedNotes={card.data.capturedNotes}
                         parseModelOutput={parseModelOutput}
                         onShare={onShare}
                         onToggleFavorite={onToggleFavorite}
+                        onDeleteMessage={onDeleteMessage}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
                         onContinueTopic={onContinueTopic}
