@@ -3,6 +3,7 @@ import { getCardBodyRuntimeCacheSnapshot } from '../services/cardBodyRuntimeCach
 
 const MEMORY_TRACE_STORE_KEY = '__NEXMAP_MEMORY_TRACE__';
 const MEMORY_TRACE_TIMERS_KEY = '__NEXMAP_MEMORY_TRACE_TIMERS__';
+const MEMORY_TRACE_DETAILED_STORAGE_KEY = 'nexmap_memory_trace_detailed';
 const MAX_MEMORY_TRACE_ENTRIES = 500;
 const TOP_CARD_LIMIT = 8;
 
@@ -45,6 +46,10 @@ const isMemoryTraceEnabled = () => (
     safeReadLocalStorage('nexmap_memory_trace') !== 'off'
 );
 
+const isDetailedMemoryTraceEnabled = () => (
+    safeReadLocalStorage(MEMORY_TRACE_DETAILED_STORAGE_KEY) === 'on'
+);
+
 const ensureTraceStore = () => {
     if (!isBrowser) return [];
 
@@ -81,6 +86,20 @@ const ensureTraceStore = () => {
         window.enableMemoryTrace = () => {
             safeRemoveLocalStorage('nexmap_memory_trace');
             console.info('[NexMap MemoryTrace] enabled');
+        };
+    }
+
+    if (typeof window.enableDetailedMemoryTrace !== 'function') {
+        window.enableDetailedMemoryTrace = () => {
+            safeWriteLocalStorage(MEMORY_TRACE_DETAILED_STORAGE_KEY, 'on');
+            console.info('[NexMap MemoryTrace] detailed mode enabled');
+        };
+    }
+
+    if (typeof window.disableDetailedMemoryTrace !== 'function') {
+        window.disableDetailedMemoryTrace = () => {
+            safeRemoveLocalStorage(MEMORY_TRACE_DETAILED_STORAGE_KEY);
+            console.info('[NexMap MemoryTrace] detailed mode disabled');
         };
     }
 
@@ -128,7 +147,11 @@ const countImageParts = (messages = []) => (
     messages.reduce((total, message) => {
         const content = message?.content;
         if (!Array.isArray(content)) return total;
-        return total + content.filter((part) => part?.type === 'image' || part?.type === 'image_url').length;
+        return total + content.reduce((imageTotal, part) => (
+            part?.type === 'image' || part?.type === 'image_url'
+                ? imageTotal + 1
+                : imageTotal
+        ), 0);
     }, 0)
 );
 
@@ -146,7 +169,8 @@ const pushTopCard = (topCards, card, estimatedChars) => {
     if (topCards.length > TOP_CARD_LIMIT) topCards.pop();
 };
 
-const summarizeCards = (cards = []) => {
+const summarizeCards = (cards = [], options = {}) => {
+    const detailed = options.detailed === true;
     const summary = {
         total: Array.isArray(cards) ? cards.length : 0,
         active: 0,
@@ -158,7 +182,7 @@ const summarizeCards = (cards = []) => {
         cardsWithMessages: 0,
         totalMessages: 0,
         totalImageParts: 0,
-        totalEstimatedTextChars: 0,
+        totalEstimatedTextChars: detailed ? 0 : null,
         largestCards: []
     };
 
@@ -182,28 +206,30 @@ const summarizeCards = (cards = []) => {
         summary.totalMessages += messages.length;
         summary.totalImageParts += countImageParts(messages);
 
-        const estimatedChars = estimateCardTextChars(card);
-        summary.totalEstimatedTextChars += estimatedChars;
-        pushTopCard(summary.largestCards, card, estimatedChars);
+        if (detailed) {
+            const estimatedChars = estimateCardTextChars(card);
+            summary.totalEstimatedTextChars += estimatedChars;
+            pushTopCard(summary.largestCards, card, estimatedChars);
+        }
     });
 
     return summary;
 };
 
-const summarizeTemporalStateList = (states = []) => (
+const summarizeTemporalStateList = (states = [], options = {}) => (
     states.slice(-3).map((state, index) => ({
         indexFromTail: states.length - 3 + index,
         cards: Array.isArray(state?.cards) ? state.cards.length : null,
         connections: Array.isArray(state?.connections) ? state.connections.length : null,
         groups: Array.isArray(state?.groups) ? state.groups.length : null,
         boardPrompts: Array.isArray(state?.boardPrompts) ? state.boardPrompts.length : null,
-        cardTextChars: Array.isArray(state?.cards)
+        cardTextChars: options.detailed === true && Array.isArray(state?.cards)
             ? state.cards.reduce((total, card) => total + estimateCardTextChars(card), 0)
             : null
     }))
 );
 
-const readTemporalSnapshot = () => {
+const readTemporalSnapshot = (options = {}) => {
     const temporal = isBrowser ? window.useStore?.temporal : null;
     const temporalState = temporal?.getState?.();
     if (!temporalState) {
@@ -220,12 +246,12 @@ const readTemporalSnapshot = () => {
     return {
         pastStates: pastStates.length,
         futureStates: futureStates.length,
-        latestPastStates: summarizeTemporalStateList(pastStates),
-        latestFutureStates: summarizeTemporalStateList(futureStates)
+        latestPastStates: summarizeTemporalStateList(pastStates, options),
+        latestFutureStates: summarizeTemporalStateList(futureStates, options)
     };
 };
 
-const readStoreSnapshot = () => {
+const readStoreSnapshot = (options = {}) => {
     const state = isBrowser ? window.useStore?.getState?.() : null;
     if (!state) {
         return {
@@ -235,7 +261,7 @@ const readStoreSnapshot = () => {
 
     return {
         available: true,
-        cards: summarizeCards(state.cards),
+        cards: summarizeCards(state.cards, options),
         connections: Array.isArray(state.connections) ? state.connections.length : null,
         groups: Array.isArray(state.groups) ? state.groups.length : null,
         boardPrompts: Array.isArray(state.boardPrompts) ? state.boardPrompts.length : null,
@@ -265,20 +291,25 @@ const sanitizeMeta = (meta = {}) => {
     );
 };
 
-const buildEntry = (label, meta = {}) => ({
-    label,
-    ts: Date.now(),
-    tsIso: new Date().toISOString(),
-    perfNowMs: toRoundedNumber(typeof performance !== 'undefined' ? performance.now() : 0, 3),
-    route: isBrowser ? window.location?.pathname || '' : '',
-    visibilityState: isBrowser ? document.visibilityState || '' : '',
-    heap: readHeapSnapshot(),
-    dom: readDomSnapshot(),
-    runtimeBodyCache: getCardBodyRuntimeCacheSnapshot(),
-    temporal: readTemporalSnapshot(),
-    store: readStoreSnapshot(),
-    meta: sanitizeMeta(meta)
-});
+const buildEntry = (label, meta = {}) => {
+    const detailed = isDetailedMemoryTraceEnabled();
+    const snapshotOptions = { detailed };
+    return {
+        label,
+        ts: Date.now(),
+        tsIso: new Date().toISOString(),
+        perfNowMs: toRoundedNumber(typeof performance !== 'undefined' ? performance.now() : 0, 3),
+        route: isBrowser ? window.location?.pathname || '' : '',
+        visibilityState: isBrowser ? document.visibilityState || '' : '',
+        detailed,
+        heap: readHeapSnapshot(),
+        dom: readDomSnapshot(),
+        runtimeBodyCache: getCardBodyRuntimeCacheSnapshot(),
+        temporal: readTemporalSnapshot(snapshotOptions),
+        store: readStoreSnapshot(snapshotOptions),
+        meta: sanitizeMeta(meta)
+    };
+};
 
 const writeEntry = (entry) => {
     if (!isBrowser) return entry;

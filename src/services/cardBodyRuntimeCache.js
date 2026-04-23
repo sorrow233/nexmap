@@ -43,29 +43,54 @@ const cleanPreviewText = (value = '', limit = PREVIEW_TEXT_LIMIT) => {
     return `${normalized.slice(0, limit)}...`;
 };
 
-const extractMessageText = (content) => {
+const extractMessagePreviewText = (content, limit = PREVIEW_MESSAGE_LIMIT) => {
     if (typeof content === 'string') {
-        return content;
+        return content.slice(0, limit + 1);
     }
 
     if (!Array.isArray(content)) {
         return '';
     }
 
-    const text = content
-        .map((part) => {
-            if (part?.type === 'text') return String(part.text || '');
-            if (part?.type === 'image' || part?.type === 'image_url') return '[Image]';
-            return '';
-        })
-        .join(' ')
-        .trim();
+    let text = '';
+    for (const part of content) {
+        if (part?.type === 'image' || part?.type === 'image_url') {
+            text += `${text ? ' ' : ''}[Image]`;
+            continue;
+        }
 
-    return text;
+        if (part?.type !== 'text') {
+            continue;
+        }
+
+        const partText = String(part.text || '');
+        if (!partText) continue;
+        const remaining = limit + 1 - text.length;
+        if (remaining <= 0) break;
+        text += `${text ? ' ' : ''}${partText.slice(0, remaining)}`;
+    }
+
+    return text.trim();
+};
+
+const estimateMessageTextChars = (content) => {
+    if (typeof content === 'string') {
+        return content.length;
+    }
+
+    if (!Array.isArray(content)) {
+        return 0;
+    }
+
+    return content.reduce((total, part) => {
+        if (part?.type === 'text') return total + String(part.text || '').length;
+        if (part?.type === 'image' || part?.type === 'image_url') return total + 7;
+        return total;
+    }, 0);
 };
 
 const estimateMessageChars = (messages = []) => (
-    messages.reduce((total, message) => total + extractMessageText(message?.content).length, 0)
+    messages.reduce((total, message) => total + estimateMessageTextChars(message?.content), 0)
 );
 
 const estimateCardBodyChars = (body = {}) => {
@@ -87,7 +112,7 @@ const getUserMessageCount = (messages = []) => (
 const getLastMessagePreview = (messages = []) => {
     if (!Array.isArray(messages) || messages.length === 0) return '';
     const lastMessage = messages[messages.length - 1];
-    return cleanPreviewText(extractMessageText(lastMessage?.content), PREVIEW_MESSAGE_LIMIT);
+    return cleanPreviewText(extractMessagePreviewText(lastMessage?.content), PREVIEW_MESSAGE_LIMIT);
 };
 
 const getCardPreviewText = (card = {}, body = {}) => {

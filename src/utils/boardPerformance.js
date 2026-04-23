@@ -28,6 +28,28 @@ export const extractMessageContentText = (content) => {
         .join(' ');
 };
 
+export const estimateMessageContentTextChars = (content) => {
+    if (typeof content === 'string') {
+        return content.length;
+    }
+
+    if (!Array.isArray(content)) {
+        return 0;
+    }
+
+    return content.reduce((total, part) => {
+        if (part?.type === 'text' && typeof part.text === 'string') {
+            return total + part.text.length;
+        }
+
+        if (part?.type === 'image' || part?.type === 'image_url') {
+            return total + 7;
+        }
+
+        return total;
+    }, 0);
+};
+
 export const estimateCardTextChars = (card = {}) => {
     const title = typeof card?.data?.title === 'string' ? card.data.title.length : 0;
     const summaryTitle = typeof card?.summary?.title === 'string' ? card.summary.title.length : 0;
@@ -42,7 +64,7 @@ export const estimateCardTextChars = (card = {}) => {
     const messageChars = hasRuntimeEstimate
         ? runtimeEstimatedChars
         : messages.reduce((total, message) => (
-            total + extractMessageContentText(message?.content).length
+            total + estimateMessageContentTextChars(message?.content)
         ), 0);
 
     return title + summaryTitle + summaryBody + marks + messageChars;
