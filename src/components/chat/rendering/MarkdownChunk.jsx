@@ -6,22 +6,16 @@ import {
     parseMarkdown,
     sanitizeMarkdownHtml
 } from '../../../utils/markdownRenderer';
+import { runWhenBrowserIdle } from '../../../utils/idleTask';
 import {
+    MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS,
+    MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS,
+    MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS,
     MESSAGE_CHUNK_LAZY_ROOT_MARGIN
 } from './useMessageChunks';
-import { recordPerformanceDiagnostic } from '../../../utils/performanceDiagnostics';
 
 let codeBlockCounter = 0;
 let codeBlocks = [];
-const MARKDOWN_CHUNK_RENDER_DIAGNOSTIC_THRESHOLD_MS = 40;
-
-const readNow = () => (
-    typeof performance !== 'undefined' && typeof performance.now === 'function'
-        ? performance.now()
-        : 0
-);
-
-const roundDuration = (value) => Math.round(value * 100) / 100;
 
 const escapeHtmlFragment = (text = '') => (
     String(text)
@@ -179,49 +173,17 @@ const splitHtmlIntoParts = (html = '', chunk = {}) => {
 };
 
 const renderMarkdownChunk = (chunk, marks = [], capturedNotes = []) => {
-    const startedAt = readNow();
-    const phaseMs = {};
-    const measurePhase = (label, callback) => {
-        const phaseStartedAt = readNow();
-        const result = callback();
-        if (phaseStartedAt > 0) {
-            phaseMs[label] = roundDuration(readNow() - phaseStartedAt);
-        }
-        return result;
-    };
-
     codeBlockCounter = 0;
     codeBlocks = [];
 
-    const parsedHtml = measurePhase('parseMarkdown', () => parseMarkdown(chunk?.markdown || '', { renderer: markedRenderer }));
-    const highlightedHtml = measurePhase('highlightHtmlContent', () => highlightHtmlContent(parsedHtml, marks, capturedNotes));
-    const decoratedHtml = measurePhase('resolveCardReferences', () => resolveCardReferences(highlightedHtml));
-    const sanitizedHtml = measurePhase('sanitizeMarkdownHtml', () => sanitizeMarkdownHtml(decoratedHtml, {
+    const parsedHtml = parseMarkdown(chunk?.markdown || '', { renderer: markedRenderer });
+    const highlightedHtml = highlightHtmlContent(parsedHtml, marks, capturedNotes);
+    const decoratedHtml = resolveCardReferences(highlightedHtml);
+    const sanitizedHtml = sanitizeMarkdownHtml(decoratedHtml, {
         ADD_ATTR: ['data-code-block-id']
-    }));
-    const parts = measurePhase('splitHtmlIntoParts', () => splitHtmlIntoParts(sanitizedHtml, chunk));
+    });
 
-    if (startedAt > 0) {
-        const durationMs = readNow() - startedAt;
-        if (durationMs >= MARKDOWN_CHUNK_RENDER_DIAGNOSTIC_THRESHOLD_MS) {
-            recordPerformanceDiagnostic('chat.markdown-chunk-render', {
-                durationMs: roundDuration(durationMs),
-                chunkId: chunk?.id || '',
-                chunkType: chunk?.type || '',
-                textLength: chunk?.textLength || 0,
-                lineCount: chunk?.lineCount || 0,
-                partCount: parts.length,
-                codeBlockCount: codeBlocks.length,
-                markCount: Array.isArray(marks) ? marks.length : 0,
-                capturedNoteCount: Array.isArray(capturedNotes) ? capturedNotes.length : 0,
-                phaseMs
-            }, {
-                severity: durationMs >= 250 ? 'critical' : 'warning'
-            });
-        }
-    }
-
-    return parts;
+    return splitHtmlIntoParts(sanitizedHtml, chunk);
 };
 
 function MarkdownChunkComponent({
@@ -267,6 +229,37 @@ function MarkdownChunkComponent({
         observer.observe(placeholderRef.current);
         return () => observer.disconnect();
     }, [isRendered]);
+
+    React.useEffect(() => {
+        if (isRendered || shouldRenderImmediately) {
+            return undefined;
+        }
+
+        const normalizedWarmupOrder = Number.isFinite(Number(chunk?.warmupOrder))
+            ? Math.max(0, Number(chunk.warmupOrder))
+            : 0;
+        const warmupDelayMs = Math.min(
+            MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS,
+            MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS + normalizedWarmupOrder * MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS
+        );
+
+        let idleCancel = null;
+        const timeoutId = window.setTimeout(() => {
+            idleCancel = runWhenBrowserIdle(() => {
+                setIsRendered(true);
+            }, {
+                timeout: 900,
+                fallbackDelay: 120
+            });
+        }, warmupDelayMs);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            if (typeof idleCancel === 'function') {
+                idleCancel();
+            }
+        };
+    }, [chunk?.warmupOrder, isRendered, shouldRenderImmediately]);
 
     const parts = React.useMemo(() => {
         if (!isRendered) {

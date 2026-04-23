@@ -1,12 +1,7 @@
 
 const FAVORITES_KEY = 'mixboard_favorites_index';
-const FAVORITE_FINGERPRINT_CONTENT_LIMIT = 80_000;
 
 import { runtimeLog } from '../utils/runtimeLogging';
-
-let cachedFavoritesRaw = null;
-let cachedFavoritesList = null;
-let storageListenerInstalled = false;
 
 const normalizeFavoriteContent = (messageContent) => {
     if (typeof messageContent === 'string') {
@@ -42,164 +37,68 @@ const buildFavoriteFingerprint = (messageContent) => {
     return `fp_${normalized.length}_${Math.abs(hash)}`;
 };
 
-const readFavoriteStorage = () => {
-    if (typeof localStorage === 'undefined') return null;
-    try {
-        return localStorage.getItem(FAVORITES_KEY);
-    } catch {
-        return null;
-    }
-};
-
-const clearFavoritesCache = () => {
-    cachedFavoritesRaw = null;
-    cachedFavoritesList = null;
-};
-
-const ensureFavoritesStorageListener = () => {
-    if (storageListenerInstalled || typeof window === 'undefined') return;
-    storageListenerInstalled = true;
-    window.addEventListener('storage', (event) => {
-        if (event.key === FAVORITES_KEY) {
-            clearFavoritesCache();
-        }
-    });
-};
-
-const parseFingerprintContentLength = (fingerprint = '') => {
-    const match = String(fingerprint || '').match(/^fp_(\d+)_/);
-    if (!match) return null;
-    const length = Number(match[1]);
-    return Number.isFinite(length) ? length : null;
-};
-
-const buildScopedFavoriteMatcher = ({
+const matchesFavoriteSource = (favorite = {}, {
     cardId,
     messageId = null,
     messageIndex = null,
     messageContent = null
 } = {}) => {
-    let normalizedContentLength = null;
-    let normalizedContentLengthResolved = false;
-    let fingerprint = null;
-    let fingerprintResolved = false;
+    if (favorite?.source?.cardId !== cardId) {
+        return false;
+    }
 
-    const readNormalizedContentLength = () => {
-        if (!normalizedContentLengthResolved) {
-            normalizedContentLength = normalizeFavoriteContent(messageContent).trim().length;
-            normalizedContentLengthResolved = true;
-        }
-        return normalizedContentLength;
-    };
+    const storedMessageId = favorite?.source?.messageId;
+    if (storedMessageId && messageId) {
+        return storedMessageId === messageId;
+    }
 
-    const readFingerprint = () => {
-        if (!fingerprintResolved) {
-            fingerprint = buildFavoriteFingerprint(messageContent);
-            fingerprintResolved = true;
-        }
-        return fingerprint;
-    };
+    const storedFingerprint = favorite?.source?.fingerprint;
+    const fingerprint = buildFavoriteFingerprint(messageContent);
+    if (storedFingerprint && fingerprint) {
+        return storedFingerprint === fingerprint;
+    }
 
-    return (favorite = {}) => {
-        if (favorite?.source?.cardId !== cardId) {
-            return false;
-        }
-
-        const storedMessageId = favorite?.source?.messageId;
-        if (storedMessageId && messageId) {
-            return storedMessageId === messageId;
-        }
-
-        if (storedMessageId && !messageId) {
-            return false;
-        }
-
-        if (favorite?.source?.messageIndex !== messageIndex) {
-            return false;
-        }
-
-        const storedFingerprint = favorite?.source?.fingerprint;
-        if (!storedFingerprint) {
-            return true;
-        }
-
-        const storedLength = parseFingerprintContentLength(storedFingerprint);
-        const contentLength = readNormalizedContentLength();
-        if (storedLength !== null && contentLength !== storedLength) {
-            return false;
-        }
-
-        if (contentLength > FAVORITE_FINGERPRINT_CONTENT_LIMIT) {
-            return false;
-        }
-
-        const currentFingerprint = readFingerprint();
-        return Boolean(currentFingerprint && storedFingerprint === currentFingerprint);
-    };
+    return favorite?.source?.messageIndex === messageIndex;
 };
 
 // Helper to get raw favorites
 const getRawFavorites = () => {
-    ensureFavoritesStorageListener();
-    const stored = readFavoriteStorage();
-    if (stored === cachedFavoritesRaw && Array.isArray(cachedFavoritesList)) {
-        return cachedFavoritesList;
-    }
-
     try {
-        const parsed = stored ? JSON.parse(stored) : [];
-        cachedFavoritesRaw = stored;
-        cachedFavoritesList = Array.isArray(parsed) ? parsed : [];
-        return cachedFavoritesList;
+        const stored = localStorage.getItem(FAVORITES_KEY);
+        return stored ? JSON.parse(stored) : [];
     } catch (e) {
         console.error("Failed to parse favorites", e);
-        clearFavoritesCache();
         return [];
     }
 };
 
 const saveFavorites = (favorites) => {
-    const normalizedFavorites = Array.isArray(favorites) ? favorites : [];
-    const serialized = JSON.stringify(normalizedFavorites);
-    cachedFavoritesRaw = serialized;
-    cachedFavoritesList = normalizedFavorites;
-    if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(FAVORITES_KEY, serialized);
-    }
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
     // Dispatch event for reactive updates in other components/tabs
-    if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('favorites-updated'));
-    }
+    window.dispatchEvent(new Event('favorites-updated'));
 };
 
 const favoritesService = {
     getFavorites: () => {
-        return [...getRawFavorites()].sort((a, b) => b.favoritedAt - a.favoritedAt);
+        return getRawFavorites().sort((a, b) => b.favoritedAt - a.favoritedAt);
     },
 
     // Check if a specific message in a card is favorited
     isFavorite: (cardId, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        const matchesSource = buildScopedFavoriteMatcher({
-            cardId,
-            messageId,
-            messageIndex,
-            messageContent
-        });
-        return list.some(matchesSource);
+        return list.some((item) => matchesFavoriteSource(item, { cardId, messageId, messageIndex, messageContent }));
     },
 
     addFavorite: (card, boardId, boardName, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
         const fingerprint = buildFavoriteFingerprint(messageContent);
-        const matchesSource = buildScopedFavoriteMatcher({
+        // Prevent duplicates
+        if (list.some((item) => matchesFavoriteSource(item, {
             cardId: card.id,
             messageId,
             messageIndex,
             messageContent
-        });
-        // Prevent duplicates
-        if (list.some(matchesSource)) return;
+        }))) return;
 
         const newFavorite = {
             id: `fav_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -226,14 +125,13 @@ const favoritesService = {
 
     removeFavorite: (cardId, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        const matchesSource = buildScopedFavoriteMatcher({
+        // Remove by source identity
+        const newList = list.filter((item) => !matchesFavoriteSource(item, {
             cardId,
             messageId,
             messageIndex,
             messageContent
-        });
-        // Remove by source identity
-        const newList = list.filter((item) => !matchesSource(item));
+        }));
         saveFavorites(newList);
         runtimeLog(`[Favorites] Removed snapshot for message ${messageId || messageIndex} of card ${cardId}`);
     },
@@ -301,13 +199,12 @@ const favoritesService = {
     // Toggle function for convenience
     toggleFavorite: (card, boardId, boardName, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        const matchesSource = buildScopedFavoriteMatcher({
+        const exists = list.some((item) => matchesFavoriteSource(item, {
             cardId: card.id,
             messageId,
             messageIndex,
             messageContent
-        });
-        const exists = list.some(matchesSource);
+        }));
         if (exists) {
             favoritesService.removeFavorite(card.id, messageId, messageIndex, messageContent);
             return false;

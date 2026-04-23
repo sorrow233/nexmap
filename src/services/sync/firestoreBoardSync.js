@@ -27,7 +27,6 @@ import { createBoardRootRef } from './firestoreSyncPaths';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 import { pickBoardSyncMetadata } from './boardSyncMetadata';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
-import { captureMemoryTrace } from '../../utils/memoryTrace';
 import { resolveCheckpointSnapshotForDoc } from './protocol/syncResolver';
 import {
     hasCardBodySyncJobs,
@@ -37,7 +36,6 @@ import {
 } from './protocol/syncLane';
 import {
     buildBodySyncSnapshotFromEntries,
-    buildCardBodySyncEntry,
     buildCardBodySyncEntries,
     buildCompleteCardBodySyncEntries,
     mergeCardBodyEntriesIntoSnapshot,
@@ -133,30 +131,6 @@ const buildMissingRemoteBodyEntries = (localSnapshot = {}, remoteEntries = []) =
     return localEntries.filter((entry) => !remoteCardIds.has(entry.cardId));
 };
 
-const estimateBodyEntryBytes = (entry = {}) => {
-    try {
-        return new TextEncoder().encode(JSON.stringify({
-            messages: entry.messages,
-            content: entry.content,
-            image: entry.image,
-            text: entry.text
-        })).length;
-    } catch {
-        return null;
-    }
-};
-
-const summarizeBodyEntriesForTrace = (entries = []) => (
-    (Array.isArray(entries) ? entries : []).map((entry) => ({
-        cardId: entry?.cardId || '',
-        bodyBytes: estimateBodyEntryBytes(entry),
-        messageCount: Array.isArray(entry?.messages) ? entry.messages.length : 0,
-        hasContent: typeof entry?.content === 'string',
-        hasImage: typeof entry?.image === 'string',
-        hasText: typeof entry?.text === 'string'
-    }))
-);
-
 const partitionMissingRemoteBodyEntries = (entries = []) => {
     const inlineEntries = [];
     const checkpointFallbackEntries = [];
@@ -173,31 +147,6 @@ const partitionMissingRemoteBodyEntries = (entries = []) => {
     return {
         inlineEntries,
         checkpointFallbackEntries
-    };
-};
-
-const partitionCheckpointFallbackEntriesByCurrentBody = (entries = [], currentSnapshot = {}) => {
-    const currentCardsById = new Map(
-        normalizeBoardSnapshot(currentSnapshot).cards
-            .map((card) => [card?.id, card])
-            .filter(([cardId]) => Boolean(cardId))
-    );
-    const localPresentEntries = [];
-    const checkpointNeededEntries = [];
-
-    normalizeCardBodySyncJobs(entries).forEach((entry) => {
-        const currentEntry = buildCardBodySyncEntry(currentCardsById.get(entry.cardId));
-        if (currentEntry?.bodyHash && currentEntry.bodyHash === entry.bodyHash) {
-            localPresentEntries.push(entry);
-            return;
-        }
-
-        checkpointNeededEntries.push(entry);
-    });
-
-    return {
-        localPresentEntries,
-        checkpointNeededEntries
     };
 };
 
@@ -571,13 +520,6 @@ export class FirestoreBoardSync {
             }
         );
 
-        captureMemoryTrace('firebase-checkpoint-body-fallback-built', {
-            boardId: this.boardId,
-            targetCardIds,
-            checkpointCardsCount: decodedCheckpoint.snapshot.cards.length,
-            fallbackEntries: summarizeBodyEntriesForTrace(fallbackEntries)
-        });
-
         const applyResult = this.applyRemoteCardBodyEntries(fallbackEntries);
         if (applyResult) {
             this.emitRemoteApplied({
@@ -594,12 +536,6 @@ export class FirestoreBoardSync {
             console.warn(
                 `[FirebaseSync] Applied checkpoint body fallback for ${appliedCardIds.length} oversized card bodies on board ${this.boardId}`
             );
-            captureMemoryTrace('firebase-checkpoint-body-fallback-applied', {
-                boardId: this.boardId,
-                appliedCardIds,
-                missingCardIds,
-                fallbackEntries: summarizeBodyEntriesForTrace(fallbackEntries)
-            });
         }
 
         return {
@@ -687,38 +623,21 @@ export class FirestoreBoardSync {
 
             if (checkpointFallbackEntries.length > 0) {
                 try {
-                    const {
-                        localPresentEntries,
-                        checkpointNeededEntries
-                    } = partitionCheckpointFallbackEntriesByCurrentBody(
-                        checkpointFallbackEntries,
-                        readBoardSnapshotFromDoc(this.doc)
+                    const fallbackResult = await this.applyCheckpointBodyFallback(
+                        rootData,
+                        checkpointFallbackEntries
                     );
 
-                    if (localPresentEntries.length > 0) {
-                        captureMemoryTrace('firebase-checkpoint-body-fallback-skipped-local-present', {
-                            boardId: this.boardId,
-                            skippedCardIds: localPresentEntries.map((entry) => entry.cardId)
+                    if (fallbackResult.appliedCardIds.length > 0) {
+                        this.emitState('warning', {
+                            message: `Oversized card bodies restored from checkpoint for ${fallbackResult.appliedCardIds.length} cards`
                         });
                     }
 
-                    if (checkpointNeededEntries.length > 0) {
-                        const fallbackResult = await this.applyCheckpointBodyFallback(
-                            rootData,
-                            checkpointNeededEntries
+                    if (fallbackResult.missingCardIds.length > 0) {
+                        console.warn(
+                            `[FirebaseSync] ${fallbackResult.missingCardIds.length} oversized card bodies still missing on board ${this.boardId}; checkpoint fallback unavailable`
                         );
-
-                        if (fallbackResult.appliedCardIds.length > 0) {
-                            this.emitState('warning', {
-                                message: `Oversized card bodies restored from checkpoint for ${fallbackResult.appliedCardIds.length} cards`
-                            });
-                        }
-
-                        if (fallbackResult.missingCardIds.length > 0) {
-                            console.warn(
-                                `[FirebaseSync] ${fallbackResult.missingCardIds.length} oversized card bodies still missing on board ${this.boardId}; checkpoint fallback unavailable`
-                            );
-                        }
                     }
                 } catch (error) {
                     console.warn(

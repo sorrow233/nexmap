@@ -16,12 +16,6 @@ import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
 import InstantTooltip from './InstantTooltip';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { capturePerfSnapshot } from '../utils/perfProbe';
-import { captureMemoryTrace } from '../utils/memoryTrace';
-import { estimateCardTextChars } from '../utils/boardPerformance';
-
-const VISIBLE_RUNTIME_HYDRATION_CARD_LIMIT = 6;
-const VISIBLE_RUNTIME_HYDRATION_CHAR_BUDGET = 90_000;
-const VISIBLE_RUNTIME_HYDRATION_CARD_CHAR_LIMIT = 30_000;
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -43,34 +37,6 @@ const isSameSelectionRect = (current, next) => {
         current.x2 === next.x2 &&
         current.y2 === next.y2
     );
-};
-
-const pickVisibleRuntimeHydratedCardIds = (visibleCards = []) => {
-    const ids = [];
-    let charBudget = 0;
-
-    for (const card of visibleCards) {
-        if (!card?.id) continue;
-        if (ids.length >= VISIBLE_RUNTIME_HYDRATION_CARD_LIMIT) {
-            break;
-        }
-
-        const runtimeEstimatedChars = Number(card?.data?.runtimeBodyState?.estimatedChars);
-        const estimatedChars = Number.isFinite(runtimeEstimatedChars) && runtimeEstimatedChars > 0
-            ? runtimeEstimatedChars
-            : estimateCardTextChars(card);
-        if (estimatedChars > VISIBLE_RUNTIME_HYDRATION_CARD_CHAR_LIMIT) {
-            continue;
-        }
-        if (charBudget + estimatedChars > VISIBLE_RUNTIME_HYDRATION_CHAR_BUDGET) {
-            continue;
-        }
-
-        ids.push(card.id);
-        charBudget += estimatedChars;
-    }
-
-    return ids;
 };
 
 export default function Canvas({
@@ -151,7 +117,9 @@ export default function Canvas({
 
     const runtimeHydratedCardIds = React.useMemo(() => {
         const ids = new Set(extraHydratedCardIds || []);
-        pickVisibleRuntimeHydratedCardIds(visibleCards).forEach((cardId) => ids.add(cardId));
+        visibleCards.forEach((card) => {
+            if (card?.id) ids.add(card.id);
+        });
         generatingCardIds?.forEach?.((cardId) => ids.add(cardId));
         return Array.from(ids);
     }, [extraHydratedCardIds, generatingCardIds, visibleCards]);
@@ -186,22 +154,6 @@ export default function Canvas({
                 runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
                 isSuspended
             });
-            captureMemoryTrace('canvas-viewport-snapshot', {
-                offsetX: offset.x,
-                offsetY: offset.y,
-                scale,
-                viewportWidth: viewportSize.width,
-                viewportHeight: viewportSize.height,
-                visibleCardsCount: visibleCards.length,
-                visibleConnectionsCount: visibleConnections.length,
-                visibleGroupsCount: visibleGroups.length,
-                selectedCardsCount: selectedIds.length,
-                runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
-                isSuspended,
-                spatialIndexCards: cardSpatialIndex?.cardMap?.size || 0,
-                spatialIndexRects: cardSpatialIndex?.rectMap?.size || 0,
-                spatialIndexBuckets: cardSpatialIndex?.buckets?.size || 0
-            });
         }, 240);
 
         return () => {
@@ -221,8 +173,7 @@ export default function Canvas({
         selectedIds.length,
         visibleCards.length,
         visibleConnections.length,
-        visibleGroups.length,
-        cardSpatialIndex
+        visibleGroups.length
     ]);
 
     useEffect(() => {

@@ -335,7 +335,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                                     chunk={chunk}
                                     marks={EMPTY_MESSAGE_ANNOTATIONS}
                                     capturedNotes={EMPTY_MESSAGE_ANNOTATIONS}
-                                    shouldRenderImmediately={chunk.shouldRenderImmediately === true}
+                                    shouldRenderImmediately
                                 />
                             ))}
                             <div className="whitespace-pre-wrap break-words leading-relaxed">
@@ -351,7 +351,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                                 chunk={chunk}
                                 marks={stableMarks}
                                 capturedNotes={stableCapturedNotes}
-                                shouldRenderImmediately={chunk.shouldRenderImmediately === true}
+                                shouldRenderImmediately
                             />
                         ))
                     )}

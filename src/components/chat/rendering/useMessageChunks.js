@@ -1,13 +1,14 @@
 import React from 'react';
-import { recordPerformanceDiagnostic } from '../../../utils/performanceDiagnostics';
 
 export const MESSAGE_CHUNK_INITIAL_CHAR_BUDGET = 12_000;
 export const MESSAGE_CHUNK_MIN_INITIAL_COUNT = 2;
 export const MESSAGE_CHUNK_MAX_INITIAL_COUNT = 6;
 export const MESSAGE_CHUNK_LAZY_ROOT_MARGIN = '900px 0px';
+export const MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS = 180;
+export const MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS = 160;
+export const MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS = 2200;
 const SOFT_CHUNK_TARGET_CHARS = 4_000;
 const SOFT_CHUNK_MAX_CHARS = 6_000;
-const MESSAGE_CHUNK_DIAGNOSTIC_THRESHOLD_MS = 40;
 
 const LIST_START_PATTERN = /^(\s*)([-*+]|\d+\.)\s+/;
 const HEADING_PATTERN = /^\s{0,3}#{1,6}\s+/;
@@ -334,6 +335,7 @@ const splitMarkdownIntoChunks = (markdown = '') => {
 
     let accumulatedChars = 0;
     let initialVisibleCount = 0;
+    let deferredWarmupOrder = 0;
 
     return chunks.map((chunk, chunkIndex) => {
         const shouldRenderImmediately = (
@@ -349,34 +351,17 @@ const splitMarkdownIntoChunks = (markdown = '') => {
             initialVisibleCount += 1;
         }
 
+        const warmupOrder = shouldRenderImmediately ? -1 : deferredWarmupOrder++;
+
         return {
             ...chunk,
             chunkIndex,
-            shouldRenderImmediately
+            shouldRenderImmediately,
+            warmupOrder
         };
     });
 };
 
-const buildMessageChunks = (markdown = '') => {
-    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
-    const chunks = splitMarkdownIntoChunks(markdown);
-    if (startedAt > 0) {
-        const durationMs = performance.now() - startedAt;
-        if (durationMs >= MESSAGE_CHUNK_DIAGNOSTIC_THRESHOLD_MS) {
-            recordPerformanceDiagnostic('chat.message-chunk-split', {
-                durationMs: Math.round(durationMs * 100) / 100,
-                textLength: String(markdown || '').length,
-                chunkCount: chunks.length,
-                immediateChunks: chunks.filter((chunk) => chunk.shouldRenderImmediately).length,
-                largestChunkChars: chunks.reduce((max, chunk) => Math.max(max, chunk.textLength || 0), 0)
-            }, {
-                severity: durationMs >= 250 ? 'critical' : 'warning'
-            });
-        }
-    }
-    return chunks;
-};
-
 export const useMessageChunks = (markdown = '') => (
-    React.useMemo(() => buildMessageChunks(markdown), [markdown])
+    React.useMemo(() => splitMarkdownIntoChunks(markdown), [markdown])
 );

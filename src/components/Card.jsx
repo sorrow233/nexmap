@@ -6,23 +6,6 @@ import { isSafari, isIOS } from '../utils/browser';
 import { useDraggable } from '../hooks/useDraggable';
 import { useContextMenu } from './ContextMenu';
 import { useLanguage } from '../contexts/LanguageContext';
-import { recordPerformanceDiagnostic } from '../utils/performanceDiagnostics';
-import {
-    buildCardPreviewText,
-    buildSummaryPreviewLines,
-    CARD_PREVIEW_DIAGNOSTIC_THRESHOLD_MS,
-    cleanThinkingTags,
-    getFullContentText,
-    normalizeCardPreviewTitle
-} from './card/cardPreviewUtils';
-
-const readNow = () => (
-    typeof performance !== 'undefined' && typeof performance.now === 'function'
-        ? performance.now()
-        : 0
-);
-
-const roundDuration = (value) => Math.round(value * 100) / 100;
 
 const Card = React.memo(function Card({
     data, // Now contains id, x, y, and actual data
@@ -103,48 +86,55 @@ const Card = React.memo(function Card({
     // Generate preview text (last message from assistant or user)
     const lastMessage = messages[messages.length - 1];
 
+    const getPreviewContent = (content) => {
+        if (!content) return "No messages yet";
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+            const text = content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+            const hasImage = content.some(p => p.type === 'image' || p.type === 'image_url');
+            return (hasImage ? '[Image] ' : '') + text;
+        }
+        return "Unknown content";
+    };
+
+    const cleanThinkingTags = (text) => {
+        if (!text || typeof text !== 'string') return '';
+        return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+    };
+
     const cardTitle = React.useMemo(() => {
-        return normalizeCardPreviewTitle(data.summary?.title, cardContent.title);
+        return (data.summary?.title || cardContent.title || 'Untitled')
+            .replace(/^#+\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/__/, '')
+            .replace(/^\d+\.\s*/, '')
+            .trim();
     }, [data.summary?.title, cardContent.title]);
 
     const previewText = React.useMemo(() => {
-        const startedAt = readNow();
+        let text = "";
         const marks = data.data?.marks || [];
-        const preview = buildCardPreviewText({
-            marks,
-            content: lastMessage?.content
-        });
 
-        if (startedAt > 0) {
-            const durationMs = readNow() - startedAt;
-            if (durationMs >= CARD_PREVIEW_DIAGNOSTIC_THRESHOLD_MS) {
-                recordPerformanceDiagnostic('canvas.card-preview-build', {
-                    durationMs: roundDuration(durationMs),
-                    cardId: data.id || '',
-                    sourceLength: preview.sourceLength,
-                    previewLength: preview.text.length,
-                    truncatedSource: preview.truncatedSource,
-                    hasMarks: preview.hasMarks
-                }, {
-                    severity: durationMs >= 250 ? 'critical' : 'warning'
-                });
-            }
+        if (marks.length > 0) {
+            text = marks.map(m => `- **${m}**`).join('\n');
+        } else {
+            text = cleanThinkingTags(getPreviewContent(lastMessage?.content));
         }
 
-        return preview.text;
-    }, [data.data?.marks, data.id, lastMessage?.content]);
+        if (!text) text = "_Thinking..._";
 
-    const summaryPreviewLines = React.useMemo(
-        () => buildSummaryPreviewLines(data.summary?.summary),
-        [data.summary?.summary]
-    );
+        if (text.length > 300) {
+            text = text.slice(0, 300) + "...";
+        }
+        return text;
+    }, [data.data?.marks, lastMessage, data.data?.messages]); // Dependencies: marks and lastMessage (which comes from data.data.messages)
 
 
     const handleCopyFullCard = async (e) => {
         e.stopPropagation();
         const allMessagesText = messages.map((msg, index) => {
             const roleLabel = msg.role === 'user' ? 'User' : 'Assistant';
-            const contentText = cleanThinkingTags(getFullContentText(msg.content)) || '(Empty)';
+            const contentText = cleanThinkingTags(getPreviewContent(msg.content)) || '(Empty)';
             return `[${index + 1}] ${roleLabel}\n${contentText}`;
         }).join('\n\n');
 
@@ -186,7 +176,7 @@ const Card = React.memo(function Card({
 
         const menuItems = getCardMenuItems(data, {
             onCopy: async () => {
-                const text = cleanThinkingTags(getFullContentText(data.data?.messages?.[data.data.messages.length - 1]?.content));
+                const text = cleanThinkingTags(getPreviewContent(data.data?.messages?.[data.data.messages.length - 1]?.content));
                 try { await navigator.clipboard.writeText(text); } catch (err) { console.error(err); }
             },
             onDelete: () => onDelete && onDelete(data.id),
@@ -208,8 +198,6 @@ const Card = React.memo(function Card({
     return (
         <div
             ref={cardRef}
-            data-nexmap-card-id={data.id}
-            data-nexmap-card-type={data.type || 'card'}
             className="absolute top-0 left-0 pointer-events-auto group"
             style={{
                 transform: `translate3d(${data.x}px, ${data.y}px, 0)`,
@@ -285,10 +273,10 @@ const Card = React.memo(function Card({
                 <div className="flex-1 min-h-[80px] relative z-10">
                     {data.summary ? (
                         <div className="space-y-2 p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-xl border border-violet-100/50 dark:border-violet-500/10 transition-all hover:bg-violet-50 dark:hover:bg-violet-900/20">
-                            {summaryPreviewLines.map((line, i) => (
+                            {data.summary.summary.split('\n').map((line, i) => (
                                 <div key={i} className="text-[11px] text-violet-900/70 dark:text-violet-200/70 font-mono leading-tight flex items-start gap-2">
                                     <Star size={10} className="mt-0.5 shrink-0 opacity-40 text-violet-500" />
-                                    <span>{line}</span>
+                                    <span>{line.replace(/^[•-]\s*/, '')}</span>
                                 </div>
                             ))}
                         </div>

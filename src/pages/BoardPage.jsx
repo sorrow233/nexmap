@@ -23,11 +23,6 @@ import {
     endPerfMeasure,
     startPerfMeasure
 } from '../utils/perfProbe';
-import {
-    captureMemoryTrace,
-    endMemoryTraceMeasure,
-    startMemoryTraceMeasure
-} from '../utils/memoryTrace';
 
 const NotePage = lazyWithRetry(() => import('./NotePage'));
 const ChatModal = lazyWithRetry(() => import('../components/ChatModal'));
@@ -48,8 +43,6 @@ export default function BoardPage({
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
     const getCardById = useStore(state => state.getCardById);
-    const isBoardLoading = useStore(state => state.isBoardLoading);
-    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
     const perfBoardIdRef = React.useRef('');
     const perfBoardReadyRef = React.useRef('');
     const perfExpandedCardIdRef = React.useRef('');
@@ -156,28 +149,13 @@ export default function BoardPage({
         startPerfMeasure(`board-open:${currentBoardId}`, {
             boardId: currentBoardId
         });
-        startMemoryTraceMeasure(`board-open:${currentBoardId}`, {
-            boardId: currentBoardId,
-            stage: 'route-mounted'
-        });
         capturePerfSnapshot('board-open-start', {
             boardId: currentBoardId
-        });
-        captureMemoryTrace('board-open-start', {
-            boardId: currentBoardId,
-            stage: 'route-mounted'
         });
     }, [currentBoardId]);
 
     useEffect(() => {
-        const hasLoadedBoardData = cards.length > 0 || Number(activeBoardPersistence?.updatedAt) > 0;
-        if (
-            !currentBoardId
-            || !currentBoard
-            || isBoardLoading
-            || !hasLoadedBoardData
-            || perfBoardReadyRef.current === currentBoardId
-        ) {
+        if (!currentBoardId || !currentBoard || perfBoardReadyRef.current === currentBoardId) {
             return;
         }
 
@@ -186,22 +164,12 @@ export default function BoardPage({
             boardId: currentBoardId,
             cardsCount: cards.length
         });
-        endMemoryTraceMeasure(`board-open:${currentBoardId}`, {
-            boardId: currentBoardId,
-            cardsCount: cards.length,
-            expandedCardId: expandedCardId || ''
-        });
         capturePerfSnapshot('board-open-ready', {
             boardId: currentBoardId,
             cardsCount: cards.length,
             expandedCardId: expandedCardId || ''
         });
-        captureMemoryTrace('board-open-ready', {
-            boardId: currentBoardId,
-            cardsCount: cards.length,
-            expandedCardId: expandedCardId || ''
-        });
-    }, [activeBoardPersistence?.updatedAt, cards.length, currentBoard, currentBoardId, expandedCardId, isBoardLoading]);
+    }, [cards.length, currentBoard, currentBoardId, expandedCardId]);
 
     useEffect(() => {
         if (!expandedCardId) {
@@ -218,20 +186,11 @@ export default function BoardPage({
             boardId: currentBoardId || '',
             cardId: expandedCardId
         });
-        startMemoryTraceMeasure(`card-open:${expandedCardId}`, {
-            boardId: currentBoardId || '',
-            cardId: expandedCardId
-        });
         startPerfMeasure(`chat-interactive:${expandedCardId}`, {
             boardId: currentBoardId || '',
             cardId: expandedCardId
         });
         capturePerfSnapshot('card-open-start', {
-            boardId: currentBoardId || '',
-            cardId: expandedCardId,
-            cardsCount: cards.length
-        });
-        captureMemoryTrace('card-open-start', {
             boardId: currentBoardId || '',
             cardId: expandedCardId,
             cardsCount: cards.length
