@@ -5,6 +5,13 @@ import { settleStreamReader } from '../streamTailGrace.js';
 import { resolveAllImages } from '../utils';
 import { normalizeOpenAIImagePayloads } from './openai/imagePayload';
 import { parseOpenAIStreamLine } from './openai/streamProtocol.js';
+import {
+    KIMI_WEB_SEARCH_MAX_TOOL_ROUNDS,
+    appendKimiWebSearchToolMessages,
+    getKimiNativeWebSearchBodyFields,
+    hasKimiWebSearchToolCall,
+    shouldEnableKimiNativeWebSearch
+} from './openai/kimiSearch.js';
 
 const hasMeaningfulText = (text) => String(text ?? '').trim().length > 0;
 const isPermanentOpenAIStatus = (statusCode) => {
@@ -109,21 +116,63 @@ export class OpenAIProvider extends LLMProvider {
         });
     }
 
-    async chat(messages, model, options = {}) {
-        const keyPool = this._getKeyPool();
-        const { baseUrl } = this.config;
-        const modelToUse = model || this.config.model;
-        const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
-        const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
-        const resolvedMessages = await resolveAllImages(messages);
-        const normalizedMessages = await normalizeOpenAIImagePayloads(resolvedMessages);
-        const formattedMessages = this.formatMessages(normalizedMessages);
+    _buildChatRequestBody({ modelToUse, messages, options = {}, stream = false, kimiNativeWebSearch = false }) {
+        const requestBody = {
+            model: modelToUse,
+            messages,
+            max_tokens: resolveChatMaxOutputTokens(options),
+            ...(options.temperature !== undefined && { temperature: options.temperature }),
+            ...(stream && { stream: true })
+        };
 
-        if (formattedMessages.length === 0) {
-            throw new Error('没有可发送的有效消息');
+        if (kimiNativeWebSearch) {
+            return {
+                ...requestBody,
+                ...getKimiNativeWebSearchBodyFields()
+            };
         }
 
-        let retries = 2; // 允许重试 2 次（使用不同 Key）
+        return {
+            ...requestBody,
+            ...(options.tools && { tools: options.tools }),
+            ...(options.tool_choice && { tool_choice: options.tool_choice })
+        };
+    }
+
+    _shouldUseKimiNativeWebSearch(modelToUse, options = {}) {
+        return shouldEnableKimiNativeWebSearch({
+            config: this.config,
+            model: modelToUse,
+            options
+        });
+    }
+
+    _emitResponseMetadata(options = {}, metadata = {}) {
+        if (typeof options.onResponseMetadata !== 'function') return;
+
+        try {
+            options.onResponseMetadata(metadata);
+        } catch (metaError) {
+            console.warn('[OpenAI] onResponseMetadata callback failed:', metaError);
+        }
+    }
+
+    async _stripThinkingContent(content, modelToUse) {
+        let nextContent = content || '';
+        const { ModelFactory } = await import('../factory');
+
+        if (ModelFactory.isThinkingModel(modelToUse)) {
+            const thinkEndIndex = nextContent.indexOf('</think>');
+            if (thinkEndIndex !== -1) {
+                nextContent = nextContent.substring(thinkEndIndex + 8).trim();
+            }
+        }
+
+        return nextContent;
+    }
+
+    async _requestChatJson({ keyPool, endpoint, requestBody, signal = null }) {
+        let retries = 2;
         let lastError = null;
 
         while (retries >= 0) {
@@ -139,45 +188,31 @@ export class OpenAIProvider extends LLMProvider {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${apiKey}`
                     },
-                    body: JSON.stringify({
-                        model: modelToUse,
-                        messages: formattedMessages,
-                        max_tokens: resolveChatMaxOutputTokens(options),
-                        ...(options.temperature !== undefined && { temperature: options.temperature }),
-                        ...(options.tools && { tools: options.tools }),
-                        ...(options.tool_choice && { tool_choice: options.tool_choice })
-                    })
+                    ...(signal && { signal }),
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
 
-                    // Key 无效或超限，标记失效
                     if ([401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
                         retries--;
                         lastError = new Error(err.error?.message || `API 错误 ${response.status}`);
                         continue;
                     }
+
                     const error = new Error(err.error?.message || response.statusText);
                     error.statusCode = response.status;
                     throw error;
                 }
 
-                const data = await response.json();
-                let content = data.choices[0].message.content || '';
-
-                // 只对 Thinking 模型进行思考内容过滤
-                const { ModelFactory } = await import('../factory');
-                if (ModelFactory.isThinkingModel(modelToUse)) {
-                    const thinkEndIndex = content.indexOf('</think>');
-                    if (thinkEndIndex !== -1) {
-                        content = content.substring(thinkEndIndex + 8).trim();
-                    }
+                return response.json();
+            } catch (e) {
+                if (e.name === 'AbortError' || signal?.aborted) {
+                    throw e;
                 }
 
-                return content;
-            } catch (e) {
                 if (retries > 0 && !e.message.includes('没有可用') && !isPermanentOpenAIStatus(e?.statusCode)) {
                     retries--;
                     lastError = e;
@@ -188,6 +223,83 @@ export class OpenAIProvider extends LLMProvider {
         }
 
         throw lastError || new Error('请求失败');
+    }
+
+    async _chatWithKimiNativeWebSearch({ keyPool, endpoint, modelToUse, formattedMessages, options = {} }) {
+        let toolRounds = 0;
+        let usedSearch = false;
+        let messagesWithToolResults = [...formattedMessages];
+
+        while (toolRounds <= KIMI_WEB_SEARCH_MAX_TOOL_ROUNDS) {
+            const data = await this._requestChatJson({
+                keyPool,
+                endpoint,
+                requestBody: this._buildChatRequestBody({
+                    modelToUse,
+                    messages: messagesWithToolResults,
+                    options,
+                    kimiNativeWebSearch: true
+                }),
+                signal: options.signal
+            });
+
+            const choice = data.choices?.[0] || {};
+
+            if (hasKimiWebSearchToolCall(choice)) {
+                usedSearch = true;
+                toolRounds += 1;
+
+                if (toolRounds > KIMI_WEB_SEARCH_MAX_TOOL_ROUNDS) {
+                    throw new Error('Kimi 联网搜索工具调用超过最大轮数');
+                }
+
+                messagesWithToolResults = appendKimiWebSearchToolMessages(messagesWithToolResults, choice);
+                continue;
+            }
+
+            this._emitResponseMetadata(options, { usedSearch });
+            return this._stripThinkingContent(choice.message?.content || '', modelToUse);
+        }
+
+        throw new Error('Kimi 联网搜索工具调用超过最大轮数');
+    }
+
+    async chat(messages, model, options = {}) {
+        const keyPool = this._getKeyPool();
+        const { baseUrl } = this.config;
+        const modelToUse = model || this.config.model;
+        const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
+        const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
+        const resolvedMessages = await resolveAllImages(messages);
+        const normalizedMessages = await normalizeOpenAIImagePayloads(resolvedMessages);
+        const formattedMessages = this.formatMessages(normalizedMessages);
+
+        if (formattedMessages.length === 0) {
+            throw new Error('没有可发送的有效消息');
+        }
+
+        if (this._shouldUseKimiNativeWebSearch(modelToUse, options)) {
+            return this._chatWithKimiNativeWebSearch({
+                keyPool,
+                endpoint,
+                modelToUse,
+                formattedMessages,
+                options
+            });
+        }
+
+        const data = await this._requestChatJson({
+            keyPool,
+            endpoint,
+            requestBody: this._buildChatRequestBody({
+                modelToUse,
+                messages: formattedMessages,
+                options
+            }),
+            signal: options.signal
+        });
+        const content = data.choices?.[0]?.message?.content || '';
+        return this._stripThinkingContent(content, modelToUse);
     }
 
     async stream(messages, onToken, model, options = {}) {
@@ -202,6 +314,20 @@ export class OpenAIProvider extends LLMProvider {
 
         if (formattedMessages.length === 0) {
             throw new Error('没有可发送的有效消息');
+        }
+
+        if (this._shouldUseKimiNativeWebSearch(modelToUse, options)) {
+            const content = await this._chatWithKimiNativeWebSearch({
+                keyPool,
+                endpoint,
+                modelToUse,
+                formattedMessages,
+                options
+            });
+            if (content) {
+                onToken(content);
+            }
+            return;
         }
 
         let retries = 2; // 允许重试（使用不同 Key）
@@ -221,15 +347,12 @@ export class OpenAIProvider extends LLMProvider {
                         'Authorization': `Bearer ${apiKey}`,
                     },
                     signal: options.signal,
-                    body: JSON.stringify({
-                        model: modelToUse,
+                    body: JSON.stringify(this._buildChatRequestBody({
+                        modelToUse,
                         messages: formattedMessages,
-                        max_tokens: resolveChatMaxOutputTokens(options),
-                        ...(options.temperature !== undefined && { temperature: options.temperature }),
-                        stream: true,
-                        ...(options.tools && { tools: options.tools }),
-                        ...(options.tool_choice && { tool_choice: options.tool_choice })
-                    })
+                        options,
+                        stream: true
+                    }))
                 });
 
                 if (!response.ok) {
