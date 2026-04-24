@@ -6,6 +6,7 @@ import { getColorForString } from '../../utils/colors';
 import InstructionChips from './InstructionChips';
 import { IMAGE_UPLOAD_ACCEPT } from '../../services/image/uploadImageNormalizer';
 import { handleMathRichPaste } from '../../utils/richTextClipboard';
+import { useProgrammaticTextUndo } from '../../hooks/useProgrammaticTextUndo';
 
 /**
  * ChatInput Component - Integrated Card Style
@@ -30,6 +31,7 @@ export default function ChatInput({
     const { t } = useLanguage();
     const [isFocused, setIsFocused] = React.useState(false);
     const isComposingRef = useRef(false); // IME 合成状态追踪
+    const previousInputRef = useRef(input);
 
     // Ensure height calculation handles larger text
     const handleTextareaInput = (e) => {
@@ -38,6 +40,15 @@ export default function ChatInput({
     };
 
     const textareaRef = useRef(null);
+    const {
+        rememberTextUndoSnapshot,
+        handleTextUndoKeyDown
+    } = useProgrammaticTextUndo({
+        setValue: setInput,
+        textareaRef,
+        disabled: isReadOnly,
+        maxHeight: 80
+    });
 
     const resizeTextarea = (textarea) => {
         if (!textarea) return;
@@ -48,12 +59,17 @@ export default function ChatInput({
     const handleRichPaste = (e) => {
         if (isReadOnly) return;
 
+        const previousText = input;
         const inserted = handleMathRichPaste({
             event: e,
             currentValue: input,
             onChangeText: setInput,
             onAfterInsert: resizeTextarea
         });
+
+        if (inserted) {
+            rememberTextUndoSnapshot(previousText);
+        }
 
         if (!inserted) {
             handlePaste?.(e);
@@ -62,6 +78,7 @@ export default function ChatInput({
 
     const handlePromptSelect = (text) => {
         const newText = input ? `${input} ${text}` : text;
+        rememberTextUndoSnapshot(input);
         setInput(newText);
 
         // Focus and adjust height
@@ -75,6 +92,10 @@ export default function ChatInput({
     };
 
     const handleKeyDown = (e) => {
+        if (handleTextUndoKeyDown(e)) {
+            return;
+        }
+
         // Enter 直接发送，Shift + Enter 换行
         // 使用 isComposingRef 追踪 IME 状态，防止中文输入法选词时触发发送
         if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
@@ -84,6 +105,17 @@ export default function ChatInput({
     };
 
     const canSend = input.trim() || images.length > 0;
+
+    React.useEffect(() => {
+        const previousInput = previousInputRef.current;
+        if (!isReadOnly && previousInput && !input) {
+            rememberTextUndoSnapshot(previousInput, {
+                selectionStart: previousInput.length,
+                selectionEnd: previousInput.length
+            });
+        }
+        previousInputRef.current = input;
+    }, [input, isReadOnly, rememberTextUndoSnapshot]);
 
     return (
         <div className="p-4 sm:p-8 pb-10 shrink-0">

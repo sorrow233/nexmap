@@ -7,6 +7,7 @@ import InstructionChips from './chat/InstructionChips';
 import ModelSwitcher from './ModelSwitcher';
 import { IMAGE_UPLOAD_ACCEPT } from '../services/image/uploadImageNormalizer';
 import { handleMathRichPaste } from '../utils/richTextClipboard';
+import { useProgrammaticTextUndo } from '../hooks/useProgrammaticTextUndo';
 
 /**
  * ChatBar Component - Integrated Card Style Redesign
@@ -35,6 +36,15 @@ const ChatBar = React.memo(function ChatBar({
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const isComposingRef = useRef(false); // IME 合成状态追踪
+    const previousPromptInputRef = useRef(promptInput);
+    const {
+        rememberTextUndoSnapshot,
+        handleTextUndoKeyDown
+    } = useProgrammaticTextUndo({
+        setValue: setPromptInput,
+        textareaRef,
+        disabled: isReadOnly
+    });
     const { t } = useLanguage();
     const hasInput = !!promptInput.trim() || globalImages.length > 0;
     const canSend = hasInput && !(isAgentMode && isAgentRunning);
@@ -56,12 +66,17 @@ const ChatBar = React.memo(function ChatBar({
     const handlePaste = (e) => {
         if (isReadOnly) return;
 
-        handleMathRichPaste({
+        const previousText = promptInput;
+        const inserted = handleMathRichPaste({
             event: e,
             currentValue: promptInput,
             onChangeText: setPromptInput,
             onAfterInsert: resizeTextarea
         });
+
+        if (inserted) {
+            rememberTextUndoSnapshot(previousText);
+        }
     };
 
     const handleSubmit = () => {
@@ -69,6 +84,7 @@ const ChatBar = React.memo(function ChatBar({
         if (isAgentMode && isAgentRunning) return;
         const text = (promptInput || '').trim();
         if (!text && (!globalImages || globalImages.length === 0)) return;
+        rememberTextUndoSnapshot(promptInput);
         const submitHandler = isAgentMode && typeof onAgentSubmit === 'function'
             ? onAgentSubmit
             : onSubmit;
@@ -82,6 +98,7 @@ const ChatBar = React.memo(function ChatBar({
         if (isReadOnly) return;
         const text = (promptInput || '').trim();
         if (!text && (!globalImages || globalImages.length === 0)) return;
+        rememberTextUndoSnapshot(promptInput);
         onBatchChat(text, globalImages || []);
         setPromptInput('');
         if (onClearImages) onClearImages();
@@ -91,6 +108,7 @@ const ChatBar = React.memo(function ChatBar({
     const handlePromptSelect = (text) => {
         if (isReadOnly) return;
         const newText = promptInput ? `${promptInput} ${text}` : text;
+        rememberTextUndoSnapshot(promptInput);
         setPromptInput(newText);
         // Focus and adjust height
         if (textareaRef.current) {
@@ -104,6 +122,10 @@ const ChatBar = React.memo(function ChatBar({
 
     const handleKeyDown = (e) => {
         if (isReadOnly) return;
+
+        if (handleTextUndoKeyDown(e)) {
+            return;
+        }
 
         // Cmd/Ctrl + Enter -> 批量对话 (如果有选中)
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isComposingRef.current && selectedIds.length > 0 && !isAgentMode) {
@@ -147,6 +169,17 @@ const ChatBar = React.memo(function ChatBar({
         }
         return t.chatBar.agentHint || "AI 会先决定卡片数量与标题，再自动分发生成。";
     }, [isAgentRunning, selectedIds.length, t]);
+
+    React.useEffect(() => {
+        const previousInput = previousPromptInputRef.current;
+        if (!isReadOnly && previousInput && !promptInput) {
+            rememberTextUndoSnapshot(previousInput, {
+                selectionStart: previousInput.length,
+                selectionEnd: previousInput.length
+            });
+        }
+        previousPromptInputRef.current = promptInput;
+    }, [promptInput, isReadOnly, rememberTextUndoSnapshot]);
 
     return (
         <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-6">
