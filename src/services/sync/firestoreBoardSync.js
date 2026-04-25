@@ -11,7 +11,9 @@ import {
 import {
     encodeCompactBoardSnapshotUpdate,
     syncBoardSnapshotToDoc,
+    syncBoardSkeletonSnapshotToDoc,
     isBoardDocEmpty,
+    readBoardSkeletonSnapshotFromDoc,
     readBoardSnapshotFromDoc
 } from './boardYDoc';
 import { isMeaningfullyEmptyBoardSnapshot, normalizeBoardSnapshot } from './boardSnapshot';
@@ -287,8 +289,8 @@ export class FirestoreBoardSync {
             return null;
         }
 
-        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
-        const currentVersionKey = buildSkeletonVersionKey(currentSnapshot);
+        const currentSkeletonSnapshot = readBoardSkeletonSnapshotFromDoc(this.doc);
+        const currentVersionKey = buildSkeletonVersionKey(currentSkeletonSnapshot);
         const remoteDeviceId = typeof rootData?.lastDeviceId === 'string'
             ? rootData.lastDeviceId
             : '';
@@ -298,14 +300,14 @@ export class FirestoreBoardSync {
         }
         if (
             currentVersionKey
-            && (Number(skeletonSnapshot.clientRevision) || 0) < (Number(currentSnapshot.clientRevision) || 0)
+            && (Number(skeletonSnapshot.clientRevision) || 0) < (Number(currentSkeletonSnapshot.clientRevision) || 0)
         ) {
             return null;
         }
 
-        const mergedSnapshot = mergeSkeletonSnapshot(currentSnapshot, skeletonSnapshot);
+        const mergedSnapshot = mergeSkeletonSnapshot(currentSkeletonSnapshot, skeletonSnapshot);
         this.doc.transact(() => {
-            syncBoardSnapshotToDoc(this.doc, mergedSnapshot);
+            syncBoardSkeletonSnapshotToDoc(this.doc, mergedSnapshot);
         }, FIREBASE_SYNC_ORIGINS.firestore);
         this.latestSkeletonVersionKey = nextVersionKey;
 
@@ -315,7 +317,7 @@ export class FirestoreBoardSync {
             reason: 'remote_skeleton_applied',
             eventKey: `skeleton:${nextVersionKey}`,
             partialSnapshot: skeletonSnapshot,
-            mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
+            mergedSnapshot
         };
 
         let flushedBodyPayload = null;
@@ -394,7 +396,7 @@ export class FirestoreBoardSync {
     async saveSkeletonRootSnapshot(reason = 'skeleton_sync', sourceSnapshot = null) {
         const liveSnapshot = sourceSnapshot
             ? normalizeBoardSnapshot(sourceSnapshot)
-            : readBoardSnapshotFromDoc(this.doc);
+            : readBoardSkeletonSnapshotFromDoc(this.doc);
         const skeletonSnapshot = buildSkeletonSyncSnapshot(liveSnapshot);
         const result = await saveBoardSkeleton({
             userId: this.userId,

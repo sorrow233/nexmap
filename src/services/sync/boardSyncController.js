@@ -6,7 +6,9 @@ import {
 import {
     createBoardDoc,
     isBoardDocEmpty,
+    readBoardSkeletonSnapshotFromDoc,
     readBoardSnapshotFromDoc,
+    syncBoardSkeletonSnapshotToDoc,
     syncBoardSnapshotToDoc
 } from './boardYDoc';
 import { FirestoreBoardSync } from './firestoreBoardSync';
@@ -131,12 +133,15 @@ export class BoardSyncController {
             deviceId: getSyncDeviceId(),
             doc: this.doc,
             onRemoteApplied: (payload = {}) => {
+                const cursorSnapshot = payload.mergedSnapshot
+                    || payload.partialSnapshot
+                    || readBoardSnapshotFromDoc(this.doc);
                 logPersistenceTrace('sync:controller-remote-applied', {
                     boardId: this.boardId,
                     safeMode: FIREBASE_SYNC_SAFE_MODE,
                     lane: payload.lane || SYNC_LANES.FULL,
                     reason: payload.reason || '',
-                    cursor: buildBoardCursorTrace(readBoardSnapshotFromDoc(this.doc))
+                    cursor: buildBoardCursorTrace(cursorSnapshot)
                 });
                 this.emitCurrentSnapshot(payload);
             },
@@ -219,7 +224,43 @@ export class BoardSyncController {
     }
 
     applyLocalSkeletonSnapshot(nextSnapshot = {}) {
-        this.applyLocalSnapshot(nextSnapshot, { lane: SYNC_LANES.SKELETON });
+        if (!this.started) return;
+
+        const incomingSnapshot = normalizeBoardSnapshot(nextSnapshot);
+        const incomingRevision = Number(incomingSnapshot.clientRevision) || 0;
+        if (
+            incomingRevision > 0
+            && incomingRevision <= (this.lastAppliedLocalLaneRevisions[SYNC_LANES.SKELETON] || 0)
+        ) {
+            return;
+        }
+
+        const currentSkeletonSnapshot = readBoardSkeletonSnapshotFromDoc(this.doc);
+        const resolution = resolveLocalSnapshotForDoc({
+            currentSnapshot: currentSkeletonSnapshot,
+            incomingSnapshot
+        });
+        const normalized = normalizeBoardSnapshot(resolution.snapshot);
+        const nextVersionKey = buildPersistenceVersionKey(normalized);
+        if (nextVersionKey === this.lastVersionKey || resolution.action !== 'apply') return;
+
+        logPersistenceTrace('sync:controller-apply-local', {
+            boardId: this.boardId,
+            safeMode: FIREBASE_SYNC_SAFE_MODE,
+            lane: SYNC_LANES.SKELETON,
+            reason: resolution.reason,
+            cursor: buildBoardCursorTrace(normalized)
+        });
+
+        this.doc.transact(() => {
+            syncBoardSkeletonSnapshotToDoc(this.doc, normalized);
+        }, buildStoreOriginForLane(SYNC_LANES.SKELETON));
+
+        this.lastVersionKey = nextVersionKey;
+        this.rememberAppliedLocalLaneRevision(
+            SYNC_LANES.SKELETON,
+            incomingRevision || normalized.clientRevision
+        );
     }
 
     applyLocalBodySnapshot(nextSnapshot = {}, options = {}) {
