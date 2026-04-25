@@ -16,6 +16,7 @@ import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
 import InstantTooltip from './InstantTooltip';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { capturePerfSnapshot } from '../utils/perfProbe';
+import { getCardBodyRuntimeCacheSnapshot } from '../services/cardBodyRuntimeCache';
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -117,12 +118,9 @@ export default function Canvas({
 
     const runtimeHydratedCardIds = React.useMemo(() => {
         const ids = new Set(extraHydratedCardIds || []);
-        visibleCards.forEach((card) => {
-            if (card?.id) ids.add(card.id);
-        });
         generatingCardIds?.forEach?.((cardId) => ids.add(cardId));
         return Array.from(ids);
-    }, [extraHydratedCardIds, generatingCardIds, visibleCards]);
+    }, [extraHydratedCardIds, generatingCardIds]);
 
     const runtimeHydratedCardIdsKey = React.useMemo(
         () => runtimeHydratedCardIds.slice().sort().join('|'),
@@ -141,6 +139,7 @@ export default function Canvas({
 
         canvasPerfTimerRef.current = setTimeout(() => {
             canvasPerfTimerRef.current = null;
+            const bodyCacheSnapshot = getCardBodyRuntimeCacheSnapshot();
             capturePerfSnapshot('canvas-viewport-snapshot', {
                 offsetX: offset.x,
                 offsetY: offset.y,
@@ -152,6 +151,8 @@ export default function Canvas({
                 visibleGroupsCount: visibleGroups.length,
                 selectedCardsCount: selectedIds.length,
                 runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
+                bodyCacheEntries: bodyCacheSnapshot.entries,
+                bodyCacheHotEntries: bodyCacheSnapshot.hotEntries,
                 isSuspended
             });
         }, 240);

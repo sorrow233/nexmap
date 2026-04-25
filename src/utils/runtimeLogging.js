@@ -61,7 +61,7 @@ export const isVerboseAIConsoleEnabled = () => (
 );
 
 export const isPerfProbeEnabled = () => (
-    import.meta.env.DEV || readRuntimeFlag(PERF_PROBE_KEY)
+    import.meta.env.DEV || !readRuntimeFlag(`${PERF_PROBE_KEY}_off`) || readRuntimeFlag(PERF_PROBE_KEY)
 );
 
 export const runtimeLog = (...args) => {
@@ -90,8 +90,14 @@ export const installRuntimeLoggingControls = () => {
     window.disableVerboseAILogs = () => writeRuntimeFlag(AI_VERBOSE_CONSOLE_KEY, false);
     window.enablePersistenceTraceConsole = () => writeRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY, true);
     window.disablePersistenceTraceConsole = () => writeRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY, false);
-    window.enablePerfProbe = () => writeRuntimeFlag(PERF_PROBE_KEY, true);
-    window.disablePerfProbe = () => writeRuntimeFlag(PERF_PROBE_KEY, false);
+    window.enablePerfProbe = () => {
+        writeRuntimeFlag(`${PERF_PROBE_KEY}_off`, false);
+        writeRuntimeFlag(PERF_PROBE_KEY, true);
+    };
+    window.disablePerfProbe = () => {
+        writeRuntimeFlag(PERF_PROBE_KEY, false);
+        writeRuntimeFlag(`${PERF_PROBE_KEY}_off`, true);
+    };
 };
 
 const getResourceErrorDetails = (target) => {

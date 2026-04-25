@@ -722,6 +722,7 @@ function AppContent() {
                         const syncController = new BoardSyncController({
                             boardId: currentBoardId,
                             user,
+                            largeBoardMode,
                             onSnapshot: (nextSnapshot, meta = {}) => {
                                 if (isCancelled) return;
                                 const remoteLane = normalizeSyncLane(meta.lane || SYNC_LANES.FULL);
@@ -788,7 +789,6 @@ function AppContent() {
                                 });
                             }
                         });
-                        syncController.largeBoardMode = largeBoardMode;
 
                         boardSyncControllerRef.current = syncController;
                         await syncController.start(data, { expectedCardCount });

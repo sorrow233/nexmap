@@ -153,11 +153,12 @@ const partitionMissingRemoteBodyEntries = (entries = []) => {
 };
 
 export class FirestoreBoardSync {
-    constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
+    constructor({ boardId, userId, deviceId, doc: ydoc, largeBoardMode = false, onRemoteApplied, onSyncStateChange }) {
         this.boardId = boardId;
         this.userId = userId;
         this.deviceId = deviceId;
         this.doc = ydoc;
+        this.largeBoardMode = largeBoardMode === true;
         this.onRemoteApplied = onRemoteApplied;
         this.onSyncStateChange = onSyncStateChange;
         this.unsubscribe = null;
@@ -278,6 +279,27 @@ export class FirestoreBoardSync {
         });
     }
 
+    queueLocalBodyJobs(entries = [], reason = 'body_lane_local') {
+        const normalizedEntries = normalizeCardBodySyncJobs(entries);
+        if (normalizedEntries.length === 0) return;
+
+        this.queueCardBodyJobs(normalizedEntries);
+        if (this.pendingSyncLane === SYNC_LANES.NONE) {
+            this.pendingSyncLane = SYNC_LANES.BODY;
+        } else if (this.pendingSyncLane !== SYNC_LANES.BODY) {
+            this.pendingSyncLane = SYNC_LANES.FULL;
+        }
+        this.hasUnsnapshottedChanges = true;
+        this.localUpdateSequence += 1;
+        logPersistenceTrace('sync:firestore-body-queued', {
+            boardId: this.boardId,
+            reason,
+            cardCount: normalizedEntries.length,
+            safeMode: FIREBASE_SYNC_SAFE_MODE
+        });
+        this.scheduleFlush();
+    }
+
     applyRemoteSkeletonSnapshot(rootData = {}) {
         if (!hasRemoteBoardSkeleton(rootData)) {
             return null;
@@ -336,7 +358,9 @@ export class FirestoreBoardSync {
             return null;
         }
 
-        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const currentSnapshot = this.largeBoardMode
+            ? readBoardSkeletonSnapshotFromDoc(this.doc)
+            : readBoardSnapshotFromDoc(this.doc);
         const currentCardIds = new Set(
             currentSnapshot.cards.map((card) => card?.id).filter(Boolean)
         );
@@ -372,9 +396,11 @@ export class FirestoreBoardSync {
         }
 
         const mergedSnapshot = mergeCardBodyEntriesIntoSnapshot(currentSnapshot, applicableEntries);
-        this.doc.transact(() => {
-            syncBoardSnapshotToDoc(this.doc, mergedSnapshot);
-        }, FIREBASE_SYNC_ORIGINS.firestore);
+        if (!this.largeBoardMode) {
+            this.doc.transact(() => {
+                syncBoardSnapshotToDoc(this.doc, mergedSnapshot);
+            }, FIREBASE_SYNC_ORIGINS.firestore);
+        }
 
         applicableEntries.forEach((entry) => {
             this.latestBodyVersionKeys.set(
@@ -389,7 +415,7 @@ export class FirestoreBoardSync {
             reason: 'remote_body_applied',
             eventKey: `body:${buildBodyEntriesEventKey(applicableEntries)}`,
             partialSnapshot: buildBodySyncSnapshotFromEntries(applicableEntries),
-            mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
+            mergedSnapshot: this.largeBoardMode ? mergedSnapshot : readBoardSnapshotFromDoc(this.doc)
         };
     }
 
@@ -600,8 +626,8 @@ export class FirestoreBoardSync {
                 this.emitRemoteApplied(skeletonApplyResult.flushedBodyPayload);
             }
         }
-        const bodyEntries = await this.loadRemoteCardBodies();
-        const shouldRecoverFromCheckpoint = bodyEntries.length === 0 && hasRemoteCheckpoint(rootData);
+        const bodyEntries = this.largeBoardMode ? [] : await this.loadRemoteCardBodies();
+        const shouldRecoverFromCheckpoint = !this.largeBoardMode && bodyEntries.length === 0 && hasRemoteCheckpoint(rootData);
         const loadResult = shouldRecoverFromCheckpoint
             ? await this.loadRemoteCheckpoint(rootData, { recoveryOnly: true })
             : null;
@@ -654,9 +680,15 @@ export class FirestoreBoardSync {
         }
 
         this.subscribeToRootCheckpoint();
-        this.subscribeToCardBodies();
+        if (!this.largeBoardMode) {
+            this.subscribeToCardBodies();
+        }
         this.connected = true;
-        this.remoteIsEmpty = !hasRemoteBoardSkeleton(rootData) && !hasRemoteCheckpoint(rootData) && bodyEntries.length === 0;
+        this.remoteIsEmpty = (
+            !hasRemoteBoardSkeleton(rootData)
+            && (!hasRemoteCheckpoint(rootData) || this.largeBoardMode)
+            && bodyEntries.length === 0
+        );
         this.emitState('connected', {
             remoteIsEmpty: this.remoteIsEmpty,
             mode: FIREBASE_SYNC_SAFE_MODE ? 'safe_layered_sync' : 'layered_sync'
@@ -1099,7 +1131,7 @@ export class FirestoreBoardSync {
             }
         }
 
-        if (this.connected && this.checkpointRecoveryDirty) {
+        if (!this.largeBoardMode && this.connected && this.checkpointRecoveryDirty) {
             await this.saveSnapshot('controller_stop');
         }
 

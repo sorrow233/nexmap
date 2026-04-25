@@ -3,8 +3,10 @@ import { isPerfProbeEnabled } from './runtimeLogging';
 const PERF_STORE_KEY = '__NEXMAP_PERF_PROBE__';
 const PERF_TIMERS_KEY = '__NEXMAP_PERF_PROBE_TIMERS__';
 const MAX_PERF_ENTRIES = 300;
+const PERF_CONSOLE_LOG_MIN_INTERVAL_MS = 1200;
 
 const isBrowser = typeof window !== 'undefined';
+const lastConsoleLogByLabel = new Map();
 
 const isPerfProbeActive = () => (
     isBrowser && isPerfProbeEnabled()
@@ -87,6 +89,24 @@ const pushPerfEntry = (entry = {}) => {
 
     if (entries.length > MAX_PERF_ENTRIES) {
         entries.splice(0, entries.length - MAX_PERF_ENTRIES);
+    }
+
+    const now = Date.now();
+    const lastLoggedAt = lastConsoleLogByLabel.get(entry.label) || 0;
+    if (now - lastLoggedAt >= PERF_CONSOLE_LOG_MIN_INTERVAL_MS) {
+        lastConsoleLogByLabel.set(entry.label, now);
+        console.info(`[NexMap PerfProbe] ${entry.label}`, {
+            type: entry.type,
+            durationMs: entry.durationMs,
+            usedMB: entry.usedJSHeapSizeMB,
+            totalMB: entry.totalJSHeapSizeMB,
+            domNodes: entry.domNodes,
+            cardsCount: entry.cardsCount,
+            visibleCardsCount: entry.visibleCardsCount,
+            runtimeHydratedCardsCount: entry.runtimeHydratedCardsCount,
+            bodyCacheEntries: entry.bodyCacheEntries,
+            bodyCacheHotEntries: entry.bodyCacheHotEntries
+        });
     }
 
     return entry;
