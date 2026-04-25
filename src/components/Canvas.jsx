@@ -139,7 +139,6 @@ export default function Canvas({
 
         canvasPerfTimerRef.current = setTimeout(() => {
             canvasPerfTimerRef.current = null;
-            const bodyCacheSnapshot = getCardBodyRuntimeCacheSnapshot();
             capturePerfSnapshot('canvas-viewport-snapshot', {
                 offsetX: offset.x,
                 offsetY: offset.y,
@@ -151,8 +150,7 @@ export default function Canvas({
                 visibleGroupsCount: visibleGroups.length,
                 selectedCardsCount: selectedIds.length,
                 runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
-                bodyCacheEntries: bodyCacheSnapshot.entries,
-                bodyCacheHotEntries: bodyCacheSnapshot.hotEntries,
+                bodyCache: getCardBodyRuntimeCacheSnapshot(),
                 isSuspended
             });
         }, 240);

@@ -1,9 +1,12 @@
+import LZString from 'lz-string';
 import { isLargeBoardCards } from '../utils/boardPerformance';
 
 const PREVIEW_TEXT_LIMIT = 360;
 const PREVIEW_MESSAGE_LIMIT = 220;
 const HOT_HYDRATED_CARD_LIMIT = 3;
 const HOT_HYDRATED_CHAR_BUDGET = 300_000;
+const PACKED_BODY_FORMAT = 'runtime-card-body-lz-base64-v1';
+const PACKED_BODY_CHAR_THRESHOLD = 16_000;
 
 const bodyRegistry = new Map();
 const hotTouchOrder = new Map();
@@ -147,11 +150,77 @@ const removeRuntimeBodyState = (card = {}) => {
     };
 };
 
-const resolveCardBodyEntry = (cardId) => bodyRegistry.get(cardId) || null;
+const isPackedBodyEntry = (entry = {}) => (
+    entry?.packedBody?.format === PACKED_BODY_FORMAT
+);
 
-const writeCardBodyEntry = (cardId, entry) => {
+const getPackablePayload = (entry = {}) => {
+    const payload = {};
+    if (Array.isArray(entry.messages)) payload.messages = entry.messages;
+    if (typeof entry.content === 'string') payload.content = entry.content;
+    return payload;
+};
+
+const hasPackablePayload = (payload = {}) => (
+    Array.isArray(payload.messages) || typeof payload.content === 'string'
+);
+
+const packBodyEntry = (entry = {}) => {
+    if (!entry || isPackedBodyEntry(entry)) return entry;
+    if ((Number(entry.estimatedChars) || 0) < PACKED_BODY_CHAR_THRESHOLD) return entry;
+
+    const payload = getPackablePayload(entry);
+    if (!hasPackablePayload(payload)) return entry;
+
+    try {
+        const serialized = JSON.stringify(payload);
+        const compressed = LZString.compressToBase64(serialized);
+        if (!compressed || compressed.length >= serialized.length) {
+            return entry;
+        }
+
+        const { messages, content, ...metadata } = entry;
+        return {
+            ...metadata,
+            packedBody: {
+                format: PACKED_BODY_FORMAT,
+                rawChars: serialized.length,
+                compressedChars: compressed.length,
+                body: compressed
+            }
+        };
+    } catch {
+        return entry;
+    }
+};
+
+const unpackBodyEntry = (entry = {}) => {
+    if (!entry) return null;
+    if (!isPackedBodyEntry(entry)) return entry;
+
+    try {
+        const decompressed = LZString.decompressFromBase64(entry.packedBody.body) || '';
+        if (!decompressed) return null;
+        const payload = JSON.parse(decompressed);
+        const { packedBody, ...metadata } = entry;
+        return {
+            ...metadata,
+            ...getPackablePayload(payload)
+        };
+    } catch {
+        return null;
+    }
+};
+
+const resolveCardBodyEntry = (cardId, options = {}) => {
+    const entry = bodyRegistry.get(cardId) || null;
+    if (!entry || options.unpack === false) return entry;
+    return unpackBodyEntry(entry);
+};
+
+const writeCardBodyEntry = (cardId, entry, options = {}) => {
     if (!cardId || !entry) return null;
-    bodyRegistry.set(cardId, entry);
+    bodyRegistry.set(cardId, options.pack === false ? entry : packBodyEntry(entry));
     return entry;
 };
 
@@ -220,7 +289,7 @@ export const primeCardBodyRuntimeCache = (boardId, cards = []) => {
         if (!card?.id || isCardBodyRuntimeDehydrated(card)) return;
         const entry = createBodyEntryFromCard(card);
         if (entry) {
-            writeCardBodyEntry(card.id, entry);
+            writeCardBodyEntry(card.id, entry, { pack: true });
         }
     });
 };
@@ -234,7 +303,7 @@ export const cacheHydratedCardBody = (card, options = {}) => {
     const entry = createBodyEntryFromCard(card);
     if (!entry) return null;
 
-    writeCardBodyEntry(card.id, entry);
+    writeCardBodyEntry(card.id, entry, { pack: options.pack !== false });
     if (options.touch !== false) {
         touchCardBodyRuntimeCache(card.id);
     }
@@ -248,7 +317,8 @@ export const hydrateCardBodyFromRuntimeCache = (card, options = {}) => {
     if (isCardBodyRuntimeManaged(card) && !isCardBodyRuntimeDehydrated(card)) {
         cacheHydratedCardBody(card, {
             boardId: options.boardId,
-            touch: options.touch
+            touch: options.touch,
+            pack: false
         });
         return card;
     }
@@ -300,9 +370,15 @@ export const dehydrateCardBodyForRuntime = (card, options = {}) => {
     ensureBoardContext(options.boardId);
     if (!card?.id) return card;
 
-    const entry = isCardBodyRuntimeDehydrated(card)
-        ? resolveCardBodyEntry(card.id)
-        : cacheHydratedCardBody(card, { boardId: options.boardId, touch: options.touch });
+    if (isCardBodyRuntimeDehydrated(card)) {
+        return card;
+    }
+
+    const entry = cacheHydratedCardBody(card, {
+        boardId: options.boardId,
+        touch: options.touch,
+        pack: true
+    });
 
     if (!entry) {
         return removeRuntimeBodyState(card);
@@ -358,7 +434,7 @@ export const resolvePreferredHydratedCardIds = (baseCardIds = []) => {
             return;
         }
 
-        const entry = resolveCardBodyEntry(cardId);
+        const entry = resolveCardBodyEntry(cardId, { unpack: false });
         if (!entry) return;
         if (hotCount >= HOT_HYDRATED_CARD_LIMIT) return;
         if (totalChars + entry.estimatedChars > HOT_HYDRATED_CHAR_BUDGET) return;
@@ -439,7 +515,8 @@ export const mergeRuntimeCardBodies = (cards = [], options = {}) => {
         if (isCardBodyRuntimeManaged(card) && !isCardBodyRuntimeDehydrated(card)) {
             cacheHydratedCardBody(hydratedCard, {
                 boardId: options.boardId,
-                touch: false
+                touch: false,
+                pack: false
             });
         }
 
@@ -450,5 +527,27 @@ export const mergeRuntimeCardBodies = (cards = [], options = {}) => {
 export const getCardBodyRuntimeCacheSnapshot = () => ({
     boardId: activeBoardId,
     entries: bodyRegistry.size,
-    hotEntries: hotTouchOrder.size
+    hotEntries: hotTouchOrder.size,
+    packedEntries: Array.from(bodyRegistry.values())
+        .filter((entry) => isPackedBodyEntry(entry))
+        .length,
+    packedBodyKB: Math.round(
+        Array.from(bodyRegistry.values()).reduce((total, entry) => (
+            total + (isPackedBodyEntry(entry) ? Number(entry.packedBody?.compressedChars || 0) : 0)
+        ), 0) / 10.24
+    ) / 100,
+    totalEstimatedChars: Array.from(bodyRegistry.values())
+        .reduce((total, entry) => total + (Number(entry?.estimatedChars) || 0), 0),
+    totalMessages: Array.from(bodyRegistry.values())
+        .reduce((total, entry) => total + (Number(entry?.messageCount) || 0), 0),
+    largestEntries: Array.from(bodyRegistry.values())
+        .map((entry) => ({
+            cardId: entry?.cardId || '',
+            estimatedChars: Number(entry?.estimatedChars) || 0,
+            messageCount: Number(entry?.messageCount) || 0,
+            userMessageCount: Number(entry?.userMessageCount) || 0,
+            packed: isPackedBodyEntry(entry)
+        }))
+        .sort((left, right) => right.estimatedChars - left.estimatedChars)
+        .slice(0, 8)
 });

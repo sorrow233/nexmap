@@ -5,7 +5,6 @@ import {
     normalizeBoardSnapshot
 } from './boardSnapshot';
 import { mergeCardSnapshots } from './protocol/syncResolver';
-import { buildSkeletonSyncPayload, pickSkeletonCardFields } from './skeleton/skeletonSyncProtocol';
 import { logBoardLoadStage } from '../../utils/boardLoadDebug';
 
 const ROOT_KEYS = [
@@ -26,24 +25,6 @@ const TEXT_PATH_PATTERNS = [
     ['cards', '*', 'data', 'messages', '*', 'content', '*', 'text'],
     ['boardPrompts', '*', 'text'],
     ['boardPrompts', '*', 'content']
-];
-
-const BODY_DATA_FIELDS = new Set([
-    'messages',
-    'content',
-    'image',
-    'text',
-    '__bodyCleared',
-    'runtimeBodyState'
-]);
-
-const SKELETON_ROOT_KEYS = [
-    'connections',
-    'groups',
-    'boardPrompts',
-    'boardInstructionSettings',
-    'updatedAt',
-    'clientRevision'
 ];
 
 const isPrimitive = (value) => value == null || ['string', 'number', 'boolean'].includes(typeof value);
@@ -241,121 +222,6 @@ const readNodeToValue = (node, path = []) => {
     return node;
 };
 
-const getYMapPrimitive = (ymap, key) => {
-    if (!(ymap instanceof Y.Map) || !ymap.has(key)) return undefined;
-    const value = ymap.get(key);
-    if (value instanceof Y.Map || value instanceof Y.Array || value instanceof Y.Text) {
-        return undefined;
-    }
-    return value;
-};
-
-const readSkeletonCardFromYMap = (ymap) => {
-    if (!(ymap instanceof Y.Map)) return null;
-
-    const card = {};
-    Array.from(ymap.keys()).forEach((key) => {
-        if (key === 'data') {
-            const dataMap = ymap.get(key);
-            if (!(dataMap instanceof Y.Map)) return;
-
-            const data = {};
-            Array.from(dataMap.keys()).forEach((dataKey) => {
-                if (BODY_DATA_FIELDS.has(dataKey)) return;
-                data[dataKey] = readNodeToValue(dataMap.get(dataKey), ['cards', '*', 'data', dataKey]);
-            });
-
-            if (Object.keys(data).length > 0) {
-                card.data = data;
-            }
-            return;
-        }
-
-        card[key] = readNodeToValue(ymap.get(key), ['cards', '*', key]);
-    });
-
-    return pickSkeletonCardFields(card);
-};
-
-const readSkeletonCardsFromDoc = (doc) => {
-    const root = doc.getMap('board');
-    const cardsNode = root.get('cards');
-    if (!(cardsNode instanceof Y.Array)) return [];
-
-    return cardsNode
-        .toArray()
-        .map((item) => readSkeletonCardFromYMap(item))
-        .filter(Boolean);
-};
-
-const syncSkeletonDataIntoCard = (cardMap, incomingData = {}) => {
-    if (!(cardMap instanceof Y.Map) || !incomingData || typeof incomingData !== 'object') {
-        return;
-    }
-
-    let dataMap = cardMap.get('data');
-    if (!(dataMap instanceof Y.Map)) {
-        dataMap = new Y.Map();
-        cardMap.set('data', dataMap);
-    }
-
-    Object.entries(incomingData).forEach(([key, value]) => {
-        if (BODY_DATA_FIELDS.has(key)) return;
-        syncValueIntoParent(dataMap, key, value, ['cards', '*', 'data', key]);
-    });
-};
-
-const syncSkeletonCardIntoYMap = (cardMap, incomingCard = {}) => {
-    if (!(cardMap instanceof Y.Map) || !incomingCard || typeof incomingCard !== 'object') {
-        return false;
-    }
-
-    Object.entries(incomingCard).forEach(([key, value]) => {
-        if (key === 'data') {
-            syncSkeletonDataIntoCard(cardMap, value);
-            return;
-        }
-        syncValueIntoParent(cardMap, key, value, ['cards', '*', key]);
-    });
-
-    return true;
-};
-
-const syncSkeletonCardsIntoDoc = (doc, incomingCards = []) => {
-    const root = doc.getMap('board');
-    let cardsNode = root.get('cards');
-    if (!(cardsNode instanceof Y.Array)) {
-        cardsNode = new Y.Array();
-        root.set('cards', cardsNode);
-    }
-
-    const cardIndexById = new Map();
-    cardsNode.toArray().forEach((item, index) => {
-        const cardId = getYMapPrimitive(item, 'id');
-        if (typeof cardId === 'string' && cardId) {
-            cardIndexById.set(cardId, { item, index });
-        }
-    });
-
-    incomingCards.forEach((incomingCard) => {
-        const cardId = typeof incomingCard?.id === 'string' ? incomingCard.id : '';
-        if (!cardId) return;
-
-        const currentEntry = cardIndexById.get(cardId);
-        if (currentEntry?.item instanceof Y.Map) {
-            syncSkeletonCardIntoYMap(currentEntry.item, incomingCard);
-            return;
-        }
-
-        const insertIndex = cardsNode.length;
-        cardsNode.insert(insertIndex, [createNodeFromValue(incomingCard, ['cards', String(insertIndex)])]);
-        cardIndexById.set(cardId, {
-            item: cardsNode.get(insertIndex),
-            index: insertIndex
-        });
-    });
-};
-
 export const createBoardDoc = () => {
     const doc = new Y.Doc();
     const root = doc.getMap('board');
@@ -381,35 +247,6 @@ export const syncBoardSnapshotToDoc = (doc, snapshot = {}) => {
             syncValueIntoParent(root, key, normalized[key], [key]);
         });
     });
-};
-
-export const readBoardSkeletonSnapshotFromDoc = (doc) => {
-    const root = doc.getMap('board');
-    return buildSkeletonSyncPayload({
-        cards: readSkeletonCardsFromDoc(doc),
-        connections: root.has('connections') ? readNodeToValue(root.get('connections'), ['connections']) : [],
-        groups: root.has('groups') ? readNodeToValue(root.get('groups'), ['groups']) : [],
-        boardPrompts: root.has('boardPrompts') ? readNodeToValue(root.get('boardPrompts'), ['boardPrompts']) : [],
-        boardInstructionSettings: root.has('boardInstructionSettings')
-            ? readNodeToValue(root.get('boardInstructionSettings'), ['boardInstructionSettings'])
-            : getEmptyBoardSnapshot().boardInstructionSettings,
-        updatedAt: root.has('updatedAt') ? readNodeToValue(root.get('updatedAt'), ['updatedAt']) : 0,
-        clientRevision: root.has('clientRevision') ? readNodeToValue(root.get('clientRevision'), ['clientRevision']) : 0
-    });
-};
-
-export const syncBoardSkeletonSnapshotToDoc = (doc, snapshot = {}) => {
-    const normalizedSkeleton = buildSkeletonSyncPayload(snapshot);
-    const root = doc.getMap('board');
-
-    doc.transact(() => {
-        syncSkeletonCardsIntoDoc(doc, normalizedSkeleton.cards);
-        SKELETON_ROOT_KEYS.forEach((key) => {
-            syncValueIntoParent(root, key, normalizedSkeleton[key], [key]);
-        });
-    });
-
-    return normalizedSkeleton;
 };
 
 export const syncBoardCardsToDoc = (doc, cards = []) => {

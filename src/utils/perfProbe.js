@@ -95,6 +95,7 @@ const pushPerfEntry = (entry = {}) => {
     const lastLoggedAt = lastConsoleLogByLabel.get(entry.label) || 0;
     if (now - lastLoggedAt >= PERF_CONSOLE_LOG_MIN_INTERVAL_MS) {
         lastConsoleLogByLabel.set(entry.label, now);
+        const bodyCache = entry.bodyCache || {};
         console.info(`[NexMap PerfProbe] ${entry.label}`, {
             type: entry.type,
             durationMs: entry.durationMs,
@@ -104,8 +105,11 @@ const pushPerfEntry = (entry = {}) => {
             cardsCount: entry.cardsCount,
             visibleCardsCount: entry.visibleCardsCount,
             runtimeHydratedCardsCount: entry.runtimeHydratedCardsCount,
-            bodyCacheEntries: entry.bodyCacheEntries,
-            bodyCacheHotEntries: entry.bodyCacheHotEntries
+            bodyCacheEntries: bodyCache.entries ?? entry.bodyCacheEntries,
+            bodyCacheHotEntries: bodyCache.hotEntries ?? entry.bodyCacheHotEntries,
+            bodyCachePackedEntries: bodyCache.packedEntries,
+            bodyCachePackedBodyKB: bodyCache.packedBodyKB,
+            bodyCacheLargestEntries: bodyCache.largestEntries
         });
     }
 
