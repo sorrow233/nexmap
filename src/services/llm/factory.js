@@ -1,6 +1,10 @@
 import { GeminiProvider } from './providers/gemini';
 import { OpenAIProvider } from './providers/openai';
 import { SystemCreditsProvider } from './providers/systemCredits';
+import {
+    hasUsableProviderRoute,
+    isExplicitSystemCreditsConfig
+} from './providerAccess';
 import { runtimeLog, runtimeWarn } from '../../utils/runtimeLogging';
 
 export class ModelFactory {
@@ -38,7 +42,9 @@ export class ModelFactory {
 
     /**
      * Get provider based on config and model
-     * If no API key is configured, returns SystemCreditsProvider for free trial
+     * System credits are only used when the provider is explicitly configured
+     * as system-credits. Missing keys must surface as configuration errors so
+     * self-hosted routes are never silently replaced by the bundled model.
      * 
      * Protocol selection logic:
      * 1. If config.protocol is 'gemini' AND model is a Gemini model → GeminiProvider
@@ -53,16 +59,16 @@ export class ModelFactory {
     static getProvider(config, options = {}) {
         if (!config) throw new Error("Provider configuration is missing.");
 
-        // Check if user should use system credits (no API key)
-        const hasApiKey = config.apiKey && config.apiKey.trim() !== '';
-
-        if (!hasApiKey && !options.skipSystemCredits) {
-            runtimeLog('[ModelFactory] No API key configured, using SystemCreditsProvider');
+        if (isExplicitSystemCreditsConfig(config)) {
             return new SystemCreditsProvider();
         }
 
         const protocol = config.protocol || 'openai';
         const model = options.model || config.model || '';
+
+        if (!hasUsableProviderRoute(config)) {
+            throw new Error('当前 AI 提供商缺少可用 API Key 或自部署 Base URL，已停止自动切换到系统模型。请检查 AI 设置。');
+        }
 
         // Auto-detect protocol based on model name
         if (protocol === 'gemini') {
@@ -91,6 +97,6 @@ export class ModelFactory {
      * Check if system credits should be used
      */
     static shouldUseSystemCredits(config) {
-        return !config?.apiKey || config.apiKey.trim() === '';
+        return isExplicitSystemCreditsConfig(config);
     }
 }

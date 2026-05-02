@@ -20,6 +20,7 @@ import SettingsAdvancedSection from './settings/SettingsAdvancedSection';
 import { cloneGlobalRoles, getSuggestedRoleModel } from './settings/modelRoleUtils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { normalizeGeminiProviderConfig } from '../services/llm/geminiRouting';
+import { hasUsableProviderRoute } from '../services/llm/providerAccess';
 import packageJson from '../../package.json';
 
 const loadWithTimestamp = (key) => {
@@ -233,7 +234,9 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setTestMessage('');
         try {
             const providerConfig = providers[activeId];
-            if (!providerConfig?.apiKey) throw new Error('API Key is missing');
+            if (!hasUsableProviderRoute(providerConfig)) {
+                throw new Error('当前提供商缺少可用 API Key 或自部署 Base URL');
+            }
 
             const testModel = activeId === globalRoles.chat.providerId
                 ? (globalRoles.chat.model || providerConfig.model || null)

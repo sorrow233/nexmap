@@ -1,5 +1,9 @@
 import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
+import {
+    getConfiguredProviderApiKeys,
+    providerRequiresApiKey
+} from '../providerAccess';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { settleStreamReader } from '../streamTailGrace.js';
 import { resolveAllImages } from '../utils';
@@ -88,8 +92,30 @@ export class OpenAIProvider extends LLMProvider {
      * 获取 KeyPool（支持多 Key 轮询）
      */
     _getKeyPool() {
-        const keysString = this.config.apiKeys || this.config.apiKey || '';
+        const keysString = getConfiguredProviderApiKeys(this.config).join(',');
         return getKeyPool(this.config.id || 'default', keysString);
+    }
+
+    _requiresApiKey() {
+        return providerRequiresApiKey(this.config);
+    }
+
+    _getNextApiKey(keyPool) {
+        const apiKey = keyPool.getNextKey();
+        if (apiKey) return apiKey;
+
+        if (this._requiresApiKey()) {
+            throw new Error('当前提供商缺少可用 API Key');
+        }
+
+        return null;
+    }
+
+    _buildJsonHeaders(apiKey = null) {
+        return {
+            'Content-Type': 'application/json',
+            ...(apiKey && { 'Authorization': `Bearer ${apiKey}` })
+        };
     }
 
     /**
@@ -176,18 +202,12 @@ export class OpenAIProvider extends LLMProvider {
         let lastError = null;
 
         while (retries >= 0) {
-            const apiKey = keyPool.getNextKey();
-            if (!apiKey) {
-                throw new Error('没有可用的 API Key');
-            }
+            const apiKey = this._getNextApiKey(keyPool);
 
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
+                    headers: this._buildJsonHeaders(apiKey),
                     ...(signal && { signal }),
                     body: JSON.stringify(requestBody)
                 });
@@ -195,7 +215,7 @@ export class OpenAIProvider extends LLMProvider {
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
 
-                    if ([401, 403, 429].includes(response.status)) {
+                    if (apiKey && [401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
                         retries--;
                         lastError = new Error(err.error?.message || `API 错误 ${response.status}`);
@@ -334,18 +354,12 @@ export class OpenAIProvider extends LLMProvider {
         let delay = 1000;
 
         while (retries >= 0) {
-            const apiKey = keyPool.getNextKey();
-            if (!apiKey) {
-                throw new Error('没有可用的 API Key');
-            }
+            const apiKey = this._getNextApiKey(keyPool);
 
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`,
-                    },
+                    headers: this._buildJsonHeaders(apiKey),
                     signal: options.signal,
                     body: JSON.stringify(this._buildChatRequestBody({
                         modelToUse,
@@ -357,7 +371,7 @@ export class OpenAIProvider extends LLMProvider {
 
                 if (!response.ok) {
                     // Key 无效或超限，标记失效并切换
-                    if ([401, 403, 429].includes(response.status)) {
+                    if (apiKey && [401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
                         retries--;
                         continue;
@@ -483,7 +497,9 @@ export class OpenAIProvider extends LLMProvider {
     }
 
     async generateImage(prompt, model, options = {}) {
-        const { apiKey, baseUrl } = this.config;
+        const keyPool = this._getKeyPool();
+        const apiKey = this._getNextApiKey(keyPool);
+        const { baseUrl } = this.config;
         const modelToUse = model || this.config.model || 'gpt-4o';
 
         // Check if this model/provider uses the unified chat completion endpoint for images
@@ -496,10 +512,7 @@ export class OpenAIProvider extends LLMProvider {
 
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
+                headers: this._buildJsonHeaders(apiKey),
                 body: JSON.stringify({
                     model: modelToUse,
                     messages: [{ role: 'user', content: prompt }],
@@ -528,10 +541,7 @@ export class OpenAIProvider extends LLMProvider {
 
         const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
+            headers: this._buildJsonHeaders(apiKey),
             body: JSON.stringify({
                 model: modelToUse,
                 prompt: prompt,

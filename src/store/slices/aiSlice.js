@@ -5,7 +5,6 @@ import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 
 import favoritesService from '../../services/favoritesService';
 import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
-import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 import { assembleContext } from '../../utils/aiContextUtils';
 import { extractMessageContentText } from '../../utils/boardPerformance';
 import translations from '../../contexts/translations';
@@ -344,16 +343,8 @@ export const createAISlice = (set, get) => {
                 initialMessages = null // NEW: Allow passing pre-existing messages (for Branch feature)
             } = params;
 
-            const state = get();
-
-            // Force DeepSeek for system credits
             let model = requestedModel;
             let providerId = requestedProviderId;
-
-            if (state.isSystemCreditsUser) {
-                model = AI_MODELS.FREE_TIER;
-                providerId = AI_PROVIDERS.SYSTEM_CREDITS;
-            }
 
             const newId = id || uuid();
 

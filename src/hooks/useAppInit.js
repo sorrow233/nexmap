@@ -16,6 +16,7 @@ import { persistBoardsMetadataList } from '../services/boardPersistence/boardsLi
 import { hydrateBoardsDisplayMetadataList } from '../services/boardPersistence/boardDisplayMetadataStorage';
 import { migrateBoardsThumbnailMetadataList } from '../services/boardPersistence/boardThumbnailMigration';
 import { useStore } from '../store/useStore';
+import { hasUsableProviderRoute } from '../services/llm/providerAccess';
 
 const TRASH_CLEANUP_LAST_KEY = 'mixboard_last_trash_cleanup_at';
 const TRASH_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -139,7 +140,7 @@ export function useAppInit() {
                 } finally {
                     if (!disposed && auth.currentUser?.uid === activeUserId) {
                         const activeConfig = useStore.getState().getActiveConfig();
-                        if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                        if (!hasUsableProviderRoute(activeConfig)) {
                             useStore.getState().loadSystemCredits?.();
                         }
                     }

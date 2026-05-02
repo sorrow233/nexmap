@@ -12,6 +12,7 @@ import {
     DEFAULT_OPENAI_BASE_URL,
     DEFAULT_VERTEX_EXPRESS_BASE_URL
 } from '../../services/llm/geminiRouting';
+import { hasUsableProviderRoute } from '../../services/llm/providerAccess';
 
 export default function SettingsLLMTab({
     providers,
@@ -39,6 +40,7 @@ export default function SettingsLLMTab({
     const currentBaseUrl = String(currentProvider?.baseUrl || '');
     const resolvedGeminiBaseUrl = resolveGeminiBaseUrl(currentBaseUrl, currentProvider?.apiKey || '');
     const isGeminiProvider = currentProvider?.protocol === 'gemini';
+    const hasProviderRoute = hasUsableProviderRoute(currentProvider);
 
     let routeHint = null;
     if (isGeminiProvider) {
@@ -284,7 +286,7 @@ export default function SettingsLLMTab({
                 <div className="flex items-center gap-4 pt-6 mt-auto">
                     <button
                         onClick={handleTestConnection}
-                        disabled={testStatus === 'testing' || !currentProvider.apiKey}
+                        disabled={testStatus === 'testing' || !hasProviderRoute}
                         className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl disabled:opacity-50"
                     >
                         {testStatus === 'testing' ? t.settings.testing : t.settings.testConnection}

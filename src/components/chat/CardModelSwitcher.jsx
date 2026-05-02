@@ -118,7 +118,7 @@ export default function CardModelSwitcher({ card, onUpdate }) {
         setIsOpen(false);
     };
 
-    if (!Array.isArray(card?.data?.messages) || isSystemCreditsUser) {
+    if (!Array.isArray(card?.data?.messages)) {
         return null;
     }
 

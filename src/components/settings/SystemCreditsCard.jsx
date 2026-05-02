@@ -8,6 +8,7 @@
 import React, { useEffect } from 'react';
 import { Gift, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { hasUsableProviderRoute } from '../../services/llm/providerAccess';
 
 export default function SystemCreditsCard({ currentProvider }) {
     const {
@@ -18,22 +19,20 @@ export default function SystemCreditsCard({ currentProvider }) {
         getCreditsPercentage
     } = useStore();
 
-    // Check if user should see credits (no API key configured)
-    const hasApiKey = currentProvider?.apiKey && currentProvider.apiKey.trim() !== '';
+    const hasProviderRoute = hasUsableProviderRoute(currentProvider);
 
     const loadAttempted = React.useRef(false);
 
     useEffect(() => {
         // Load credits if not loaded and user should use system credits
         // Use ref to prevent double-firing in strict mode or rapid re-renders
-        if (!hasApiKey && systemCredits === null && !systemCreditsLoading && !systemCreditsError && !loadAttempted.current) {
+        if (!hasProviderRoute && systemCredits === null && !systemCreditsLoading && !systemCreditsError && !loadAttempted.current) {
             loadAttempted.current = true;
             loadSystemCredits();
         }
-    }, [hasApiKey, systemCredits, systemCreditsLoading, systemCreditsError, loadSystemCredits]);
+    }, [hasProviderRoute, systemCredits, systemCreditsLoading, systemCreditsError, loadSystemCredits]);
 
-    // Don't show if user has their own API key
-    if (hasApiKey) {
+    if (hasProviderRoute) {
         return null;
     }
 
@@ -139,4 +138,3 @@ export default function SystemCreditsCard({ currentProvider }) {
         </div>
     );
 }
-

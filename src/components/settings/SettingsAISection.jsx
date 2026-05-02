@@ -26,6 +26,7 @@ import {
     DEFAULT_OPENAI_BASE_URL,
     DEFAULT_VERTEX_EXPRESS_BASE_URL
 } from '../../services/llm/geminiRouting';
+import { hasUsableProviderRoute } from '../../services/llm/providerAccess';
 import {
     settingsDarkChip,
     settingsDarkField,
@@ -125,6 +126,7 @@ export default function SettingsAISection({
     const currentBaseUrl = String(currentProvider?.baseUrl || '');
     const resolvedGeminiBaseUrl = resolveGeminiBaseUrl(currentBaseUrl, currentProvider?.apiKey || '');
     const isGeminiProvider = currentProvider?.protocol === 'gemini';
+    const hasProviderRoute = hasUsableProviderRoute(currentProvider);
     const imageRoleNeedsProviderWarning = isGeminiProvider &&
         globalRoles?.image?.providerId === activeId &&
         (isVertexExpressBaseUrl(resolvedGeminiBaseUrl) || isOfficialGeminiBaseUrl(resolvedGeminiBaseUrl));
@@ -256,7 +258,7 @@ export default function SettingsAISection({
                         <div className="flex flex-wrap items-center gap-3 pt-2">
                             <button
                                 onClick={handleTestConnection}
-                                disabled={testStatus === 'testing' || !currentProvider.apiKey}
+                                disabled={testStatus === 'testing' || !hasProviderRoute}
                                 className="rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#332412] shadow-[0_12px_28px_rgba(226,174,92,0.25)] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {testStatus === 'testing' ? (t.settings.testing || '测试中...') : (t.settings.testConnection || '测试连接')}
