@@ -28,6 +28,12 @@ import {
     removeMessageFavoriteSnapshot,
     removeMessageFromCardData
 } from './messageDeletion';
+import {
+    applyInlineImageMigrationsToCardData,
+    getInlineImageMigrationSignature,
+    migrateInlineMessageImagesToIDB,
+    prepareImagesForMessageStorage
+} from '../../services/ai/messageContent';
 
 export default function ChatView({
     card,
@@ -75,6 +81,7 @@ export default function ChatView({
     const modalRef = useRef(null);
     const perfMountedCardIdRef = useRef('');
     const perfInteractiveCardIdRef = useRef('');
+    const inlineImageMigrationSignatureRef = useRef('');
 
     // Sprout Feature State
     const [isSprouting, setIsSprouting] = useState(false);
@@ -366,6 +373,40 @@ export default function ChatView({
         });
     }, [card.id, card.data.messages?.length, isStreaming]);
 
+    const inlineImageMigrationSignature = React.useMemo(
+        () => getInlineImageMigrationSignature(card.data.messages || []),
+        [card.data.messages]
+    );
+
+    useEffect(() => {
+        if (!onUpdate || inlineImageMigrationSignature === '0:0') {
+            return undefined;
+        }
+
+        const runSignature = `${card.id}:${inlineImageMigrationSignature}`;
+        if (inlineImageMigrationSignatureRef.current === runSignature) {
+            return undefined;
+        }
+        inlineImageMigrationSignatureRef.current = runSignature;
+
+        let cancelled = false;
+        migrateInlineMessageImagesToIDB({
+            cardId: card.id,
+            messages: card.data.messages || []
+        }).then((replacements) => {
+            if (cancelled || replacements.length === 0) return;
+            onUpdate(card.id, (currentData) => (
+                applyInlineImageMigrationsToCardData(currentData, replacements)
+            ));
+        }).catch((error) => {
+            console.warn('[ChatView] Failed to migrate inline message images', error);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [card.data.messages, card.id, inlineImageMigrationSignature, onUpdate]);
+
 
     // --- Handlers Wrapper ---
     const cloneImagesForSend = (imagesToClone = []) =>
@@ -456,7 +497,7 @@ export default function ChatView({
         return () => document.removeEventListener('selectionchange', handleSelectionChange);
     }, [handleTextSelection, selection]);
 
-    const onSendClick = (overrideText) => {
+    const onSendClick = async (overrideText) => {
         if (isReadOnly) return;
         const textToSend = typeof overrideText === 'string' ? overrideText : input;
         const hasText = Boolean(textToSend && textToSend.trim());
@@ -470,7 +511,16 @@ export default function ChatView({
         setInput('');
         clearImages();
 
-        sendMessage(currentText, currentImages);
+        let imagesForSend = currentImages;
+        if (currentImages.length > 0) {
+            imagesForSend = await prepareImagesForMessageStorage({
+                cardId: card.id,
+                messageId: `queued_${Date.now()}`,
+                images: currentImages
+            });
+        }
+
+        sendMessage(currentText, imagesForSend);
     };
 
     const addMarkTopic = (e) => {

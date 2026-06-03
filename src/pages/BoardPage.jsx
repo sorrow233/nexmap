@@ -80,7 +80,7 @@ export default function BoardPage({
         // Actions
         setIsSettingsOpen,
         setSaveStatus,
-        setGlobalImages,
+        clearGlobalImages,
         setClipboard,
         setQuickPrompt,
         setExpandedCardId,
@@ -344,7 +344,7 @@ export default function BoardPage({
                         onImageUpload={handleGlobalImageUpload}
                         globalImages={globalImages}
                         onRemoveImage={removeGlobalImage}
-                        onClearImages={() => setGlobalImages([])}
+                        onClearImages={clearGlobalImages}
                         isReadOnly={isReadOnly}
                     />
                 ) : (
@@ -359,7 +359,7 @@ export default function BoardPage({
                         onImageUpload={handleGlobalImageUpload}
                         globalImages={globalImages}
                         onRemoveImage={removeGlobalImage}
-                        onClearImages={() => setGlobalImages([])}
+                        onClearImages={clearGlobalImages}
                         onPromptDrop={handlePromptDropOnChat}
                         instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                         onClearInstructions={() => setTempInstructions([])}

@@ -16,6 +16,8 @@ import {
 } from '../services/customInstructionsService';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
 import { isDialogActive, isEventInsideDialog } from '../utils/dialogScope';
+import { createPersistedMessageContentWithImages } from '../services/ai/messageContent';
+import { uuid } from '../utils/uuid';
 import {
     createStreamRouteTraceId,
     findLatestAssistantMessage,
@@ -93,6 +95,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     // Local State
     const [saveStatus, setSaveStatus] = useState('idle');
     const [globalImages, setGlobalImages] = useState([]);
+    const globalImagesRef = useRef(globalImages);
     const [clipboard, setClipboard] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
@@ -104,6 +107,16 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage())
     );
     const autoRecommendLockRef = useRef(false);
+
+    useEffect(() => {
+        globalImagesRef.current = globalImages;
+    }, [globalImages]);
+
+    useEffect(() => () => {
+        globalImagesRef.current.forEach((image) => {
+            if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
+        });
+    }, []);
 
     const instructionCatalogBreakdown = useMemo(
         () => getInstructionCatalogBreakdown(customInstructionCatalog),
@@ -356,6 +369,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         });
     };
 
+    const clearGlobalImages = useCallback(() => {
+        setGlobalImages(prev => {
+            prev.forEach((image) => {
+                if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
+            });
+            return [];
+        });
+    }, []);
+
     const handleCanvasDoubleClick = (e) => {
         if (isReadOnly) return;
         setQuickPrompt({
@@ -390,25 +412,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
             setTempInstructions([]); // Clear after use
         }
 
-        let userContent;
-        if (images.length > 0) {
-            const imageParts = images.map(img => ({
-                type: 'image',
-                source: {
-                    type: 'base64',
-                    media_type: img.mimeType,
-                    data: img.base64
-                }
-            }));
-            userContent = [
-                { type: 'text', text: finalText },
-                ...imageParts
-            ];
-        } else {
-            userContent = finalText;
-        }
-        const userMsg = { role: 'user', content: userContent };
-        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const userMsgId = uuid();
+        const userContent = await createPersistedMessageContentWithImages({
+            text: finalText,
+            images,
+            cardId,
+            messageId: userMsgId
+        });
+        const userMsg = { id: userMsgId, role: 'user', content: userContent };
+        const assistantMsgId = uuid();
         const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
         const routeTraceId = createStreamRouteTraceId(cardId);
         const previousAssistantMessage = findLatestAssistantMessage(card.data.messages || []);
@@ -633,6 +645,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         handleBatchDelete,
         handleGlobalImageUpload,
         removeGlobalImage,
+        clearGlobalImages,
         createGroup,
         arrangeSelectionGrid,
 

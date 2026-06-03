@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     getAcceptedImageTypeLabel,
     isSupportedImageUploadFile,
@@ -16,6 +16,11 @@ export default function useImageUpload(options = {}) {
         maxFileSizeBytes = null // null = unlimited for local-only chat image flow
     } = options;
     const [images, setImages] = useState([]);
+    const imagesRef = useRef(images);
+
+    useEffect(() => {
+        imagesRef.current = images;
+    }, [images]);
 
     const processFiles = async (files) => {
         for (const file of Array.from(files)) {
@@ -91,6 +96,7 @@ export default function useImageUpload(options = {}) {
     };
 
     const clearImages = () => {
+        console.log('[useImageUpload] clearImages called, current count:', images.length);
         // Revoke URLs first using current state reference
         images.forEach(img => {
             if (img.previewUrl) {
@@ -104,7 +110,7 @@ export default function useImageUpload(options = {}) {
     // Cleanup URLs on unmount
     useEffect(() => {
         return () => {
-            images.forEach(img => {
+            imagesRef.current.forEach(img => {
                 if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
             });
         };

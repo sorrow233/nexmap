@@ -96,7 +96,7 @@ export const saveImageToIDB = async (imageId, base64Data) => {
     }
 };
 
-export const getImageFromIDB = async (imageId) => {
+export const getImageFromIDB = async (imageId, options = {}) => {
     if (!imageId) return null;
     try {
         const key = IMAGE_PREFIX + imageId;
@@ -104,14 +104,17 @@ export const getImageFromIDB = async (imageId) => {
         const normalized = normalizeRecord(storedValue);
         if (!normalized) return null;
 
-        // Touch for LRU; also migrate legacy string records.
-        const now = Date.now();
-        await idbSet(key, {
-            data: normalized.data,
-            sizeBytes: normalized.sizeBytes,
-            createdAt: normalized.createdAt || now,
-            updatedAt: now
-        });
+        // Avoid rewriting full base64 payloads on every thumbnail render.
+        // Legacy string records are still migrated once when encountered.
+        if (options.touch === true || normalized.legacy) {
+            const now = Date.now();
+            await idbSet(key, {
+                data: normalized.data,
+                sizeBytes: normalized.sizeBytes,
+                createdAt: normalized.createdAt || now,
+                updatedAt: now
+            });
+        }
 
         return normalized.data;
     } catch (e) {

@@ -4,6 +4,8 @@ import { useStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import ChatView from '../components/chat/ChatView';
 import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { createPersistedMessageContentWithImages } from '../services/ai/messageContent';
+import { uuid } from '../utils/uuid';
 import {
     createStreamRouteTraceId,
     findLatestAssistantMessage,
@@ -56,24 +58,17 @@ export default function NotePage({ onBack, isReadOnly = false }) {
             || useStore.getState().cards.find(c => c.id === cardId);
         if (!card) return;
 
-        let userContent;
-        if (images.length > 0) {
-            const imageParts = images.map(img => ({
-                type: 'image',
-                source: {
-                    type: 'base64',
-                    media_type: img.mimeType,
-                    data: img.base64
-                }
-            }));
-            userContent = [{ type: 'text', text }, ...imageParts];
-        } else {
-            userContent = text;
-        }
+        const userMsgId = uuid();
+        const userContent = await createPersistedMessageContentWithImages({
+            text,
+            images,
+            cardId,
+            messageId: userMsgId
+        });
 
-        const userMsg = { role: 'user', content: userContent };
+        const userMsg = { id: userMsgId, role: 'user', content: userContent };
         // FIX: Generate unique ID for assistant message to handle concurrency
-        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const assistantMsgId = uuid();
         const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
         const routeTraceId = createStreamRouteTraceId(cardId);
         const previousAssistantMessage = findLatestAssistantMessage(card.data.messages || []);

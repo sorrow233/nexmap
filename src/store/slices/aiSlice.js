@@ -18,8 +18,7 @@ import {
 } from './utils/streamRenderBuffer';
 import { createCardTimestampFields } from '../../services/cards/cardTimestamps';
 import {
-    createMessageContentWithImages,
-    persistCardMessageImagesToIDB
+    createPersistedMessageContentWithImages
 } from '../../services/ai/messageContent';
 import { cacheHydratedCardBody } from '../../services/cardBodyRuntimeCache';
 import { yieldToMainThread } from '../../utils/scheduling';
@@ -377,7 +376,13 @@ export const createAISlice = (set, get) => {
 
             // Original logic for creating new AI cards
             const userMessageId = uuid();
-            const content = createMessageContentWithImages(text, images, contextPrefix);
+            const content = await createPersistedMessageContentWithImages({
+                text,
+                images,
+                prefix: contextPrefix,
+                cardId: newId,
+                messageId: userMessageId
+            });
 
             const newCard = {
                 id: newId, x, y,
@@ -404,15 +409,6 @@ export const createAISlice = (set, get) => {
                 }),
                 boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
             }));
-
-            if (images.length > 0) {
-                void persistCardMessageImagesToIDB({
-                    cardId: newId,
-                    messageId: userMessageId,
-                    images,
-                    updateCardFull: get().updateCardFull
-                });
-            }
 
             // Removed: position-based auto-add to zone
             // Cards now only join zones via connections

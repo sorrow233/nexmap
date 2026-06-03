@@ -38,8 +38,12 @@ export function useCardGeneration() {
                 providerId: providerId
             });
 
-            // Construct content for AI
-            const messageContent = createMessageContentWithImages(text, images, contextPrefix);
+            // Reuse the persisted message body so large images stay out of Zustand state.
+            const createdCard = useStore.getState().getCardById?.(newId)
+                || useStore.getState().cards.find(c => c.id === newId);
+            const createdUserMessage = createdCard?.data?.messages?.find(message => message?.role === 'user');
+            const messageContent = createdUserMessage?.content
+                || createMessageContentWithImages(text, images, contextPrefix);
 
             // Queue the streaming task
             try {
