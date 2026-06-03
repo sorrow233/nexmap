@@ -2,9 +2,11 @@ import { useStore } from '../store/useStore';
 import { uuid } from '../utils/uuid';
 import { createPerformanceMonitor } from '../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
-import { saveImageToIDB } from '../services/storage';
 import { debugLog } from '../utils/debugLogger';
-import { createMessageContentWithImages } from '../services/ai/messageContent';
+import {
+    createMessageContentWithImages,
+    prepareImagesForMessageStorage
+} from '../services/ai/messageContent';
 import { yieldToMainThread } from '../utils/scheduling';
 
 export function useCardGeneration() {
@@ -140,14 +142,11 @@ export function useCardGeneration() {
         if (safeText) userContentParts.push({ type: 'text', text: safeText });
 
         if (images.length > 0) {
-            const processedImages = await Promise.all(images.map(async (img, idx) => {
-                const imageId = `batch_img_${uuid()}_${idx}`;
-                await saveImageToIDB(imageId, img.base64);
-                return {
-                    type: 'image',
-                    source: { type: 'idb', id: imageId, media_type: img.mimeType }
-                };
-            }));
+            const processedImages = await prepareImagesForMessageStorage({
+                cardId: 'batch',
+                messageId: uuid(),
+                images
+            });
             userContentParts = [...userContentParts, ...processedImages];
         }
 

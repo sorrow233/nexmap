@@ -113,6 +113,7 @@ const ERROR_MARKERS = Object.freeze([
 
 const MAX_CHAT_CONTEXT_ASSISTANT_MESSAGES = 12;
 const MAX_CHAT_CONTEXT_ASSISTANT_TOTAL_CHARS = 24_000;
+const PRIOR_CONTEXT_IMAGE_PLACEHOLDER = '[Earlier image omitted from context]';
 
 const getMessageContextText = (message = {}) => (
     extractMessageContentText(message?.content).trim()
@@ -129,6 +130,71 @@ const isContextErrorAssistantMessage = (message = {}) => {
     }
 
     return ERROR_MARKERS.some((marker) => content.includes(marker));
+};
+
+const isImageContentPart = (part = {}) => (
+    part?.type === 'image' || part?.type === 'image_url'
+);
+
+const summarizeOmittedImageParts = (count) => ({
+    type: 'text',
+    text: count > 1
+        ? `\n\n${PRIOR_CONTEXT_IMAGE_PLACEHOLDER} x${count}`
+        : `\n\n${PRIOR_CONTEXT_IMAGE_PLACEHOLDER}`
+});
+
+const removeImagePartsFromPriorContext = (message = {}) => {
+    if (!Array.isArray(message?.content)) {
+        return message;
+    }
+
+    let omittedImageCount = 0;
+    const nextContent = [];
+
+    message.content.forEach((part) => {
+        if (isImageContentPart(part)) {
+            omittedImageCount += 1;
+            return;
+        }
+        nextContent.push(part);
+    });
+
+    if (omittedImageCount === 0) {
+        return message;
+    }
+
+    nextContent.push(summarizeOmittedImageParts(omittedImageCount));
+    return {
+        ...message,
+        content: nextContent
+    };
+};
+
+const keepOnlyLatestUserMessageImages = (messages = []) => {
+    const safeMessages = Array.isArray(messages) ? messages : [];
+    let latestUserImageMessageIndex = -1;
+
+    for (let index = safeMessages.length - 1; index >= 0; index -= 1) {
+        const message = safeMessages[index];
+        if (
+            message?.role === 'user' &&
+            Array.isArray(message.content) &&
+            message.content.some(isImageContentPart)
+        ) {
+            latestUserImageMessageIndex = index;
+            break;
+        }
+    }
+
+    if (latestUserImageMessageIndex === -1) {
+        return safeMessages.map(removeImagePartsFromPriorContext);
+    }
+
+    return safeMessages.map((message, index) => (
+        index === latestUserImageMessageIndex
+            ? message
+            : removeImagePartsFromPriorContext(message)
+    ));
 };
 
 const trimConversationMessagesForContext = (messages = []) => {
@@ -159,7 +225,7 @@ const trimConversationMessagesForContext = (messages = []) => {
     ), 0);
 
     if (assistantChars <= MAX_CHAT_CONTEXT_ASSISTANT_TOTAL_CHARS) {
-        return assistantLimitedMessages;
+        return keepOnlyLatestUserMessageImages(assistantLimitedMessages);
     }
 
     const droppedAssistantIndexes = new Set();
@@ -173,9 +239,9 @@ const trimConversationMessagesForContext = (messages = []) => {
         assistantChars -= getMessageContextText(assistantLimitedMessages[assistantIndex]).length;
     }
 
-    return assistantLimitedMessages.filter((message, index) => (
+    return keepOnlyLatestUserMessageImages(assistantLimitedMessages.filter((message, index) => (
         message?.role !== 'assistant' || !droppedAssistantIndexes.has(index)
-    ));
+    )));
 };
 
 
