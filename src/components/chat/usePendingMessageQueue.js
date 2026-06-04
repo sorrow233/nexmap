@@ -32,15 +32,20 @@ export function usePendingMessageQueue({
 
     const pendingCount = pendingMessages.length;
 
-    const waitForCardIdle = useCallback(async (runId) => {
-        while (queueRunIdRef.current === runId && isCardBusy(cardId)) {
+    const activeCardIdRef = useRef(cardId);
+
+    const waitForDispatchTurn = useCallback(async (runId) => {
+        while (
+            queueRunIdRef.current === runId &&
+            (directDispatchActiveRef.current || isCardBusy(cardId))
+        ) {
             await delay(120);
         }
     }, [cardId]);
 
     const runQueueWorker = useCallback(async (runId) => {
         while (queueRunIdRef.current === runId) {
-            await waitForCardIdle(runId);
+            await waitForDispatchTurn(runId);
             if (queueRunIdRef.current !== runId) break;
 
             const nextMsg = popPendingMessage(cardId);
@@ -59,7 +64,7 @@ export function usePendingMessageQueue({
                 break;
             }
         }
-    }, [cardId, onBeforeDispatch, onDispatch, popPendingMessage, prependPendingMessage, waitForCardIdle]);
+    }, [cardId, onBeforeDispatch, onDispatch, popPendingMessage, prependPendingMessage, waitForDispatchTurn]);
 
     const startQueueWorker = useCallback(() => {
         if (isReadOnly || queueWorkerActiveRef.current) return;
@@ -108,13 +113,19 @@ export function usePendingMessageQueue({
             source: 'direct',
             message: { text, images }
         });
-        Promise.resolve(onDispatch(text, images)).finally(() => {
-            directDispatchActiveRef.current = false;
-            if (isMountedRef.current) {
-                setIsDispatching(false);
-            }
-        });
-    }, [enqueueMessage, isCardGenerating, isReadOnly, onBeforeDispatch, onDispatch, pendingCount]);
+        Promise.resolve()
+            .then(() => onDispatch(text, images))
+            .catch((error) => {
+                console.error('[PendingMessageQueue] Failed to dispatch direct message:', error);
+                prependPendingMessage(cardId, text, images);
+            })
+            .finally(() => {
+                directDispatchActiveRef.current = false;
+                if (isMountedRef.current) {
+                    setIsDispatching(false);
+                }
+            });
+    }, [cardId, enqueueMessage, isCardGenerating, isReadOnly, onBeforeDispatch, onDispatch, pendingCount, prependPendingMessage]);
 
     const resetQueue = useCallback(() => {
         queueRunIdRef.current += 1;
@@ -126,19 +137,21 @@ export function usePendingMessageQueue({
     }, [cardId, clearPendingMessages]);
 
     useEffect(() => {
-        if (isReadOnly) return;
-        if (pendingCount > 0) {
-            startQueueWorker();
-        }
-    }, [isReadOnly, pendingCount, startQueueWorker]);
-
-    useEffect(() => {
+        if (activeCardIdRef.current === cardId) return;
+        activeCardIdRef.current = cardId;
         queueRunIdRef.current += 1;
         queueWorkerActiveRef.current = false;
         directDispatchActiveRef.current = false;
         setIsDispatching(false);
         setIsQueueRunning(false);
     }, [cardId]);
+
+    useEffect(() => {
+        if (isReadOnly) return;
+        if (pendingCount > 0) {
+            startQueueWorker();
+        }
+    }, [isReadOnly, pendingCount, startQueueWorker]);
 
     useEffect(() => {
         isMountedRef.current = true;

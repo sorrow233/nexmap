@@ -51,12 +51,16 @@ export default function NotePage({ onBack, isReadOnly = false }) {
     // Wrapper to bridge ChatModal's signature with handleChatGenerate (Copied from BoardPage/ChatModal logic)
     // Ideally this should be a hook 'useChatController'
     const handleChatModalGenerate = async (cardId, text, images = []) => {
-        if (isReadOnly) return; // Block in Read-Only mode
+        if (isReadOnly) {
+            throw new Error('Cannot send message while the note is read-only.');
+        }
 
         // FIX: Gets fresh state to avoid stale closures in message queue
         const card = useStore.getState().getCardById?.(cardId)
             || useStore.getState().cards.find(c => c.id === cardId);
-        if (!card) return;
+        if (!card) {
+            throw new Error(`Cannot send message because card ${cardId} was not found.`);
+        }
 
         const userMsgId = uuid();
         const userContent = await createPersistedMessageContentWithImages({
@@ -78,13 +82,13 @@ export default function NotePage({ onBack, isReadOnly = false }) {
             assistantMessageId: assistantMsgId,
             source: 'note_chat_modal'
         });
-        logStreamRouteDebug(routeTraceId, 'placeholder_prepare', () => ({
+        logStreamRouteDebug(routeTraceId, 'placeholder_prepare', {
             cardId,
             source: 'note_chat_modal',
             previousAssistantMessageId: previousAssistantMessage?.id || null,
             newAssistantMessageId: assistantMsgId,
             ...summarizeMessagesForRouteDebug(card.data.messages || [])
-        }));
+        });
 
         updateCardFull(cardId, (currentData) => ({
             ...currentData,
@@ -93,14 +97,14 @@ export default function NotePage({ onBack, isReadOnly = false }) {
 
         const cardAfterPlaceholderWrite = useStore.getState().getCardById?.(cardId)
             || useStore.getState().cards.find(c => c.id === cardId);
-        logStreamRouteDebug(routeTraceId, 'placeholder_written', () => ({
+        logStreamRouteDebug(routeTraceId, 'placeholder_written', {
             cardId,
             source: 'note_chat_modal',
             assistantExistsAfterWrite: Boolean(
                 cardAfterPlaceholderWrite?.data?.messages?.some((message) => message.id === assistantMsgId)
             ),
             ...summarizeMessagesForRouteDebug(cardAfterPlaceholderWrite?.data?.messages || [])
-        }));
+        });
 
         const history = [...(card.data.messages || []), userMsg];
 
@@ -110,12 +114,12 @@ export default function NotePage({ onBack, isReadOnly = false }) {
                 updateCardContent(cardId, chunk, assistantMsgId);
             }, { assistantMessageId: assistantMsgId, routeTraceId });
         } catch (error) {
-            logStreamRouteDebug(routeTraceId, 'ui_layer_error', () => ({
+            logStreamRouteDebug(routeTraceId, 'ui_layer_error', {
                 cardId,
                 source: 'note_chat_modal',
                 assistantMessageId: assistantMsgId,
                 errorMessage: error?.message || 'Unknown error in UI layer'
-            }));
+            });
             updateCardContent(cardId, `\n\n[System Error: ${error.message}]`, assistantMsgId);
         }
     };

@@ -96,13 +96,9 @@ export default function ChatView({
     // Quick Sprout Hook (for one-click topic decomposition)
     const { handleContinueTopic, handleBranch } = useAISprouting();
 
-    const dispatchMessage = React.useCallback(async (text, imagesToSend = []) => {
-        try {
-            await onGenerateResponse(card.id, text, imagesToSend);
-        } catch (error) {
-            console.error('Failed to dispatch message:', error);
-        }
-    }, [card.id, onGenerateResponse]);
+    const dispatchMessage = React.useCallback((text, imagesToSend = []) => (
+        onGenerateResponse(card.id, text, imagesToSend)
+    ), [card.id, onGenerateResponse]);
 
     const scrollToBottom = React.useCallback((force = false) => {
         if (hasActiveSelection || (!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
@@ -507,19 +503,22 @@ export default function ChatView({
         const currentText = textToSend || '';
         const currentImages = cloneImagesForSend(images);
 
-        // Clear UI immediately for instant feedback
-        setInput('');
-        clearImages();
-
         let imagesForSend = currentImages;
-        if (currentImages.length > 0) {
-            imagesForSend = await prepareImagesForMessageStorage({
-                cardId: card.id,
-                messageId: `queued_${Date.now()}`,
-                images: currentImages
-            });
+        try {
+            if (currentImages.length > 0) {
+                imagesForSend = await prepareImagesForMessageStorage({
+                    cardId: card.id,
+                    messageId: `queued_${Date.now()}`,
+                    images: currentImages
+                });
+            }
+        } catch (error) {
+            console.error('[ChatView] Failed to prepare message images:', error);
+            return;
         }
 
+        setInput('');
+        clearImages();
         sendMessage(currentText, imagesForSend);
     };
 
@@ -679,7 +678,7 @@ export default function ChatView({
                         onUpdate={onUpdate}
                         onShare={handleShareOpen}
                         onToggleFavorite={onToggleFavorite}
-                        onDeleteMessage={isReadOnly || isStreaming ? null : handleDeleteMessage}
+                        onDeleteMessage={isReadOnly ? null : handleDeleteMessage}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
                         onContinueTopic={isReadOnly ? null : handleContinueTopicForMessageList}
