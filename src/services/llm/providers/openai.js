@@ -8,7 +8,7 @@ import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { settleStreamReader } from '../streamTailGrace.js';
 import { resolveAllImages } from '../utils';
 import { normalizeOpenAIImagePayloads } from './openai/imagePayload';
-import { parseOpenAIStreamLine } from './openai/streamProtocol.js';
+import { createThinkingTagFilter, parseOpenAIStreamLine } from './openai/streamProtocol.js';
 import {
     KIMI_WEB_SEARCH_MAX_TOOL_ROUNDS,
     appendKimiWebSearchToolMessages,
@@ -336,7 +336,7 @@ export class OpenAIProvider extends LLMProvider {
             throw new Error('没有可发送的有效消息');
         }
 
-        if (this._shouldUseKimiNativeWebSearch(modelToUse, options)) {
+        if (options?.useSearch === true && this._shouldUseKimiNativeWebSearch(modelToUse, options)) {
             const content = await this._chatWithKimiNativeWebSearch({
                 keyPool,
                 endpoint,
@@ -399,32 +399,10 @@ export class OpenAIProvider extends LLMProvider {
                 const { ModelFactory } = await import('../factory');
                 const isThinkingModel = ModelFactory.isThinkingModel(modelToUse);
 
-                let thinkingBuffer = '';
-                let foundThinkEnd = !isThinkingModel; // 非 thinking 模型直接标记为已找到
-
-                const processContent = (content) => {
-                    if (!content) return;
-
-                    if (foundThinkEnd) {
-                        // 非 thinking 模型或已过滤完思考：直通输出
-                        onToken(content);
-                        return;
-                    }
-
-                    // Thinking 模型：缓冲等待 </think>
-                    thinkingBuffer += content;
-
-                    const thinkEndIndex = thinkingBuffer.indexOf('</think>');
-                    if (thinkEndIndex !== -1) {
-                        foundThinkEnd = true;
-                        // 只输出 </think> 之后的内容
-                        const afterThink = thinkingBuffer.substring(thinkEndIndex + 8);
-                        if (afterThink.trim()) {
-                            onToken(afterThink);
-                        }
-                        thinkingBuffer = '';
-                    }
-                };
+                const contentFilter = createThinkingTagFilter({
+                    enabled: isThinkingModel,
+                    onToken
+                });
 
                 try {
                     while (true) {
@@ -439,7 +417,7 @@ export class OpenAIProvider extends LLMProvider {
                             try {
                                 const parsed = parseOpenAIStreamLine(line);
                                 if (parsed.delta) {
-                                    processContent(parsed.delta);
+                                    contentFilter.push(parsed.delta);
                                 }
                                 if (parsed.isTerminal) {
                                     sawTerminal = true;
@@ -461,7 +439,7 @@ export class OpenAIProvider extends LLMProvider {
                         try {
                             const parsed = parseOpenAIStreamLine(buffer);
                             if (parsed.delta) {
-                                processContent(parsed.delta);
+                                contentFilter.push(parsed.delta);
                             }
                             sawTerminal = parsed.isTerminal;
                         } catch (e) {
@@ -475,10 +453,7 @@ export class OpenAIProvider extends LLMProvider {
                         await settleStreamReader(reader);
                     }
 
-                    // 如果流结束时还有未输出的缓冲内容（非 thinking 模型），输出它
-                    if (!foundThinkEnd && thinkingBuffer) {
-                        onToken(thinkingBuffer);
-                    }
+                    contentFilter.flush();
 
                     return;
                 } finally {
