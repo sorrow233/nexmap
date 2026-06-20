@@ -62,11 +62,12 @@ export class SystemCreditsProvider extends LLMProvider {
 
         // Pass standard messages to backend
         const formattedMessages = this.formatMessages(resolvedMessages);
+        const maxTokens = resolveChatMaxOutputTokens(options);
 
         const requestBody = {
             messages: formattedMessages,
             temperature: options.temperature !== undefined ? options.temperature : 1.0,
-            max_tokens: resolveChatMaxOutputTokens(options)
+            ...(maxTokens !== null && { max_tokens: maxTokens })
         };
 
         const response = await chatWithSystemCredits(requestBody);
@@ -84,11 +85,12 @@ export class SystemCreditsProvider extends LLMProvider {
     async stream(messages, onToken, model, options = {}) {
         const resolvedMessages = await resolveAllImages(messages);
         const formattedMessages = this.formatMessages(resolvedMessages);
+        const maxTokens = resolveChatMaxOutputTokens(options);
 
         const requestBody = {
             messages: formattedMessages,
             temperature: options.temperature !== undefined ? options.temperature : 1.0,
-            max_tokens: resolveChatMaxOutputTokens(options)
+            ...(maxTokens !== null && { max_tokens: maxTokens })
         };
 
         await streamWithSystemCredits(requestBody, onToken, options);

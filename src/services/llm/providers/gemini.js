@@ -538,6 +538,17 @@ export class GeminiProvider extends LLMProvider {
         return getKeyPool(this.config.id || 'default', keysString);
     }
 
+    _buildGenerationConfig(options = {}) {
+        const generationConfig = {
+            temperature: options.temperature !== undefined ? options.temperature : 1.0
+        };
+        const maxOutputTokens = resolveChatMaxOutputTokens(options);
+        if (maxOutputTokens !== null) {
+            generationConfig.maxOutputTokens = maxOutputTokens;
+        }
+        return generationConfig;
+    }
+
     async _acquireRequestConcurrencySlot({ baseUrl, cleanModel, stream = false, options = {} } = {}) {
         if (options.disableGeminiConcurrencyGate === true) {
             return null;
@@ -722,10 +733,7 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0,
-                maxOutputTokens: resolveChatMaxOutputTokens(options)
-            }
+            generationConfig: this._buildGenerationConfig(options)
         };
 
         if (options.tools) {
@@ -969,10 +977,7 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0,
-                maxOutputTokens: resolveChatMaxOutputTokens(options)
-            }
+            generationConfig: this._buildGenerationConfig(options)
         };
 
         if (options.tools) {

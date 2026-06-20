@@ -1,6 +1,4 @@
-export const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 32768;
-
-export const resolveChatMaxOutputTokens = (options = {}, fallback = DEFAULT_CHAT_MAX_OUTPUT_TOKENS) => {
+export const resolveChatMaxOutputTokens = (options = {}) => {
     const candidates = [
         options?.maxOutputTokens,
         options?.max_output_tokens,
@@ -15,5 +13,5 @@ export const resolveChatMaxOutputTokens = (options = {}, fallback = DEFAULT_CHAT
         }
     }
 
-    return fallback;
+    return null;
 };

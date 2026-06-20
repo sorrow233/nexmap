@@ -143,11 +143,12 @@ export class OpenAIProvider extends LLMProvider {
     }
 
     _buildChatRequestBody({ modelToUse, messages, options = {}, stream = false, kimiNativeWebSearch = false }) {
+        const maxTokens = resolveChatMaxOutputTokens(options);
         const requestBody = {
             model: modelToUse,
             messages,
-            max_tokens: resolveChatMaxOutputTokens(options),
             ...(options.temperature !== undefined && { temperature: options.temperature }),
+            ...(maxTokens !== null && { max_tokens: maxTokens }),
             ...(stream && { stream: true })
         };
 

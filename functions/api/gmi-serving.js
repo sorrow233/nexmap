@@ -7,9 +7,9 @@ const THINKING_LEVEL_ALLOWLIST = new Set(['THINKING_LEVEL_UNSPECIFIED', 'LOW', '
 // multiplies a single user request into N upstream calls and exhausts the key pool.
 const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 500, 502, 503, 504, 524]);
 const STREAM_MAX_ATTEMPTS = 1;
-const STREAM_TIMEOUT_MS = 22000;
+const STREAM_TIMEOUT_MS = null;
 const NON_STREAM_MAX_ATTEMPTS = 2;
-const NON_STREAM_TIMEOUT_MS = 45000;
+const NON_STREAM_TIMEOUT_MS = null;
 const RETRYABLE_ERROR_PATTERNS = [
     'temporarily unavailable',
     'service unavailable',
@@ -158,15 +158,18 @@ async function fetchUpstreamWithRetry(url, requestInit, { stream = false } = {})
 
     while (attempt < maxAttempts) {
         attempt += 1;
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort('upstream_timeout'), timeoutMs);
+        const hasTimeout = Number.isFinite(Number(timeoutMs)) && Number(timeoutMs) > 0;
+        const controller = hasTimeout ? new AbortController() : null;
+        const timer = hasTimeout
+            ? setTimeout(() => controller.abort('upstream_timeout'), timeoutMs)
+            : null;
 
         try {
             const response = await fetch(url, {
                 ...requestInit,
-                signal: controller.signal
+                ...(controller && { signal: controller.signal })
             });
-            clearTimeout(timer);
+            if (timer) clearTimeout(timer);
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => '');
@@ -185,8 +188,8 @@ async function fetchUpstreamWithRetry(url, requestInit, { stream = false } = {})
 
             return { response, errorText: '' };
         } catch (error) {
-            clearTimeout(timer);
-            const isTimeoutAbort = controller.signal.aborted && error?.name === 'AbortError';
+            if (timer) clearTimeout(timer);
+            const isTimeoutAbort = controller?.signal?.aborted && error?.name === 'AbortError';
             lastError = isTimeoutAbort
                 ? new Error(`Upstream timeout after ${timeoutMs}ms`)
                 : error;
