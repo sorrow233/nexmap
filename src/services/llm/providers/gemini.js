@@ -29,6 +29,7 @@ const KEY_ACQUIRE_POLL_MAX_MS = 5000;
 const MAX_CHAT_ATTEMPTS = 2;
 const MAX_STREAM_ATTEMPTS = 2;
 const OFFICIAL_GEMINI_31_STREAM_ATTEMPTS = 4;
+const GEMINI_31_PRO_MAX_OUTPUT_TOKENS = 65536;
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -538,11 +539,14 @@ export class GeminiProvider extends LLMProvider {
         return getKeyPool(this.config.id || 'default', keysString);
     }
 
-    _buildGenerationConfig(options = {}) {
+    _buildGenerationConfig(options = {}, modelName = '') {
         const generationConfig = {
             temperature: options.temperature !== undefined ? options.temperature : 1.0
         };
-        const maxOutputTokens = resolveChatMaxOutputTokens(options);
+        const explicitMaxOutputTokens = resolveChatMaxOutputTokens(options);
+        const maxOutputTokens = explicitMaxOutputTokens ?? (
+            this._isGemini31ProPreviewModel(modelName) ? GEMINI_31_PRO_MAX_OUTPUT_TOKENS : null
+        );
         if (maxOutputTokens !== null) {
             generationConfig.maxOutputTokens = maxOutputTokens;
         }
@@ -733,7 +737,7 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            generationConfig: this._buildGenerationConfig(options)
+            generationConfig: this._buildGenerationConfig(options, cleanModel)
         };
 
         if (options.tools) {
@@ -977,7 +981,7 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            generationConfig: this._buildGenerationConfig(options)
+            generationConfig: this._buildGenerationConfig(options, cleanModel)
         };
 
         if (options.tools) {
