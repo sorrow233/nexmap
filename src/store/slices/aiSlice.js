@@ -651,7 +651,11 @@ export const createAISlice = (set, get) => {
                     const lowerErrorMsg = errorMsg.toLowerCase();
                     let userMessage;
 
-                    if (
+                    if (e?.code === 'PARTIAL_STREAM_REPLAY_BLOCKED') {
+                        userMessage = lang.startsWith('zh')
+                            ? `\n\n**⚠️ Gemini 流式输出中断**\n\n模型已经输出了一部分正文，后续连接中断。为了避免把同一段回答从头追加一遍，系统已停止自动重试；请直接点重试重新生成。`
+                            : `\n\n**⚠️ Gemini stream interrupted**\n\nThe model had already produced partial text before the connection failed. Automatic replay was stopped to avoid duplicating the same answer; please retry to regenerate.`;
+                    } else if (
                         lowerErrorMsg.includes('high demand') ||
                         (lowerErrorMsg.includes('503') && lowerErrorMsg.includes('unavailable'))
                     ) {

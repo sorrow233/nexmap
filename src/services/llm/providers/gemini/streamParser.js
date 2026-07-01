@@ -1,6 +1,7 @@
 import { isRetryableError } from './errorUtils.js';
 import { extractCandidateText } from './partUtils.js';
 import { settleStreamReader } from '../../streamTailGrace.js';
+import { createPartialStreamReplayBlockedError } from './streamReplayGuard.js';
 
 const previewText = (text = '', limit = 220) => {
     const normalized = String(text || '').replace(/\s+/g, ' ').trim();
@@ -39,6 +40,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let buffer = '';
     let usedSearch = false;
     let hasVisibleText = false;
+    let visibleCharCount = 0;
     let sawTerminal = false;
     let chunkCount = 0;
     let envelopeCount = 0;
@@ -61,6 +63,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
         lastVisibleText = visibleText;
         if (delta) {
             hasVisibleText = true;
+            visibleCharCount += delta.length;
             onLog('stream visible delta emitted', {
                 deltaLength: delta.length,
                 visibleLength: visibleText.length,
@@ -242,6 +245,14 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
             fallbackTextLength: lastFallbackText.length
         });
         return { usedSearch };
+    } catch (error) {
+        if (hasVisibleText) {
+            throw createPartialStreamReplayBlockedError(error, {
+                visibleCharCount,
+                phase: 'stream-parser'
+            });
+        }
+        throw error;
     } finally {
         // Reader release is handled by caller or automatic cleanup if properly structured, 
         // but here we just process. The caller should manage the reader lifecycle or we do it here?
