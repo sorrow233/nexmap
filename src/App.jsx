@@ -10,7 +10,6 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider, useToast } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
-import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
 import { useBackgroundBoardAutoGeneration } from './hooks/useBackgroundBoardAutoGeneration';
@@ -1142,8 +1141,6 @@ function AppContent() {
                 message="Are you sure you want to sign out? This will clear local data on this device for security."
                 type="confirm"
             />
-
-            <IPadInstallPrompt />
         </>
     );
 }

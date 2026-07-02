@@ -13,7 +13,6 @@ const matchesIOSUserAgent = /iPad|iPhone|iPod/.test(userAgent);
 export const isSafari = /Safari/i.test(userAgent) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|Android/i.test(userAgent);
 export const isIOS = (matchesIOSUserAgent || isIPadDesktopMode) && !(browserWindow && browserWindow.MSStream);
 export const isIPhone = /iPhone|iPod/.test(userAgent);
-export const isIPad = /iPad/.test(userAgent) || isIPadDesktopMode;
 export const isMobile = isIOS || /Android/i.test(userAgent);
 export const isTouch = Boolean(browserWindow && 'ontouchstart' in browserWindow) || maxTouchPoints > 0;
 export const prefersReducedMotion = Boolean(
@@ -33,18 +32,6 @@ export function shouldUseIPhoneSafariCompactLayout() {
 
 export function shouldUseIOSCompactBoard() {
     return shouldUseIPhoneSafariCompactLayout();
-}
-
-export function isStandaloneDisplayMode() {
-    const isStandaloneMedia = browserWindow && typeof browserWindow.matchMedia === 'function'
-        ? browserWindow.matchMedia('(display-mode: standalone)').matches
-        : false;
-
-    return isStandaloneMedia || browserWindow?.navigator?.standalone === true;
-}
-
-export function shouldShowIPadInstallPrompt() {
-    return isIPad && isSafari && !isStandaloneDisplayMode();
 }
 
 // iOS Safari 100vh fix - sets CSS custom property for true viewport height
