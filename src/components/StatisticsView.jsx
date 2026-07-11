@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon, LayoutGrid, StickyNote } from 'lucide-react';
+import { BarChart3, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon, LayoutGrid, StickyNote, Copy, Check, Loader2 } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -7,12 +7,18 @@ import ActivityChart from './stats/ActivityChart';
 import { useStore } from '../store/useStore';
 import AchievementModal from '../components/AchievementModal';
 import { getPlanetTexture, usePlanetTiers } from '../utils/planetDefinitions';
+import {
+    buildCardActivityExportText,
+    copyTextToClipboard,
+    loadCardActivityEntries
+} from '../services/stats/cardActivityExport';
 
 
 export default function StatisticsView({ boardsList, user }) {
     const { t } = useLanguage();
 
     const [showAchievements, setShowAchievements] = useState(false);
+    const [copyActivityState, setCopyActivityState] = useState('idle');
 
     // Use store for system credits if available (Local First strategy)
     const storedCredits = useStore(state => state.systemCredits);
@@ -108,6 +114,29 @@ export default function StatisticsView({ boardsList, user }) {
     // Format utility
     const fmt = (n) => n?.toLocaleString() || '0';
 
+    const copyActivityLabels = {
+        idle: t.stats?.copyActivity || '复制活动记录',
+        loading: t.stats?.copyingActivity || '正在整理...',
+        copied: t.stats?.activityCopied || '已复制',
+        error: t.stats?.activityCopyFailed || '复制失败'
+    };
+
+    const handleCopyCardActivity = async () => {
+        if (copyActivityState === 'loading') return;
+        setCopyActivityState('loading');
+
+        try {
+            const entries = await loadCardActivityEntries(boardsList);
+            await copyTextToClipboard(buildCardActivityExportText(entries));
+            setCopyActivityState('copied');
+        } catch (error) {
+            console.error('[Statistics] Failed to copy card activity', error);
+            setCopyActivityState('error');
+        }
+
+        window.setTimeout(() => setCopyActivityState('idle'), 2200);
+    };
+
     // Get chart data based on mode
     const getChartData = () => {
         switch (chartViewMode) {
@@ -170,7 +199,7 @@ export default function StatisticsView({ boardsList, user }) {
             <div className="relative z-10 p-6 sm:p-10 max-w-7xl mx-auto flex flex-col gap-12">
 
                 {/* Header - Clean & Minimal */}
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-5">
                     <div>
                         <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
                             Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {user?.displayName || 'Creator'}
@@ -179,14 +208,16 @@ export default function StatisticsView({ boardsList, user }) {
                             Here's your creative brain activity today.
                         </p>
                     </div>
-                    <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] dark:shadow-[4px_4px_12px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
-                            <Database size={20} className="group-hover:scale-110 transition-transform" />
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] dark:shadow-[4px_4px_12px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
-                            <Layers size={20} className="group-hover:scale-110 transition-transform" />
-                        </div>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCopyCardActivity}
+                        disabled={copyActivityState === 'loading'}
+                        className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2.5 rounded-2xl bg-slate-900 px-5 text-sm font-bold text-white shadow-lg shadow-slate-900/10 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-indigo-500/20 active:translate-y-0 disabled:cursor-wait disabled:opacity-70 dark:bg-white dark:text-slate-900 dark:hover:bg-indigo-300"
+                        title={t.stats?.copyActivityHint || '复制所有卡片的创建时间和标题，不包含正文'}
+                    >
+                        {copyActivityState === 'loading' ? <Loader2 size={18} className="animate-spin" /> : copyActivityState === 'copied' ? <Check size={18} /> : <Copy size={18} />}
+                        <span>{copyActivityLabels[copyActivityState]}</span>
+                    </button>
                 </div>
 
                 {/* Main "Neural Core" Section */}

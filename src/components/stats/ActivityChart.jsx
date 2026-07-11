@@ -134,7 +134,7 @@ export default function ActivityChart({
                             
                             // Keep a small headroom for value labels while letting bars use most of the chart area
                             const MAX_BAR_HEIGHT = CHART_HEIGHT * 0.93;
-                            const height = item.chars > 0 ? Math.max((item.chars / maxChars) * MAX_BAR_HEIGHT, 16) : 16; 
+                            const height = item.chars > 0 ? Math.max((item.chars / maxChars) * MAX_BAR_HEIGHT, 16) : 0;
                             const y = CHART_HEIGHT - height;
 
                             const isToday = item.isToday;
@@ -160,19 +160,21 @@ export default function ActivityChart({
                                     />
 
                                     {/* The Bar */}
-                                    <rect
-                                        x={x + (CHART_WIDTH / chartData.length - width) / 2}
-                                        y={y}
-                                        width={width}
-                                        height={height}
-                                        rx={barRadius}
-                                        ry={barRadius}
-                                        fill={isToday ? "url(#barGradientToday)" : "url(#barGradient)"}
-                                        fillOpacity={isHovered ? 0.98 : 0.9}
-                                        filter={isToday ? "url(#clayShadowToday)" : "url(#clayShadow)"}
-                                        className={`transition-all duration-500 ease-out ${isHovered ? 'scale-y-[1.05]' : ''}`}
-                                        style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
-                                    />
+                                    {height > 0 && (
+                                        <rect
+                                            x={x + (CHART_WIDTH / chartData.length - width) / 2}
+                                            y={y}
+                                            width={width}
+                                            height={height}
+                                            rx={barRadius}
+                                            ry={barRadius}
+                                            fill={isToday ? "url(#barGradientToday)" : "url(#barGradient)"}
+                                            fillOpacity={isHovered ? 0.98 : 0.9}
+                                            filter={isToday ? "url(#clayShadowToday)" : "url(#clayShadow)"}
+                                            className={`transition-all duration-500 ease-out ${isHovered ? 'scale-y-[1.05]' : ''}`}
+                                            style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
+                                        />
+                                    )}
 
                                     {/* Value Label (Always Visible) */}
                                     <text

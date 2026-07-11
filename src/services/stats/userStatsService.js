@@ -10,6 +10,7 @@ import {
     readActivityLog
 } from './activityLogStorage';
 import { parseStoredJson, persistStorageValue } from './statsStorage';
+import { buildMonthActivityData, buildYearActivityData } from './activityHistory';
 
 const STORAGE_KEYS = {
     TOTAL_CHARS: 'nexmap_stats_total_chars',
@@ -322,23 +323,7 @@ class UserStatsService {
      * @returns {Array} Daily data for the month
      */
     getDataForMonth(year, month) {
-        const history = this._getHistory();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const result = [];
-
-        for (let d = 1; d <= daysInMonth; d++) {
-            const date = new Date(year, month, d);
-            const dateStr = date.toISOString().split('T')[0];
-            const dayOfWeek = date.getDay();
-
-            result.push({
-                date: dateStr,
-                chars: history[dateStr] || 0,
-                dayOfWeek,
-                day: d
-            });
-        }
-        return result;
+        return buildMonthActivityData(this._getHistory(), year, month);
     }
 
     /**
@@ -347,25 +332,7 @@ class UserStatsService {
      * @returns {Array} Monthly data for the year
      */
     getDataForYear(year) {
-        const history = this._getHistory();
-        const months = [];
-
-        for (let m = 0; m < 12; m++) {
-            let totalChars = 0;
-            // Iterate all days in this month to sum up
-            const daysInMonth = new Date(year, m + 1, 0).getDate();
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = new Date(year, m, d).toISOString().split('T')[0];
-                totalChars += (history[dateStr] || 0);
-            }
-
-            months.push({
-                monthIndex: m, // 0-11
-                chars: totalChars,
-                year
-            });
-        }
-        return months;
+        return buildYearActivityData(this._getHistory(), year);
     }
 
     /**
