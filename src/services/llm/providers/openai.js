@@ -4,7 +4,7 @@ import {
     getConfiguredProviderApiKeys,
     providerRequiresApiKey
 } from '../providerAccess';
-import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
+import { resolveModelMaxOutputTokens } from '../outputTokenLimit';
 import { settleStreamReader } from '../streamTailGrace.js';
 import { resolveAllImages } from '../utils';
 import { normalizeOpenAIImagePayloads } from './openai/imagePayload';
@@ -144,7 +144,7 @@ export class OpenAIProvider extends LLMProvider {
     }
 
     _buildChatRequestBody({ modelToUse, messages, options = {}, stream = false, kimiNativeWebSearch = false }) {
-        const maxTokens = resolveChatMaxOutputTokens(options);
+        const maxTokens = resolveModelMaxOutputTokens(modelToUse, options);
         const requestBody = {
             model: modelToUse,
             messages,
@@ -492,13 +492,6 @@ export class OpenAIProvider extends LLMProvider {
                     if (requireConfirmedCompleteStream && !sawTerminal) {
                         const error = new Error('Claude 流式连接在收到完成标记前中断');
                         error.code = 'CLAUDE_STREAM_INCOMPLETE';
-                        throw error;
-                    }
-
-                    if (requireConfirmedCompleteStream && finishReason === 'length') {
-                        const error = new Error('Claude 输出达到长度上限，回答未完整结束');
-                        error.code = 'CLAUDE_STREAM_LENGTH_LIMIT';
-                        error.statusCode = 400;
                         throw error;
                     }
 

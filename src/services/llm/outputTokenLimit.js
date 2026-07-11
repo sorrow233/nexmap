@@ -15,3 +15,14 @@ export const resolveChatMaxOutputTokens = (options = {}) => {
 
     return null;
 };
+
+export const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 32768;
+
+export const resolveModelMaxOutputTokens = (model = '', options = {}) => {
+    const configuredLimit = resolveChatMaxOutputTokens(options);
+    if (configuredLimit !== null) return configuredLimit;
+
+    return String(model).toLowerCase().includes('claude')
+        ? DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS
+        : null;
+};
