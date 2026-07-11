@@ -18,6 +18,7 @@ import {
 } from './openai/kimiSearch.js';
 
 const hasMeaningfulText = (text) => String(text ?? '').trim().length > 0;
+const isClaudeModel = (model = '') => String(model).toLowerCase().includes('claude');
 const isPermanentOpenAIStatus = (statusCode) => {
     const code = Number(statusCode);
     return Number.isFinite(code) && code >= 400 && code < 500 && ![401, 403, 408, 409, 429].includes(code);
@@ -353,6 +354,7 @@ export class OpenAIProvider extends LLMProvider {
 
         let retries = 2; // 允许重试（使用不同 Key）
         let delay = 1000;
+        const requireConfirmedCompleteStream = isClaudeModel(modelToUse);
 
         while (retries >= 0) {
             const apiKey = this._getNextApiKey(keyPool);
@@ -393,6 +395,8 @@ export class OpenAIProvider extends LLMProvider {
                 const decoder = new TextDecoder("utf-8");
                 let buffer = '';
                 let sawTerminal = false;
+                let finishReason = '';
+                const pendingClaudeChunks = [];
 
                 // 思考过程过滤 - 基于模型名预判
                 // Thinking 模型 (Kimi-K2.5, DeepSeek-R1) 会输出 <think>...</think>
@@ -402,13 +406,16 @@ export class OpenAIProvider extends LLMProvider {
 
                 let thinkingBuffer = '';
                 let foundThinkEnd = !isThinkingModel; // 非 thinking 模型直接标记为已找到
+                const emitContent = requireConfirmedCompleteStream
+                    ? (chunk) => pendingClaudeChunks.push(chunk)
+                    : onToken;
 
                 const processContent = (content) => {
                     if (!content) return;
 
                     if (foundThinkEnd) {
                         // 非 thinking 模型或已过滤完思考：直通输出
-                        onToken(content);
+                        emitContent(content);
                         return;
                     }
 
@@ -421,12 +428,11 @@ export class OpenAIProvider extends LLMProvider {
                         // 只输出 </think> 之后的内容
                         const afterThink = thinkingBuffer.substring(thinkEndIndex + 8);
                         if (afterThink.trim()) {
-                            onToken(afterThink);
+                            emitContent(afterThink);
                         }
                         thinkingBuffer = '';
                     }
                 };
-
                 try {
                     while (true) {
                         const { done, value } = await reader.read();
@@ -444,6 +450,7 @@ export class OpenAIProvider extends LLMProvider {
                                 }
                                 if (parsed.isTerminal) {
                                     sawTerminal = true;
+                                    finishReason = parsed.finishReason || finishReason;
                                     break;
                                 }
                             } catch (e) {
@@ -465,6 +472,7 @@ export class OpenAIProvider extends LLMProvider {
                                 processContent(parsed.delta);
                             }
                             sawTerminal = parsed.isTerminal;
+                            finishReason = parsed.finishReason || finishReason;
                         } catch (e) {
                             if (!(e instanceof SyntaxError)) {
                                 throw e;
@@ -478,7 +486,24 @@ export class OpenAIProvider extends LLMProvider {
 
                     // 如果流结束时还有未输出的缓冲内容（非 thinking 模型），输出它
                     if (!foundThinkEnd && thinkingBuffer) {
-                        onToken(thinkingBuffer);
+                        emitContent(thinkingBuffer);
+                    }
+
+                    if (requireConfirmedCompleteStream && !sawTerminal) {
+                        const error = new Error('Claude 流式连接在收到完成标记前中断');
+                        error.code = 'CLAUDE_STREAM_INCOMPLETE';
+                        throw error;
+                    }
+
+                    if (requireConfirmedCompleteStream && finishReason === 'length') {
+                        const error = new Error('Claude 输出达到长度上限，回答未完整结束');
+                        error.code = 'CLAUDE_STREAM_LENGTH_LIMIT';
+                        error.statusCode = 400;
+                        throw error;
+                    }
+
+                    if (requireConfirmedCompleteStream && pendingClaudeChunks.length > 0) {
+                        onToken(pendingClaudeChunks.join(''));
                     }
 
                     return;

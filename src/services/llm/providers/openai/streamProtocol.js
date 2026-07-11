@@ -40,6 +40,7 @@ export function parseOpenAIStreamLine(line = '') {
     return {
         isSse: true,
         isTerminal: TERMINAL_FINISH_REASONS.has(finishReason),
+        finishReason,
         delta: typeof choice.delta?.content === 'string' ? choice.delta.content : ''
     };
 }

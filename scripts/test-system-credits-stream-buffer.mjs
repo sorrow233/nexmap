@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { drainOpenAIStreamBuffer } from '../src/services/systemCredits/openAIStreamBuffer.js';
+import { parseOpenAIStreamLine } from '../src/services/llm/providers/openai/streamProtocol.js';
 
 const collectDeltas = (buffer, options = {}) => {
     const chunks = [];
@@ -42,5 +43,13 @@ const withDone = collectDeltas(
 assert.deepEqual(withDone.chunks, ['完整回答']);
 assert.equal(withDone.emittedText, '完整回答');
 assert.equal(withDone.sawTerminal, true);
+
+const claudeStop = parseOpenAIStreamLine('data: {"choices":[{"delta":{},"finish_reason":"stop"}]}');
+assert.equal(claudeStop.isTerminal, true);
+assert.equal(claudeStop.finishReason, 'stop');
+
+const claudeLength = parseOpenAIStreamLine('data: {"choices":[{"delta":{},"finish_reason":"length"}]}');
+assert.equal(claudeLength.isTerminal, true);
+assert.equal(claudeLength.finishReason, 'length');
 
 console.log('[test-system-credits-stream-buffer] PASS');
