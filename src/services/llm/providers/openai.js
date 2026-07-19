@@ -10,6 +10,10 @@ import { resolveAllImages } from '../utils';
 import { normalizeOpenAIImagePayloads } from './openai/imagePayload';
 import { parseOpenAIStreamLine } from './openai/streamProtocol.js';
 import {
+    buildOpenAIReplayBlockedError,
+    createOpenAIStreamReplayGuard
+} from './openai/streamReplayPolicy.js';
+import {
     KIMI_WEB_SEARCH_MAX_TOOL_ROUNDS,
     appendKimiWebSearchToolMessages,
     getKimiNativeWebSearchBodyFields,
@@ -355,6 +359,7 @@ export class OpenAIProvider extends LLMProvider {
         let retries = 2; // 允许重试（使用不同 Key）
         let delay = 1000;
         const requireConfirmedCompleteStream = isClaudeModel(modelToUse);
+        const replayGuard = createOpenAIStreamReplayGuard(onToken);
 
         while (retries >= 0) {
             const apiKey = this._getNextApiKey(keyPool);
@@ -408,7 +413,7 @@ export class OpenAIProvider extends LLMProvider {
                 let foundThinkEnd = !isThinkingModel; // 非 thinking 模型直接标记为已找到
                 const emitContent = requireConfirmedCompleteStream
                     ? (chunk) => pendingClaudeChunks.push(chunk)
-                    : onToken;
+                    : replayGuard.onToken;
 
                 const processContent = (content) => {
                     if (!content) return;
@@ -496,7 +501,7 @@ export class OpenAIProvider extends LLMProvider {
                     }
 
                     if (requireConfirmedCompleteStream && pendingClaudeChunks.length > 0) {
-                        onToken(pendingClaudeChunks.join(''));
+                        replayGuard.onToken(pendingClaudeChunks.join(''));
                     }
 
                     return;
@@ -505,6 +510,11 @@ export class OpenAIProvider extends LLMProvider {
                 }
 
             } catch (e) {
+                const replayBlockedError = buildOpenAIReplayBlockedError(replayGuard, e);
+                if (replayBlockedError) {
+                    throw replayBlockedError;
+                }
+
                 if (retries > 0 && !e.message.includes('没有可用') && !isPermanentOpenAIStatus(e?.statusCode)) {
                     console.warn(`[OpenAI] Stream error: ${e.message}, retrying...`);
                     retries--;
