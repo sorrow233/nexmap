@@ -13,9 +13,14 @@ const isKimiModel = (model = '') => {
     return lower.includes('kimi') || lower.includes('moonshotai/');
 };
 
-const isKimiSearchBaseUrl = (baseUrl = '') => {
+const isGmiServingBaseUrl = (baseUrl = '') => {
     const lower = String(baseUrl || '').toLowerCase();
-    return lower.includes('api.gmi-serving.com') || lower.includes('api.moonshot.ai');
+    return lower.includes('api.gmi-serving.com');
+};
+
+const isMoonshotNativeSearchBaseUrl = (baseUrl = '') => {
+    const lower = String(baseUrl || '').toLowerCase();
+    return lower.includes('api.moonshot.ai');
 };
 
 export function shouldEnableKimiNativeWebSearch({ config = {}, model = '', options = {} } = {}) {
@@ -24,8 +29,14 @@ export function shouldEnableKimiNativeWebSearch({ config = {}, model = '', optio
     if (options?.useSearch === false) return false;
     if (!isKimiModel(model)) return false;
 
+    // GMI's Kimi K3 endpoint supports standard OpenAI-compatible function tools,
+    // but it does not advertise Moonshot's `$web_search` builtin. K3 also uses
+    // always-on thinking, so the native-search payload's `thinking: disabled`
+    // field makes GMI reject the entire request with HTTP 400.
+    if (isGmiServingBaseUrl(config?.baseUrl)) return false;
+
     if (options?.useSearch === true) return true;
-    return isKimiSearchBaseUrl(config?.baseUrl);
+    return isMoonshotNativeSearchBaseUrl(config?.baseUrl);
 }
 
 export function getKimiNativeWebSearchBodyFields() {
