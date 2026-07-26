@@ -34,15 +34,15 @@ import {
     settingsDarkSurfaceStrong
 } from './themeClasses';
 
-const fieldClassName = `w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-medium text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkField}`;
-const monoFieldClassName = `w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkField}`;
-const subtleActionClassName = `inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white dark:hover:bg-[#1d2835] ${settingsDarkChip}`;
-const dangerActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15';
+const fieldClassName = `settings-jp-field ${settingsDarkField}`;
+const monoFieldClassName = `settings-jp-field is-mono ${settingsDarkField}`;
+const subtleActionClassName = `settings-jp-inline-action ${settingsDarkChip}`;
+const dangerActionClassName = 'settings-jp-inline-action is-danger';
 
 function SectionLabel({ icon: Icon, children }) {
     return (
-        <label className="flex items-center gap-2 text-[11px] font-medium text-[#8d7a67] dark:text-slate-300/70">
-            <Icon size={14} />
+        <label className="settings-jp-field-label">
+            <Icon size={14} strokeWidth={1.7} />
             {children}
         </label>
     );
@@ -61,10 +61,10 @@ function RoleRow({
     const currentProvider = providers?.[roleValue?.providerId];
 
     return (
-        <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.9)] p-5 shadow-[0_18px_46px_rgba(95,74,49,0.06)] dark:border-slate-800/80 dark:bg-[#141c26]/90">
-            <div className="mb-4 flex items-center gap-3 text-sm font-semibold text-[#2f241a] dark:text-white">
-                <span className={`rounded-[16px] p-2 ${accent}`}>
-                    <Icon size={16} />
+        <div className="settings-jp-role-row">
+            <div className="settings-jp-role-title">
+                <span className={accent}>
+                    <Icon size={15} strokeWidth={1.7} />
                 </span>
                 {label}
             </div>
@@ -153,33 +153,30 @@ export default function SettingsAISection({
     }
 
     return (
-        <section className="rounded-[32px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.94),rgba(246,240,234,0.92))] p-6 shadow-[0_24px_60px_rgba(95,74,50,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <section className="settings-jp-ai">
+            <div className="settings-jp-ai-head">
                 <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100">
-                        <Cpu size={13} />
-                        AI 设置
+                    <div className="settings-jp-ai-kicker">
+                        <Cpu size={13} strokeWidth={1.7} />
+                        CURRENT ROUTING
                     </div>
-                    <h3 className="mt-4 text-[28px] font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
-                        把模型、Key 和角色合并到一个地方
-                    </h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
-                        默认只展示真正常用的内容：对话模型、图片模型、当前连接。
-                        只有你确实要折腾多提供商或自定义 Base URL 时，才展开高级选项。
-                    </p>
+                    <h3>模型与连接</h3>
+                    <p>先设置日常使用的模型；多提供商与自定义地址在高级区域中管理。</p>
                 </div>
 
                 <button
+                    type="button"
                     onClick={() => setShowAdvanced(prev => !prev)}
-                    className={`${subtleActionClassName} self-start`}
+                    className={subtleActionClassName}
+                    aria-expanded={showAdvanced}
                 >
                     {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     {showAdvanced ? '收起高级 AI 设置' : '展开高级 AI 设置'}
                 </button>
             </div>
 
-            <div className="mt-6 grid gap-4 xl:grid-cols-[1.15fr,1fr]">
-                <div className="space-y-4">
+            <div className="settings-jp-ai-grid">
+                <div className="settings-jp-role-list">
                     <RoleRow
                         icon={MessageSquare}
                         label={t.settings.roles?.chatTitle || '对话模型'}
@@ -200,7 +197,7 @@ export default function SettingsAISection({
                     />
                 </div>
 
-                <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.86)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#141c26]/90">
+                <div className="settings-jp-surface settings-jp-connection">
                     <SectionLabel icon={Server}>当前连接</SectionLabel>
 
                     {providerList.length > 1 && (
@@ -225,14 +222,14 @@ export default function SettingsAISection({
                                 {t.settings.apiKey || 'API 密钥'}
                             </label>
                             <div className="relative">
-                                <div className="pointer-events-none absolute left-4 top-4 text-[#b7a895] dark:text-slate-500">
-                                    <Key size={16} />
+                                <div className="settings-jp-field-icon">
+                                    <Key size={16} strokeWidth={1.7} />
                                 </div>
                                 <textarea
                                     value={currentProvider.apiKey || ''}
                                     onChange={(e) => handleUpdateProvider('apiKey', e.target.value)}
                                     rows={3}
-                                    className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
+                                    className={`settings-jp-field is-mono has-icon ${settingsDarkFieldSoft}`}
                                     placeholder={currentProvider.protocol === 'gemini'
                                         ? (t.settings.geminiKeyPlaceholder || 'AQ... 或 AIza...')
                                         : (t.settings.openaiKeyPlaceholder || 'sk-...')}
@@ -244,7 +241,7 @@ export default function SettingsAISection({
                         </div>
 
                         {routeHint && (
-                            <div className={`rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] ${settingsDarkSurfaceStrong} dark:text-slate-200`}>
+                            <div className={`settings-jp-route-hint ${settingsDarkSurfaceStrong}`}>
                                 {routeHint}
                             </div>
                         )}
@@ -259,7 +256,7 @@ export default function SettingsAISection({
                             <button
                                 onClick={handleTestConnection}
                                 disabled={testStatus === 'testing' || !hasProviderRoute}
-                                className="rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#332412] shadow-[0_12px_28px_rgba(226,174,92,0.25)] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="settings-jp-test-button"
                             >
                                 {testStatus === 'testing' ? (t.settings.testing || '测试中...') : (t.settings.testConnection || '测试连接')}
                             </button>
@@ -283,7 +280,7 @@ export default function SettingsAISection({
             </div>
 
             {showAdvanced && (
-                <div className="mt-6 rounded-[28px] border border-[#eee2d6] bg-[rgba(251,247,241,0.9)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#141c26]/90">
+                <div className="settings-jp-ai-advanced">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <SectionLabel icon={Globe}>高级 AI 设置</SectionLabel>
                         <div className="flex items-center gap-2">
@@ -311,10 +308,7 @@ export default function SettingsAISection({
                                 return (
                                     <div
                                         key={provider.id}
-                                        className={`flex items-center gap-2 rounded-[22px] border px-3 py-3 transition-all ${isActive
-                                            ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#1b2430] dark:text-white dark:shadow-[0_14px_32px_rgba(2,6,23,0.42)]'
-                                            : 'border-[#eee4d8] bg-[rgba(255,252,247,0.86)] text-[#665746] hover:bg-white dark:border-slate-800/80 dark:bg-[#141c26] dark:text-slate-200 dark:hover:border-slate-700/80 dark:hover:bg-[#1a2330]'
-                                            }`}
+                                        className={`settings-jp-provider-item${isActive ? ' is-active' : ''}`}
                                     >
                                         <button
                                             onClick={() => setActiveId(provider.id)}
@@ -407,7 +401,7 @@ export default function SettingsAISection({
                                     value={currentProvider.customModels || ''}
                                     onChange={(e) => handleUpdateProvider('customModels', e.target.value)}
                                     rows={3}
-                                    className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
+                                    className={`settings-jp-field is-mono ${settingsDarkFieldSoft}`}
                                 />
                             </div>
                         </div>

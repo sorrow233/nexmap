@@ -14,26 +14,31 @@ import SettingsInstructionsTab from './SettingsInstructionsTab';
 import SettingsStorageTab from './SettingsStorageTab';
 import SettingsLinkageTab from './SettingsLinkageTab';
 
-function AdvancedPanel({ title, description, icon: Icon, tone, open, onToggle, children }) {
+function AdvancedPanel({ title, description, icon: Icon, index, open, onToggle, children }) {
     return (
-        <div className="rounded-[30px] border border-[#eee3d7] bg-[rgba(255,252,247,0.84)] shadow-[0_18px_44px_rgba(95,74,50,0.06)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#141c26]/90">
+        <div className={`settings-jp-accordion${open ? ' is-open' : ''}`}>
             <button
+                type="button"
                 onClick={onToggle}
-                className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                className="settings-jp-accordion-trigger"
+                aria-expanded={open}
             >
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className={`rounded-[16px] p-2.5 ${tone}`}>
-                        <Icon size={18} />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="text-base font-semibold text-[#2f241a] dark:text-white">{title}</div>
-                        <div className="mt-1 text-sm leading-6 text-[#7b6a58] dark:text-slate-300/80">{description}</div>
-                    </div>
+                <span className="settings-jp-accordion-index">{index}</span>
+                <div className="settings-jp-accordion-icon">
+                    <Icon size={17} strokeWidth={1.7} />
                 </div>
-                {open ? <ChevronUp size={18} className="text-[#b0a08e] dark:text-slate-300/70" /> : <ChevronDown size={18} className="text-[#b0a08e] dark:text-slate-300/70" />}
+                <div className="settings-jp-accordion-copy">
+                    <strong>{title}</strong>
+                    <span>{description}</span>
+                </div>
+                <div className="settings-jp-accordion-toggle" aria-hidden="true">
+                    {open
+                        ? <ChevronUp size={17} strokeWidth={1.7} />
+                        : <ChevronDown size={17} strokeWidth={1.7} />}
+                </div>
             </button>
             {open && (
-                <div className="border-t border-[#eee3d7] px-6 py-6 dark:border-white/10">
+                <div className="settings-jp-accordion-body">
                     {children}
                 </div>
             )}
@@ -68,39 +73,28 @@ export default function SettingsAdvancedSection({
     };
 
     return (
-        <section className="space-y-5">
-            <div className="rounded-[32px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.94),rgba(246,240,234,0.92))] p-6 shadow-[0_24px_60px_rgba(95,74,50,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100">
-                            <Settings2 size={13} />
-                            高级设置
-                        </div>
-                        <h3 className="mt-4 text-[28px] font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
-                            复杂能力都留在这里，但默认不打扰用户
-                        </h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
-                            包含恢复、导入导出、复杂指令库和本地绑定等能力。只有需要时再展开。
-                        </p>
+        <section className="settings-jp-section">
+            <div className="settings-jp-advanced-intro">
+                <div className="settings-jp-section-title">
+                    <div className="settings-jp-section-icon">
+                        <Settings2 size={17} strokeWidth={1.7} />
                     </div>
-
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            onClick={handleReset}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
-                        >
-                            <RefreshCw size={14} />
-                            重置默认配置
-                        </button>
+                    <div>
+                        <h3>按需展开</h3>
+                        <p>导入导出、指令库和本地绑定仍完整保留。</p>
                     </div>
                 </div>
+                <button type="button" onClick={handleReset} className="settings-jp-reset-link">
+                    <RefreshCw size={14} strokeWidth={1.7} />
+                    重置默认配置
+                </button>
             </div>
 
             <AdvancedPanel
+                index="01"
                 title="额度与兑换"
                 description="查看更详细的额度信息、兑换码与购买入口。"
                 icon={Gift}
-                tone="bg-[#faedd7] text-[#af7c36] dark:bg-amber-400/15 dark:text-amber-200"
                 open={activePanel === 'credits'}
                 onToggle={() => togglePanel('credits')}
             >
@@ -108,10 +102,10 @@ export default function SettingsAdvancedSection({
             </AdvancedPanel>
 
             <AdvancedPanel
+                index="02"
                 title="高级指令库"
                 description="多条规则、画布可选规则、AI 推荐等仍然保留在这里。"
                 icon={FileText}
-                tone="bg-[#ebe4f7] text-[#776496] dark:bg-violet-400/15 dark:text-violet-200"
                 open={activePanel === 'instructions'}
                 onToggle={() => togglePanel('instructions')}
             >
@@ -122,10 +116,10 @@ export default function SettingsAdvancedSection({
             </AdvancedPanel>
 
             <AdvancedPanel
+                index="03"
                 title="存储与恢复"
                 description="S3、自定义备份、恢复、导入导出等能力。"
                 icon={Database}
-                tone="bg-[#e5eee8] text-[#5f7666] dark:bg-emerald-400/15 dark:text-emerald-200"
                 open={activePanel === 'storage'}
                 onToggle={() => togglePanel('storage')}
             >
@@ -136,10 +130,10 @@ export default function SettingsAdvancedSection({
             </AdvancedPanel>
 
             <AdvancedPanel
+                index="04"
                 title="跨应用联动"
                 description="管理 FlowStudio 与 Light 的 UID 本地绑定。"
                 icon={Link2}
-                tone="bg-[#e7eef4] text-[#6a7f90] dark:bg-cyan-400/15 dark:text-cyan-200"
                 open={activePanel === 'linkage'}
                 onToggle={() => togglePanel('linkage')}
             >
