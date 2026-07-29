@@ -5,7 +5,6 @@ import {
     Cpu,
     Loader2,
     Save,
-    Settings2,
     SlidersHorizontal,
     Sparkles,
     X
@@ -36,19 +35,19 @@ const TABS = [
 
 const TAB_META = {
     basic: {
-        eyebrow: 'GENERAL',
+        number: '01',
         title: '基础体验',
-        subtitle: '调整最常用的偏好，让工作方式更贴近你。'
+        subtitle: '语言、额度和默认回复规则'
     },
     ai: {
-        eyebrow: 'INTELLIGENCE',
+        number: '02',
         title: 'AI 设置',
-        subtitle: '管理模型、连接和角色分工，配置方式保持不变。'
+        subtitle: '模型角色、连接与提供商'
     },
     advanced: {
-        eyebrow: 'ADVANCED',
+        number: '03',
         title: '高级设置',
-        subtitle: '低频能力安静收纳，需要时再展开。'
+        subtitle: '额度、指令、存储与跨应用联动'
     }
 };
 
@@ -151,11 +150,12 @@ export default function SettingsShell({
                 <aside className="settings-jp-sidebar">
                     <div className="settings-jp-brand">
                         <div className="settings-jp-brand-mark" aria-hidden="true">
-                            <Settings2 size={20} strokeWidth={1.6} />
+                            設
                         </div>
                         <div>
                             <span>NEXMAP</span>
-                            <strong>{title}</strong>
+                            <strong>環境設定</strong>
+                            <small>{title}</small>
                         </div>
                     </div>
 
@@ -171,6 +171,11 @@ export default function SettingsShell({
                         ))}
                     </nav>
 
+                    <div className="settings-jp-sidebar-art" aria-hidden="true">
+                        <span>整える</span>
+                        <i />
+                    </div>
+
                     <div className="settings-jp-sidebar-note">
                         <span aria-hidden="true" />
                         <div>
@@ -183,8 +188,8 @@ export default function SettingsShell({
                 <main className="settings-jp-main">
                     <header className="settings-jp-header">
                         <div className="settings-jp-mobile-brand">
-                            <Settings2 size={17} strokeWidth={1.7} />
-                            <span>{title}</span>
+                            <span className="settings-jp-mobile-seal">設</span>
+                            <strong>NEXMAP · {title}</strong>
                         </div>
 
                         <div className="settings-jp-mobile-nav">
@@ -201,10 +206,13 @@ export default function SettingsShell({
                         </div>
 
                         <div className="settings-jp-header-row">
-                            <div>
-                                <p className="settings-jp-kicker">{activeMeta.eyebrow}</p>
-                                <h2>{activeMeta.title}</h2>
-                                <p className="settings-jp-subtitle">{activeMeta.subtitle}</p>
+                            <div className="settings-jp-heading">
+                                <span className="settings-jp-section-number">{activeMeta.number}</span>
+                                <div>
+                                    <p className="settings-jp-breadcrumb">NEXMAP / SETTINGS</p>
+                                    <h2>{activeMeta.title}</h2>
+                                    <p className="settings-jp-subtitle">{activeMeta.subtitle}</p>
+                                </div>
                             </div>
 
                             <div className="settings-jp-header-actions">

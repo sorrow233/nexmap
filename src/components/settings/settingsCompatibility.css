@@ -1,0 +1,46 @@
+/*
+ * Advanced settings still contain several feature-dense editors. This scoped
+ * compatibility layer gives those existing controls one visual grammar without
+ * changing their event handlers, data flow, or storage behavior.
+ */
+.settings-jp-content input:not([type="checkbox"]):not([type="radio"]),
+.settings-jp-content select,
+.settings-jp-content textarea {
+    border-radius: 0 !important;
+    box-shadow: none;
+}
+
+.settings-jp-content input:not([type="checkbox"]):not([type="radio"]):focus,
+.settings-jp-content select:focus,
+.settings-jp-content textarea:focus {
+    border-color: var(--settings-accent) !important;
+    box-shadow: 3px 3px 0 var(--settings-accent-soft) !important;
+}
+
+.settings-jp-accordion-body [class*="rounded-"]:not([class*="rounded-full"]),
+.settings-jp-ai-advanced [class*="rounded-"]:not([class*="rounded-full"]) {
+    border-radius: 2px !important;
+}
+
+.settings-jp-accordion-body [class*="shadow-"],
+.settings-jp-ai-advanced [class*="shadow-"] {
+    box-shadow: none !important;
+}
+
+.settings-jp-accordion-body > div {
+    animation-duration: 180ms;
+}
+
+.dark .settings-jp-content input:not([type="checkbox"]):not([type="radio"]),
+.dark .settings-jp-content select,
+.dark .settings-jp-content textarea {
+    background-color: var(--settings-paper-soft);
+    border-color: var(--settings-line);
+    color: var(--settings-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-jp-accordion-body {
+        animation: none;
+    }
+}
