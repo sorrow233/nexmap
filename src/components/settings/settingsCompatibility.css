@@ -6,7 +6,7 @@
 .settings-jp-content input:not([type="checkbox"]):not([type="radio"]),
 .settings-jp-content select,
 .settings-jp-content textarea {
-    border-radius: 0 !important;
+    border-radius: 13px !important;
     box-shadow: none;
 }
 
@@ -14,12 +14,12 @@
 .settings-jp-content select:focus,
 .settings-jp-content textarea:focus {
     border-color: var(--settings-accent) !important;
-    box-shadow: 3px 3px 0 var(--settings-accent-soft) !important;
+    box-shadow: 0 0 0 4px rgba(79, 138, 120, 0.1) !important;
 }
 
 .settings-jp-accordion-body [class*="rounded-"]:not([class*="rounded-full"]),
 .settings-jp-ai-advanced [class*="rounded-"]:not([class*="rounded-full"]) {
-    border-radius: 2px !important;
+    border-radius: 14px !important;
 }
 
 .settings-jp-accordion-body [class*="shadow-"],

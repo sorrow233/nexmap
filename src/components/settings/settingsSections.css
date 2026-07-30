@@ -5,10 +5,21 @@
 }
 
 .settings-jp-surface {
-    background: rgba(255, 254, 249, 0.72);
-    border: 1px solid var(--settings-line);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.78) inset;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(231, 237, 233, 0.9);
+    border-radius: 24px;
+    box-shadow:
+        0 18px 42px rgba(42, 65, 56, 0.055),
+        0 1px 2px rgba(42, 65, 56, 0.025);
     padding: 22px;
+    transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.settings-jp-surface:hover {
+    box-shadow:
+        0 22px 48px rgba(42, 65, 56, 0.075),
+        0 1px 2px rgba(42, 65, 56, 0.03);
+    transform: translateY(-2px);
 }
 
 .settings-jp-section-title {
@@ -19,103 +30,138 @@
 
 .settings-jp-section-icon {
     align-items: center;
-    border: 1px solid var(--settings-line-dark);
-    color: var(--settings-accent);
+    background: var(--settings-accent-soft);
+    border-radius: 12px;
+    color: var(--settings-accent-strong);
     display: flex;
-    height: 34px;
+    height: 36px;
     justify-content: center;
-    transform: rotate(-2deg);
-    width: 34px;
+    transition: transform 180ms ease;
+    width: 36px;
+}
+
+.settings-jp-surface:hover .settings-jp-section-icon {
+    transform: rotate(-4deg) scale(1.04);
 }
 
 .settings-jp-section-title h3 {
     color: var(--settings-ink);
-    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
     font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    font-weight: 680;
+    letter-spacing: -0.01em;
     margin: 0;
 }
 
 .settings-jp-section-title p {
     color: var(--settings-muted);
     font-size: 11px;
-    line-height: 1.65;
+    line-height: 1.55;
     margin: 3px 0 0;
 }
 
 .settings-jp-basic-grid {
     display: grid;
     gap: 18px;
-    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    grid-template-columns: minmax(0, 0.76fr) minmax(0, 1.24fr);
 }
 
 .settings-jp-language-list {
-    border-top: 1px solid var(--settings-line);
-    margin-top: 20px;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 19px;
 }
 
 .settings-jp-language-option {
     align-items: center;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid var(--settings-line);
+    background: var(--settings-surface-soft);
+    border: 1px solid transparent;
+    border-radius: 14px;
     color: var(--settings-muted);
     cursor: pointer;
     display: flex;
     justify-content: space-between;
-    min-height: 49px;
-    padding: 8px 4px;
+    min-height: 64px;
+    outline: none;
+    padding: 10px 11px;
     text-align: left;
-    transition: color 160ms ease, padding-left 160ms ease;
-    width: 100%;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
 }
 
 .settings-jp-language-option:hover {
+    background: #fff;
+    border-color: var(--settings-line);
     color: var(--settings-ink);
-    padding-left: 8px;
+    transform: translateY(-2px);
 }
 
 .settings-jp-language-option.is-active {
-    color: var(--settings-accent);
+    background: var(--settings-accent-soft);
+    border-color: rgba(79, 138, 120, 0.2);
+    color: var(--settings-accent-strong);
+}
+
+.settings-jp-language-option:focus {
+    outline: none;
+}
+
+.settings-jp-language-option:focus-visible {
+    box-shadow: 0 0 0 3px rgba(79, 138, 120, 0.2);
 }
 
 .settings-jp-language-option span {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .settings-jp-language-option strong {
     color: currentColor;
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 670;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .settings-jp-language-option small {
     color: var(--settings-faint);
-    font-size: 10px;
-    margin-top: 2px;
+    font-size: 9px;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .settings-jp-instruction-field {
-    background: var(--settings-paper-soft);
-    border: 1px solid var(--settings-line);
+    background: var(--settings-surface-soft);
+    border: 1px solid transparent;
+    border-radius: 16px;
     color: var(--settings-ink);
     font-family: inherit;
     font-size: 12px;
-    line-height: 1.85;
-    margin-top: 20px;
-    min-height: 164px;
+    line-height: 1.8;
+    margin-top: 19px;
+    min-height: 156px;
     outline: none;
     padding: 14px 15px;
     resize: vertical;
-    transition: border-color 160ms ease, box-shadow 160ms ease;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
     width: 100%;
 }
 
+.settings-jp-instruction-field:hover {
+    background: #fff;
+    border-color: var(--settings-line);
+}
+
 .settings-jp-instruction-field:focus {
+    background: #fff;
     border-color: var(--settings-accent);
-    box-shadow: 3px 3px 0 var(--settings-accent-soft);
+    box-shadow: 0 0 0 4px rgba(79, 138, 120, 0.1);
 }
 
 .settings-jp-instruction-field::placeholder {
@@ -124,13 +170,12 @@
 
 .settings-jp-instruction-meta {
     align-items: center;
-    border-top: 1px solid var(--settings-line);
     color: var(--settings-muted);
     display: flex;
     font-size: 10px;
     justify-content: space-between;
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: 13px;
+    padding: 0 2px;
 }
 
 .settings-jp-instruction-meta > div {
@@ -148,71 +193,111 @@
     align-items: center;
     background: transparent;
     border: 0;
-    color: var(--settings-accent);
+    border-radius: 9px;
+    color: var(--settings-accent-strong);
     cursor: pointer;
     display: inline-flex;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 680;
     gap: 6px;
-    padding: 6px 0;
+    outline: none;
+    padding: 7px 8px;
+    transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.settings-jp-text-link:hover,
+.settings-jp-reset-link:hover {
+    background: var(--settings-accent-soft);
+    transform: translateX(2px);
 }
 
 .settings-jp-usage {
-    align-items: end;
-    border-bottom: 1px solid var(--settings-line-dark);
+    align-items: center;
+    background: #eaf4ef;
+    border: 1px solid rgba(79, 138, 120, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 18px 42px rgba(53, 92, 77, 0.07);
     display: grid;
-    gap: 30px;
+    gap: 26px;
     grid-template-columns: minmax(220px, 0.9fr) minmax(350px, 1.1fr);
-    padding: 2px 0 25px;
+    overflow: hidden;
+    padding: 22px 24px;
     position: relative;
 }
 
-.settings-jp-usage::before {
-    background: var(--settings-accent);
-    bottom: -1px;
+.settings-jp-usage::before,
+.settings-jp-usage::after {
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
     content: "";
-    height: 1px;
-    left: 0;
+    pointer-events: none;
     position: absolute;
-    width: 54px;
+}
+
+.settings-jp-usage::before {
+    height: 130px;
+    right: -44px;
+    top: -62px;
+    width: 130px;
+}
+
+.settings-jp-usage::after {
+    bottom: -40px;
+    height: 84px;
+    left: 34%;
+    width: 84px;
 }
 
 .settings-jp-plan {
     align-items: center;
-    color: var(--settings-accent);
+    color: var(--settings-accent-strong);
     display: flex;
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 720;
     gap: 6px;
-    letter-spacing: 0.07em;
+    position: relative;
+    z-index: 1;
+}
+
+.settings-jp-plan.is-pro {
+    color: #92713f;
+}
+
+.settings-jp-usage-copy {
+    position: relative;
+    z-index: 1;
 }
 
 .settings-jp-usage-copy h3 {
     color: var(--settings-ink);
-    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: 0.035em;
-    line-height: 1.5;
-    margin: 9px 0 0;
+    font-size: 20px;
+    font-weight: 720;
+    letter-spacing: -0.025em;
+    line-height: 1.4;
+    margin: 8px 0 0;
 }
 
 .settings-jp-usage-copy p {
     color: var(--settings-muted);
     font-size: 11px;
-    line-height: 1.75;
+    line-height: 1.65;
     margin: 4px 0 0;
 }
 
 .settings-jp-usage-metrics {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    position: relative;
+    z-index: 1;
 }
 
 .settings-jp-usage-metric {
-    border-left: 1px solid var(--settings-line);
     min-width: 0;
-    padding: 3px 16px;
+    padding: 7px 17px;
+}
+
+.settings-jp-usage-metric + .settings-jp-usage-metric {
+    border-left: 1px solid rgba(79, 138, 120, 0.16);
 }
 
 .settings-jp-usage-metric > div {
@@ -226,9 +311,9 @@
 .settings-jp-usage-metric strong {
     color: var(--settings-ink);
     display: block;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 21px;
-    font-weight: 500;
+    font-size: 23px;
+    font-weight: 690;
+    letter-spacing: -0.03em;
     margin-top: 6px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -242,11 +327,10 @@
 
 .settings-jp-ai-head,
 .settings-jp-advanced-intro {
-    align-items: flex-end;
-    border-bottom: 1px solid var(--settings-line-dark);
+    align-items: center;
     display: flex;
     justify-content: space-between;
-    padding-bottom: 18px;
+    padding: 2px 2px 4px;
 }
 
 .settings-jp-ai-kicker {
@@ -254,50 +338,56 @@
     color: var(--settings-accent);
     display: flex;
     font-size: 9px;
-    font-weight: 800;
+    font-weight: 720;
     gap: 6px;
-    letter-spacing: 0.16em;
 }
 
 .settings-jp-ai-head h3 {
     color: var(--settings-ink);
-    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    margin: 8px 0 0;
+    font-size: 20px;
+    font-weight: 710;
+    letter-spacing: -0.02em;
+    margin: 7px 0 0;
 }
 
 .settings-jp-ai-head p {
     color: var(--settings-muted);
     font-size: 11px;
-    line-height: 1.75;
+    line-height: 1.65;
     margin: 4px 0 0;
 }
 
 .settings-jp-inline-action {
     align-items: center;
-    background: transparent;
-    border: 1px solid var(--settings-line-dark);
-    color: var(--settings-ink-soft);
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--settings-line);
+    border-radius: 12px;
+    color: var(--settings-muted);
     cursor: pointer;
     display: inline-flex;
     font-size: 11px;
     font-weight: 650;
     gap: 6px;
-    min-height: 33px;
-    padding: 0 11px;
+    min-height: 36px;
+    outline: none;
+    padding: 0 12px;
+    transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
     white-space: nowrap;
 }
 
 .settings-jp-inline-action:hover {
-    background: var(--settings-white);
-    border-color: var(--settings-ink-soft);
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(42, 65, 56, 0.07);
+    color: var(--settings-ink);
+    transform: translateY(-1px);
 }
 
 .settings-jp-inline-action.is-danger {
-    border-color: rgba(168, 77, 63, 0.45);
-    color: var(--settings-accent);
+    color: var(--settings-danger);
+}
+
+.settings-jp-inline-action:focus-visible {
+    box-shadow: 0 0 0 3px rgba(79, 138, 120, 0.18);
 }
 
 .settings-jp-ai-grid {
@@ -309,19 +399,20 @@
 .settings-jp-role-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .settings-jp-role-row,
 .settings-jp-connection,
 .settings-jp-ai-advanced {
-    background: rgba(255, 254, 249, 0.72);
-    border: 1px solid var(--settings-line);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(231, 237, 233, 0.9);
+    border-radius: 21px;
+    box-shadow: 0 16px 38px rgba(42, 65, 56, 0.05);
 }
 
 .settings-jp-role-row {
-    padding: 16px;
+    padding: 17px;
 }
 
 .settings-jp-role-title {
@@ -329,38 +420,45 @@
     color: var(--settings-ink);
     display: flex;
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 680;
     gap: 8px;
     margin-bottom: 12px;
 }
 
 .settings-jp-role-title > span {
     align-items: center;
-    background: transparent !important;
-    color: var(--settings-accent) !important;
+    background: var(--settings-accent-soft) !important;
+    border-radius: 9px;
+    color: var(--settings-accent-strong) !important;
     display: flex;
     justify-content: center;
-    padding: 3px;
+    padding: 6px;
 }
 
 .settings-jp-field {
-    background: var(--settings-paper-soft);
-    border: 1px solid var(--settings-line);
-    border-radius: 0 !important;
+    background: var(--settings-surface-soft);
+    border: 1px solid transparent;
+    border-radius: 13px !important;
     color: var(--settings-ink);
     font: inherit;
     font-size: 12px;
     font-weight: 500;
-    min-height: 40px;
+    min-height: 42px;
     outline: none;
-    padding: 9px 11px;
-    transition: border-color 160ms ease, box-shadow 160ms ease;
+    padding: 10px 12px;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
     width: 100%;
 }
 
+.settings-jp-field:hover {
+    background: #fff;
+    border-color: var(--settings-line);
+}
+
 .settings-jp-field:focus {
+    background: #fff;
     border-color: var(--settings-accent) !important;
-    box-shadow: 3px 3px 0 var(--settings-accent-soft) !important;
+    box-shadow: 0 0 0 4px rgba(79, 138, 120, 0.1) !important;
 }
 
 .settings-jp-field.is-mono {
@@ -368,7 +466,7 @@
 }
 
 .settings-jp-field.has-icon {
-    padding-left: 38px;
+    padding-left: 39px;
 }
 
 .settings-jp-field-label {
@@ -376,45 +474,49 @@
     color: var(--settings-muted);
     display: flex;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 680;
     gap: 6px;
-    letter-spacing: 0.05em;
 }
 
 .settings-jp-field-icon {
     color: var(--settings-faint);
-    left: 12px;
+    left: 13px;
     pointer-events: none;
     position: absolute;
-    top: 13px;
+    top: 14px;
 }
 
 .settings-jp-connection {
-    padding: 16px !important;
+    padding: 17px !important;
 }
 
 .settings-jp-route-hint {
-    background: var(--settings-paper);
-    border: 1px solid var(--settings-line);
+    background: var(--settings-accent-soft);
+    border: 0;
+    border-radius: 12px;
     color: var(--settings-muted);
     font-size: 11px;
-    line-height: 1.7;
-    padding: 9px 11px;
+    line-height: 1.65;
+    padding: 10px 12px;
 }
 
 .settings-jp-test-button {
-    background: var(--settings-ink);
-    border: 1px solid var(--settings-ink);
-    color: var(--settings-white);
+    background: var(--settings-accent-strong);
+    border: 0;
+    border-radius: 11px;
+    box-shadow: 0 8px 20px rgba(55, 107, 92, 0.16);
+    color: #fff;
     cursor: pointer;
     font-size: 11px;
-    font-weight: 700;
-    min-height: 33px;
-    padding: 0 12px;
+    font-weight: 680;
+    min-height: 36px;
+    padding: 0 13px;
+    transition: box-shadow 160ms ease, transform 160ms ease;
 }
 
 .settings-jp-test-button:hover:not(:disabled) {
-    background: #283541;
+    box-shadow: 0 11px 24px rgba(55, 107, 92, 0.22);
+    transform: translateY(-1px);
 }
 
 .settings-jp-test-button:disabled {
@@ -428,42 +530,49 @@
 
 .settings-jp-provider-item {
     align-items: center;
-    background: transparent;
-    border: 1px solid var(--settings-line);
+    background: var(--settings-surface-soft);
+    border: 1px solid transparent;
+    border-radius: 13px;
     color: var(--settings-muted);
     display: flex;
     gap: 7px;
-    padding: 9px 10px;
-    transition: border-color 160ms ease, transform 160ms ease;
+    padding: 10px 11px;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .settings-jp-provider-item:hover {
-    border-color: var(--settings-line-dark);
+    background: #fff;
+    border-color: var(--settings-line);
     transform: translateX(2px);
 }
 
 .settings-jp-provider-item.is-active {
-    border-color: var(--settings-accent);
+    background: var(--settings-accent-soft);
+    border-color: rgba(79, 138, 120, 0.2);
     color: var(--settings-ink);
 }
 
-.settings-jp-advanced-intro {
-    align-items: center;
-}
-
 .settings-jp-reset-link {
-    color: var(--settings-accent);
+    color: var(--settings-danger);
 }
 
 .settings-jp-accordion {
-    background: rgba(255, 254, 249, 0.56);
-    border: 1px solid var(--settings-line);
-    transition: background-color 180ms ease, border-color 180ms ease;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(231, 237, 233, 0.9);
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(42, 65, 56, 0.035);
+    overflow: hidden;
+    transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.settings-jp-accordion:hover {
+    box-shadow: 0 16px 34px rgba(42, 65, 56, 0.06);
+    transform: translateY(-1px);
 }
 
 .settings-jp-accordion.is-open {
-    background: var(--settings-white);
-    border-color: var(--settings-line-dark);
+    background: #fff;
+    box-shadow: 0 18px 42px rgba(42, 65, 56, 0.075);
 }
 
 .settings-jp-accordion-trigger {
@@ -473,22 +582,20 @@
     color: var(--settings-muted);
     cursor: pointer;
     display: grid;
-    gap: 13px;
-    grid-template-columns: 22px 31px minmax(0, 1fr) 25px;
-    padding: 15px 18px;
+    gap: 12px;
+    grid-template-columns: 36px minmax(0, 1fr) 28px;
+    outline: none;
+    padding: 15px 17px;
     text-align: left;
     width: 100%;
 }
 
-.settings-jp-accordion-trigger:hover {
-    background: rgba(168, 77, 63, 0.025);
+.settings-jp-accordion-trigger:focus-visible {
+    box-shadow: inset 0 0 0 3px rgba(79, 138, 120, 0.16);
 }
 
 .settings-jp-accordion-index {
-    color: var(--settings-accent);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 9px;
-    font-weight: 700;
+    display: none;
 }
 
 .settings-jp-accordion-icon,
@@ -499,7 +606,18 @@
     justify-content: center;
 }
 
-.settings-jp-accordion.is-open .settings-jp-accordion-icon,
+.settings-jp-accordion-icon {
+    background: var(--settings-surface-soft);
+    border-radius: 11px;
+    height: 36px;
+    width: 36px;
+}
+
+.settings-jp-accordion.is-open .settings-jp-accordion-icon {
+    background: var(--settings-accent-soft);
+    color: var(--settings-accent-strong);
+}
+
 .settings-jp-accordion.is-open .settings-jp-accordion-toggle {
     color: var(--settings-accent);
 }
@@ -513,26 +631,26 @@
 .settings-jp-accordion-copy strong {
     color: var(--settings-ink);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 680;
 }
 
 .settings-jp-accordion-copy span {
     color: var(--settings-muted);
     font-size: 11px;
-    line-height: 1.55;
+    line-height: 1.5;
     margin-top: 2px;
 }
 
 .settings-jp-accordion-body {
     animation: settings-accordion-in 220ms ease-out both;
     border-top: 1px solid var(--settings-line);
-    padding: 22px;
+    padding: 21px;
 }
 
 @keyframes settings-accordion-in {
     from {
         opacity: 0;
-        transform: translateY(-4px);
+        transform: translateY(-6px);
     }
     to {
         opacity: 1;
@@ -545,58 +663,87 @@
 .dark .settings-jp-connection,
 .dark .settings-jp-ai-advanced,
 .dark .settings-jp-accordion {
-    background: rgba(32, 38, 41, 0.72);
-    box-shadow: none;
+    background: rgba(31, 41, 37, 0.9);
+    border-color: var(--settings-line);
 }
 
-@media (max-width: 767px) {
+.dark .settings-jp-usage {
+    background: #20362e;
+}
+
+.dark .settings-jp-language-option,
+.dark .settings-jp-instruction-field,
+.dark .settings-jp-field,
+.dark .settings-jp-provider-item,
+.dark .settings-jp-accordion-icon {
+    background: var(--settings-surface-soft);
+}
+
+@media (max-width: 900px) {
     .settings-jp-basic-grid,
-    .settings-jp-usage,
     .settings-jp-ai-grid {
         grid-template-columns: 1fr;
     }
+}
 
+@media (max-width: 767px) {
     .settings-jp-usage {
         gap: 20px;
-    }
-
-    .settings-jp-usage-metric:first-child {
-        border-left: 0;
-        padding-left: 0;
+        grid-template-columns: 1fr;
     }
 
     .settings-jp-ai-head,
     .settings-jp-advanced-intro {
         align-items: flex-start;
         flex-direction: column;
-        gap: 14px;
+        gap: 13px;
     }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 520px) {
     .settings-jp-surface {
+        border-radius: 20px;
         padding: 18px;
     }
 
+    .settings-jp-language-list {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-jp-language-option {
+        min-height: 52px;
+    }
+
+    .settings-jp-usage {
+        border-radius: 20px;
+        padding: 19px;
+    }
+
     .settings-jp-usage-metric {
-        padding: 3px 9px;
+        padding: 5px 9px;
     }
 
     .settings-jp-usage-metric > div {
         white-space: normal;
     }
 
-    .settings-jp-accordion-trigger {
-        gap: 9px;
-        grid-template-columns: 26px minmax(0, 1fr) 22px;
-        padding: 14px 12px;
+    .settings-jp-accordion-body {
+        padding: 17px 13px;
     }
+}
 
-    .settings-jp-accordion-index {
-        display: none;
+@media (prefers-reduced-motion: reduce) {
+    .settings-jp-surface,
+    .settings-jp-section-icon,
+    .settings-jp-language-option,
+    .settings-jp-inline-action,
+    .settings-jp-provider-item,
+    .settings-jp-test-button,
+    .settings-jp-accordion {
+        transition: none;
     }
 
     .settings-jp-accordion-body {
-        padding: 17px 13px;
+        animation: none;
     }
 }

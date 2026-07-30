@@ -100,7 +100,7 @@ export default function SettingsBasicSection({
                                 {t.settings.language || '语言'}
                             </h3>
                             <p>
-                                {t.settings.languageChoose || '选择界面显示语言。'}
+                                {t.settings.languageChoose || '选择界面语言'}
                             </p>
                         </div>
                     </div>
@@ -125,7 +125,7 @@ export default function SettingsBasicSection({
                         </div>
                         <div>
                             <h3>默认回复规则</h3>
-                            <p>一条全局规则，会应用到日常回复。</p>
+                            <p>应用到所有日常回复</p>
                         </div>
                     </div>
 

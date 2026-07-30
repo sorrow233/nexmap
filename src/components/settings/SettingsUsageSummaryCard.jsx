@@ -30,16 +30,16 @@ export default function SettingsUsageSummaryCard() {
                 <div className={`settings-jp-plan${isPro ? ' is-pro' : ''}`}>
                     {isPro ? <Crown size={13} strokeWidth={1.7} /> : <Sparkles size={13} strokeWidth={1.7} />}
                     <span>
-                        {isPro ? (t.credits.proUser || 'Pro 已启用') : (t.credits.noConfigNeeded || '默认体验已准备好')}
+                        {isPro ? (t.credits.proUser || 'Pro 已启用') : '当前用量'}
                     </span>
                 </div>
                 <h3>
-                    {isPro ? (t.payment?.welcomePro || 'Pro 功能已经解锁') : (t.credits.welcomeTitle || '打开就能开始，不需要先折腾配置')}
+                    {isPro ? (t.payment?.welcomePro || 'Pro 功能已经解锁') : '额度概览'}
                 </h3>
                 <p>
                     {isPro
                         ? (t.credits.proFeaturesUnlocked || '额度与高级能力都已经就绪，可以直接使用。')
-                        : (t.credits.noConfigDesc || '默认额度已经备好，大多数情况下不必先研究设置。')}
+                        : '查看当前可用的对话与图片生成额度。'}
                 </p>
             </div>
 

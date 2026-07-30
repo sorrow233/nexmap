@@ -35,23 +35,20 @@ const TABS = [
 
 const TAB_META = {
     basic: {
-        number: '01',
         title: '基础体验',
-        subtitle: '语言、额度和默认回复规则'
+        subtitle: '语言、额度与默认回复规则'
     },
     ai: {
-        number: '02',
         title: 'AI 设置',
-        subtitle: '模型角色、连接与提供商'
+        subtitle: '模型角色、连接与提供商管理'
     },
     advanced: {
-        number: '03',
         title: '高级设置',
         subtitle: '额度、指令、存储与跨应用联动'
     }
 };
 
-function SettingsNavItem({ tab, index, active, compact, onSelect }) {
+function SettingsNavItem({ tab, active, compact, onSelect }) {
     const Icon = tab.icon;
 
     return (
@@ -61,7 +58,6 @@ function SettingsNavItem({ tab, index, active, compact, onSelect }) {
             className={`settings-jp-nav-item${active ? ' is-active' : ''}${compact ? ' is-compact' : ''}`}
             aria-pressed={active}
         >
-            {!compact && <span className="settings-jp-nav-index">0{index + 1}</span>}
             <span className="settings-jp-nav-icon" aria-hidden="true">
                 <Icon size={compact ? 14 : 17} strokeWidth={1.7} />
             </span>
@@ -150,31 +146,24 @@ export default function SettingsShell({
                 <aside className="settings-jp-sidebar">
                     <div className="settings-jp-brand">
                         <div className="settings-jp-brand-mark" aria-hidden="true">
-                            設
+                            <Sparkles size={19} strokeWidth={1.8} />
                         </div>
                         <div>
                             <span>NEXMAP</span>
-                            <strong>環境設定</strong>
-                            <small>{title}</small>
+                            <strong>设置中心</strong>
                         </div>
                     </div>
 
                     <nav className="settings-jp-nav" aria-label="设置分类">
-                        {TABS.map((tab, index) => (
+                        {TABS.map((tab) => (
                             <SettingsNavItem
                                 key={tab.id}
                                 tab={tab}
-                                index={index}
                                 active={activeTab === tab.id}
                                 onSelect={setActiveTab}
                             />
                         ))}
                     </nav>
-
-                    <div className="settings-jp-sidebar-art" aria-hidden="true">
-                        <span>整える</span>
-                        <i />
-                    </div>
 
                     <div className="settings-jp-sidebar-note">
                         <span aria-hidden="true" />
@@ -188,16 +177,17 @@ export default function SettingsShell({
                 <main className="settings-jp-main">
                     <header className="settings-jp-header">
                         <div className="settings-jp-mobile-brand">
-                            <span className="settings-jp-mobile-seal">設</span>
-                            <strong>NEXMAP · {title}</strong>
+                            <span className="settings-jp-mobile-seal">
+                                <Sparkles size={13} strokeWidth={1.8} />
+                            </span>
+                            <strong>NEXMAP · 设置中心</strong>
                         </div>
 
                         <div className="settings-jp-mobile-nav">
-                            {TABS.map((tab, index) => (
+                            {TABS.map((tab) => (
                                 <SettingsNavItem
                                     key={tab.id}
                                     tab={tab}
-                                    index={index}
                                     active={activeTab === tab.id}
                                     compact
                                     onSelect={setActiveTab}
@@ -207,9 +197,8 @@ export default function SettingsShell({
 
                         <div className="settings-jp-header-row">
                             <div className="settings-jp-heading">
-                                <span className="settings-jp-section-number">{activeMeta.number}</span>
                                 <div>
-                                    <p className="settings-jp-breadcrumb">NEXMAP / SETTINGS</p>
+                                    <p className="settings-jp-breadcrumb">设置中心</p>
                                     <h2>{activeMeta.title}</h2>
                                     <p className="settings-jp-subtitle">{activeMeta.subtitle}</p>
                                 </div>
