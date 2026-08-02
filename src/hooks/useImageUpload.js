@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     getAcceptedImageTypeLabel,
     isSupportedImageUploadFile,
@@ -22,8 +22,11 @@ export default function useImageUpload(options = {}) {
         imagesRef.current = images;
     }, [images]);
 
-    const processFiles = async (files) => {
-        for (const file of Array.from(files)) {
+    const processFiles = useCallback(async (files) => {
+        const selectedFiles = Array.from(files || []).filter(Boolean);
+        const processedImages = [];
+
+        for (const file of selectedFiles) {
             // Security: Check file type blacklist/whitelist
             if (!isSupportedImageUploadFile(file)) {
                 alert(`File type not allowed: ${file.name}. Only images (${getAcceptedImageTypeLabel()}) are accepted.`);
@@ -46,26 +49,40 @@ export default function useImageUpload(options = {}) {
                 continue;
             }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setImages(prev => [...prev, {
+            try {
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result.split(',')[1]);
+                    reader.onerror = () => reject(reader.error || new Error('Failed to read image file.'));
+                    reader.readAsDataURL(normalizedFile);
+                });
+
+                processedImages.push({
                     file: normalizedFile,
                     previewUrl: URL.createObjectURL(normalizedFile),
-                    base64: e.target.result.split(',')[1],
+                    base64,
                     mimeType: normalizedFile.type
-                }]);
-            };
-            reader.readAsDataURL(normalizedFile);
+                });
+            } catch (error) {
+                console.error('[useImageUpload] Failed to read uploaded image', error);
+                alert(`Failed to read image: ${file.name}. Please try again.`);
+            }
         }
-    };
 
-    const handleImageUpload = (e) => {
-        processFiles(e.target.files);
-        e.target.value = ''; // Reset input
-    };
+        if (processedImages.length > 0) {
+            setImages(prev => [...prev, ...processedImages]);
+        }
+    }, [maxFileSizeBytes]);
 
-    const handlePaste = (e) => {
-        const items = e.clipboardData.items;
+    const handleImageUpload = useCallback((e) => {
+        const input = e.currentTarget || e.target;
+        const files = Array.from(input?.files || []);
+        if (input) input.value = ''; // Reset input before async processing.
+        void processFiles(files);
+    }, [processFiles]);
+
+    const handlePaste = useCallback((e) => {
+        const items = e.clipboardData?.items || [];
         const files = [];
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf("image") !== -1) {
@@ -75,37 +92,38 @@ export default function useImageUpload(options = {}) {
         if (files.length > 0) {
             e.preventDefault();
             e.stopPropagation();
-            processFiles(files);
+            void processFiles(files);
         }
-    };
+    }, [processFiles]);
 
-    const handleDrop = (e) => {
+    const handleDrop = useCallback((e) => {
+        const files = Array.from(e.dataTransfer?.files || []);
+        if (files.length === 0) return;
         e.preventDefault();
-        processFiles(e.dataTransfer.files);
-    };
+        e.stopPropagation();
+        void processFiles(files);
+    }, [processFiles]);
 
-    const removeImage = (index) => {
+    const removeImage = useCallback((index) => {
         setImages(prev => {
             const newImages = [...prev];
+            if (!newImages[index]) return prev;
             if (newImages[index].previewUrl) {
                 URL.revokeObjectURL(newImages[index].previewUrl);
             }
             newImages.splice(index, 1);
             return newImages;
         });
-    };
+    }, []);
 
-    const clearImages = () => {
-        console.log('[useImageUpload] clearImages called, current count:', images.length);
-        // Revoke URLs first using current state reference
-        images.forEach(img => {
-            if (img.previewUrl) {
-                URL.revokeObjectURL(img.previewUrl);
-            }
+    const clearImages = useCallback(() => {
+        setImages(prev => {
+            prev.forEach(img => {
+                if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+            });
+            return [];
         });
-        // Then clear the state
-        setImages([]);
-    };
+    }, []);
 
     // Cleanup URLs on unmount
     useEffect(() => {
@@ -119,6 +137,7 @@ export default function useImageUpload(options = {}) {
     return {
         images,
         setImages,
+        processFiles,
         handleImageUpload,
         handlePaste,
         handleDrop,

@@ -94,6 +94,7 @@ export default function BoardPage({
         handleRegenerate,
         handleBatchDelete,
         handleGlobalImageUpload,
+        handleGlobalImageDrop,
         removeGlobalImage,
         createGroup,
         arrangeSelectionGrid,
@@ -357,6 +358,7 @@ export default function BoardPage({
                         onBatchChat={handleBatchChat}
                         onCreateNote={handleCreateNote}
                         onImageUpload={handleGlobalImageUpload}
+                        onImageDrop={handleGlobalImageDrop}
                         globalImages={globalImages}
                         onRemoveImage={removeGlobalImage}
                         onClearImages={clearGlobalImages}

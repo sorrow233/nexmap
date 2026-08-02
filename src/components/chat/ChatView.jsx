@@ -64,6 +64,7 @@ export default function ChatView({
         images,
         handleImageUpload,
         handlePaste,
+        handleDrop,
         removeImage,
         clearImages
     } = useImageUpload();
@@ -719,6 +720,7 @@ export default function ChatView({
                     handleSend={onSendClick}
                     handlePaste={handlePaste}
                     handleImageUpload={handleImageUpload}
+                    handleImageDrop={handleDrop}
                     images={images}
                     removeImage={removeImage}
                     fileInputRef={fileInputRef}

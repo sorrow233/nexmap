@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useToast } from '../components/Toast';
 import { useAISprouting } from '../hooks/useAISprouting';
+import useImageUpload from '../hooks/useImageUpload';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
@@ -94,8 +95,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
 
     // Local State
     const [saveStatus, setSaveStatus] = useState('idle');
-    const [globalImages, setGlobalImages] = useState([]);
-    const globalImagesRef = useRef(globalImages);
+    const {
+        images: globalImages,
+        setImages: setGlobalImages,
+        handleImageUpload: handleGlobalImageUpload,
+        handlePaste: handleGlobalPaste,
+        handleDrop: handleGlobalImageDrop,
+        removeImage: removeGlobalImage,
+        clearImages: clearGlobalImages
+    } = useImageUpload();
     const [clipboard, setClipboard] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
@@ -107,16 +115,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage())
     );
     const autoRecommendLockRef = useRef(false);
-
-    useEffect(() => {
-        globalImagesRef.current = globalImages;
-    }, [globalImages]);
-
-    useEffect(() => () => {
-        globalImagesRef.current.forEach((image) => {
-            if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
-        });
-    }, []);
 
     const instructionCatalogBreakdown = useMemo(
         () => getInstructionCatalogBreakdown(customInstructionCatalog),
@@ -143,30 +141,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         };
     }, [instructionCatalogBreakdown, normalizedBoardInstructionSettings]);
 
-    // --- PASTE LOGIC ---
-
-    const handleGlobalPaste = useCallback((e) => {
-        const items = e.clipboardData.items;
-        let hasImage = false;
-        for (const item of items) {
-            if (item.type.indexOf("image") !== -1) {
-                hasImage = true;
-                const file = item.getAsFile();
-                const reader = new FileReader();
-                reader.onload = (event) => setGlobalImages(prev => [...prev, {
-                    file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
-                }]);
-                reader.readAsDataURL(file);
-            }
-        }
-        // 只在有图片时阻止默认行为和冒泡，避免重复处理
-        if (hasImage) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }, []);
-
-
     // --- EFFECTS ---
 
     // Document Title
@@ -182,6 +156,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     // Global Paste Listener (Images) - ONLY for canvas-level, NOT for card modals
     useEffect(() => {
         const handlePaste = (e) => {
+            if (isReadOnly) return;
+
             // Skip global image paste when the event originated inside a dialog.
             const isInsideModal = isEventInsideDialog(e) || isDialogActive();
 
@@ -195,7 +171,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         };
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
-    }, [handleGlobalPaste]);
+    }, [handleGlobalPaste, isReadOnly]);
 
     // Keep active board instruction settings cache in localStorage (used by AIManager sync read)
     useEffect(() => {
@@ -344,39 +320,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
 
 
     // --- HANDLERS ---
-
-    const handleGlobalImageUpload = (e) => {
-        if (isReadOnly) return;
-        const files = Array.from(e.target.files);
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = (e) => setGlobalImages(prev => [...prev, {
-                file, previewUrl: URL.createObjectURL(file), base64: e.target.result.split(',')[1], mimeType: file.type
-            }]);
-            reader.readAsDataURL(file);
-        });
-        e.target.value = '';
-    };
-
-    const removeGlobalImage = (index) => {
-        if (isReadOnly) return;
-        setGlobalImages(prev => {
-            const next = [...prev];
-            URL.revokeObjectURL(next[index].previewUrl);
-            next.splice(index, 1);
-            return next;
-        });
-    };
-
-    const clearGlobalImages = useCallback(() => {
-        setGlobalImages(prev => {
-            prev.forEach((image) => {
-                if (image?.previewUrl) URL.revokeObjectURL(image.previewUrl);
-            });
-            return [];
-        });
-    }, []);
 
     const handleCanvasDoubleClick = (e) => {
         if (isReadOnly) return;
@@ -649,6 +592,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         handleRegenerate,
         handleBatchDelete,
         handleGlobalImageUpload,
+        handleGlobalImageDrop,
         removeGlobalImage,
         createGroup,
         arrangeSelectionGrid,

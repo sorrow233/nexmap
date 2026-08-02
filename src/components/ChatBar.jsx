@@ -22,6 +22,7 @@ const ChatBar = React.memo(function ChatBar({
     onBatchChat,
     onCreateNote,
     onImageUpload,
+    onImageDrop,
     globalImages,
     onRemoveImage,
     onClearImages,
@@ -142,6 +143,13 @@ const ChatBar = React.memo(function ChatBar({
     };
 
     const handleDrop = (e) => {
+        const hasFiles = (e.dataTransfer?.files?.length || 0) > 0;
+        if (hasFiles) {
+            e.preventDefault();
+            if (!isReadOnly) onImageDrop?.(e);
+            return;
+        }
+
         if (isReadOnly) return;
         e.preventDefault();
         try {
@@ -187,6 +195,8 @@ const ChatBar = React.memo(function ChatBar({
                 <Spotlight spotColor="rgba(6, 182, 212, 0.1)" size={400} className="rounded-[1.2rem]">
                     <motion.div
                         layout
+                        onDrop={handleDrop}
+                        onDragOver={(e) => e.preventDefault()}
                         className={`
                             relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl border border-cyan-100/50 dark:border-white/10 rounded-[1.2rem] 
                             shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 flex flex-col
@@ -317,7 +327,7 @@ const ChatBar = React.memo(function ChatBar({
                             </div>
 
                             {/* Textarea */}
-                            <div className="flex-1" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+                            <div className="flex-1">
                                 <textarea
                                     ref={textareaRef}
                                     value={promptInput}

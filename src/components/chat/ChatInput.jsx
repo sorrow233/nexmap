@@ -18,6 +18,7 @@ export default function ChatInput({
     handleSend,
     handlePaste,
     handleImageUpload,
+    handleImageDrop,
     images,
     removeImage,
     fileInputRef,
@@ -122,6 +123,13 @@ export default function ChatInput({
             <div className="max-w-4xl mx-auto w-full relative">
                 <motion.div
                     layout
+                    onDrop={(e) => {
+                        const hasFiles = (e.dataTransfer?.files?.length || 0) > 0;
+                        if (!hasFiles) return;
+                        e.preventDefault();
+                        if (!isReadOnly) handleImageDrop?.(e);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
                     className={`relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl rounded-[1.8rem] border border-cyan-100/50 dark:border-white/10 shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 overflow-hidden flex flex-col transition-all focus-within:ring-cyan-400/30 ${isReadOnly ? 'opacity-70 grayscale-[0.3]' : ''}`}
                 >
                     {/* Images Container */}
