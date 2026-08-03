@@ -1,110 +1,53 @@
 import React, { useMemo } from 'react';
-import { ArrowUpRight, Bookmark, Hash, Loader2, MessageSquare, Sparkles, Sprout, Star, StickyNote } from 'lucide-react';
+import { ChevronRight, Loader2, MessageSquare, StickyNote } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getCardMetrics, getCardPreview, getCardTitle } from './cardPreviewUtils';
 import { getMobileBoardCopy } from './mobileBoardCopy';
 
-export default function MobileBoardFeedCard({
-    card,
-    isGenerating,
-    onOpen,
-    onQuickSprout,
-    onExpandTopics
-}) {
+export default function MobileBoardFeedCard({ card, isGenerating, onOpen }) {
     const { language } = useLanguage();
     const copy = getMobileBoardCopy(language);
     const title = useMemo(() => getCardTitle(card, copy), [card, copy]);
     const preview = useMemo(() => getCardPreview(card, copy), [card, copy]);
     const metrics = useMemo(() => getCardMetrics(card), [card]);
-    const hasMarks = metrics.markCount > 0;
     const isNote = card.type === 'note';
 
     return (
-        <article className="overflow-hidden rounded-[1.25rem] border border-white/70 bg-white/94 shadow-[0_18px_44px_-36px_rgba(15,23,42,0.62)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90">
+        <article>
             <button
+                type="button"
                 onClick={() => onOpen(card.id)}
-                className="block w-full p-3 text-left"
+                className="flex w-full items-start gap-3 py-4 text-left active:bg-slate-100 dark:active:bg-white/5"
             >
-                <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] ${isNote
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
-                        : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-200'
-                        }`}>
-                        {isNote ? <StickyNote size={11} /> : <Sparkles size={11} />}
-                        {isNote ? copy.noteLabel : copy.cardLabel}
-                    </span>
-                    {isGenerating && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200">
-                            <Loader2 size={11} className="animate-spin" />
-                            {copy.generating}
-                        </span>
-                    )}
+                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isNote
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
+                    : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-200'
+                    }`}>
+                    {isNote ? <StickyNote size={16} /> : <MessageSquare size={16} />}
                 </div>
 
-                <div className="flex items-start justify-between gap-2">
-                    <h3 className="min-w-0 flex-1 line-clamp-2 text-[0.95rem] font-semibold leading-6 tracking-tight text-slate-900 dark:text-slate-50">
-                        {title}
-                    </h3>
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-200">
-                        <ArrowUpRight size={15} />
-                    </span>
-                </div>
-
-                <p className="mt-2 whitespace-pre-wrap break-words text-[0.82rem] leading-5 text-slate-600 line-clamp-6 dark:text-slate-300">
-                    {preview}
-                </p>
-            </button>
-
-            <div className="border-t border-slate-200/70 px-3 pb-3 pt-2 dark:border-white/6">
-                <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 dark:bg-white/5">
-                        <MessageSquare size={12} />
-                        {metrics.messageCount}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 dark:bg-white/5">
-                        <Hash size={12} />
-                        {metrics.markCount}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 dark:bg-white/5">
-                        <Bookmark size={12} />
-                        {metrics.noteCount}
-                    </span>
-                </div>
-
-                {!isNote && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                        <ActionButton
-                            icon={ArrowUpRight}
-                            label={copy.openFull}
-                            onClick={() => onOpen(card.id)}
-                        />
-                        <ActionButton
-                            icon={Sprout}
-                            label={copy.sprout}
-                            onClick={() => onQuickSprout(card.id)}
-                        />
-                        {hasMarks && (
-                            <ActionButton
-                                icon={Star}
-                                label={copy.expandTopics}
-                                onClick={() => onExpandTopics(card.id)}
-                            />
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-slate-900 dark:text-white">
+                            {title}
+                        </h2>
+                        {isGenerating && (
+                            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-cyan-600 dark:text-cyan-300">
+                                <Loader2 size={12} className="animate-spin" />
+                                {copy.generating}
+                            </span>
                         )}
                     </div>
-                )}
-            </div>
-        </article>
-    );
-}
+                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+                        {preview}
+                    </p>
+                    <span className="mt-1.5 block text-[11px] text-slate-400 dark:text-slate-500">
+                        {isNote ? copy.noteLabel : copy.messageCount.replace('{count}', metrics.messageCount)}
+                    </span>
+                </div>
 
-function ActionButton({ icon: Icon, label, onClick }) {
-    return (
-        <button
-            onClick={onClick}
-            className="inline-flex items-center justify-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100"
-        >
-            <Icon size={12} />
-            {label}
-        </button>
+                <ChevronRight size={18} className="mt-2 shrink-0 text-slate-300 dark:text-slate-600" />
+            </button>
+        </article>
     );
 }

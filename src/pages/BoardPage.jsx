@@ -254,13 +254,18 @@ export default function BoardPage({
                         saveStatus={saveStatus}
                         untitledLabel={t.gallery?.untitledBoard || 'Untitled Board'}
                         onBack={onBack}
-                        onOpenInstructions={handleOpenInstructionPanel}
                         onOpenSettings={() => setIsSettingsOpen(true)}
-                        onForceSyncBoard={!isReadOnly ? onForceSyncBoard : undefined}
-                        isForceSyncing={isForceSyncingBoard}
                         onOpenCard={handleMobileOpenCard}
-                        onQuickSprout={handleQuickSprout}
-                        onExpandTopics={handleExpandTopics}
+                        composer={(
+                            <MobileBoardComposer
+                                onSubmit={handleChatSubmitWithInstructions}
+                                onImageUpload={handleGlobalImageUpload}
+                                globalImages={globalImages}
+                                onRemoveImage={removeGlobalImage}
+                                onClearImages={clearGlobalImages}
+                                isReadOnly={isReadOnly}
+                            />
+                        )}
                     />
                 ) : (
                     <>
@@ -338,17 +343,7 @@ export default function BoardPage({
                     conversationCount={conversationCount}
                 />
 
-                {isIPhoneBoardMode ? (
-                    <MobileBoardComposer
-                        onSubmit={handleChatSubmitWithInstructions}
-                        onCreateNote={() => createStandaloneNote('')}
-                        onImageUpload={handleGlobalImageUpload}
-                        globalImages={globalImages}
-                        onRemoveImage={removeGlobalImage}
-                        onClearImages={clearGlobalImages}
-                        isReadOnly={isReadOnly}
-                    />
-                ) : (
+                {!isIPhoneBoardMode && (
                     <ChatBar
                         selectedIds={selectedIds}
                         generatingCardIds={generatingCardIds}
@@ -434,6 +429,7 @@ export default function BoardPage({
                             onToggleFavorite={toggleFavorite}
                             instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                             isReadOnly={isReadOnly}
+                            mobileMode={isIPhoneBoardMode}
                         />
                     </Suspense>
                 )}

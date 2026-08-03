@@ -26,8 +26,9 @@ export function isCompactViewport(width = browserWindow?.innerWidth || 0) {
 }
 
 export function shouldUseIPhoneSafariCompactLayout() {
-    // iPhone Safari should keep the dedicated mobile shell even after rotation.
-    return isIPhone && isSafari;
+    // Every browser on iPhone uses the iOS web runtime and needs the same compact shell.
+    // Keeping this tied to Safari caused Chrome/Edge/Firefox on iOS to render the desktop canvas.
+    return isIPhone;
 }
 
 export function shouldUseIOSCompactBoard() {
@@ -38,21 +39,30 @@ export function shouldUseIOSCompactBoard() {
 export function setupMobileViewportFix() {
     if (!browserWindow) return () => {};
 
-    const setVH = () => {
-        const vh = browserWindow.innerHeight * 0.01;
+    const viewport = browserWindow.visualViewport;
+    const setViewportMetrics = () => {
+        const viewportHeight = viewport?.height || browserWindow.innerHeight;
+        const viewportOffsetTop = viewport?.offsetTop || 0;
+        const vh = viewportHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
+        document.documentElement.style.setProperty('--mobile-viewport-height', `${viewportHeight}px`);
+        document.documentElement.style.setProperty('--mobile-viewport-offset-top', `${viewportOffsetTop}px`);
     };
     const handleOrientationChange = () => {
-        browserWindow.setTimeout(setVH, 100);
+        browserWindow.setTimeout(setViewportMetrics, 100);
     };
 
-    setVH();
-    browserWindow.addEventListener('resize', setVH);
+    setViewportMetrics();
+    browserWindow.addEventListener('resize', setViewportMetrics);
     browserWindow.addEventListener('orientationchange', handleOrientationChange);
+    viewport?.addEventListener('resize', setViewportMetrics);
+    viewport?.addEventListener('scroll', setViewportMetrics);
 
     return () => {
-        browserWindow.removeEventListener('resize', setVH);
+        browserWindow.removeEventListener('resize', setViewportMetrics);
         browserWindow.removeEventListener('orientationchange', handleOrientationChange);
+        viewport?.removeEventListener('resize', setViewportMetrics);
+        viewport?.removeEventListener('scroll', setViewportMetrics);
     };
 }
 

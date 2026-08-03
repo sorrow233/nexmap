@@ -17,7 +17,8 @@ const MessageList = React.memo(function MessageList({
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
-    onBranch
+    onBranch,
+    mobileMode = false
 }) {
 
     // Helper to identify if it's a note or chat
@@ -42,7 +43,10 @@ const MessageList = React.memo(function MessageList({
     return (
         <div
             ref={scrollContainerRef}
-            className="chat-messages-viewport messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y min-w-0"
+            className={`chat-messages-viewport messages-container min-w-0 flex-grow overflow-y-auto transition-colors ios-scroll-fix touch-pan-y ${mobileMode
+                ? 'px-4 py-5'
+                : 'px-6 py-12 custom-scrollbar sm:px-10'
+                }`}
         >
             <div className="w-full max-w-6xl mx-auto">
                 {card.type === 'note' ? (
@@ -51,7 +55,10 @@ const MessageList = React.memo(function MessageList({
                             value={card.data.content || ''}
                             onChange={(e) => onUpdate(card.id, (currentData) => ({ ...currentData, content: e.target.value }))}
                             onPaste={handleNotePaste}
-                            className="w-full bg-transparent border-none outline-none font-lxgw leading-[2.5] text-[1.1rem] text-slate-800 dark:text-slate-100 resize-none h-[calc(100vh-320px)] custom-scrollbar ios-scroll-fix touch-pan-y"
+                            className={`w-full resize-none border-none bg-transparent text-slate-800 outline-none ios-scroll-fix touch-pan-y dark:text-slate-100 ${mobileMode
+                                ? 'min-h-[calc(var(--mobile-viewport-height)_-_11rem)] text-[16px] leading-8'
+                                : 'h-[calc(100vh-320px)] custom-scrollbar font-lxgw text-[1.1rem] leading-[2.5]'
+                                }`}
                             placeholder="Start writing..."
                         />
                     </div>

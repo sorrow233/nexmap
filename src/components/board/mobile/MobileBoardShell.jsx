@@ -5,13 +5,11 @@ import MobileBoardHeader from './MobileBoardHeader';
 import MobileBoardWaterfall from './MobileBoardWaterfall';
 import { getMobileBoardCopy } from './mobileBoardCopy';
 
-const sortCards = (cards) => {
-    return [...cards].sort((left, right) => {
-        const leftTime = left.createdAt || left.updatedAt || 0;
-        const rightTime = right.createdAt || right.updatedAt || 0;
-        return rightTime - leftTime;
-    });
-};
+const sortCards = (cards) => [...cards].sort((left, right) => {
+    const leftTime = left.updatedAt || left.createdAt || 0;
+    const rightTime = right.updatedAt || right.createdAt || 0;
+    return rightTime - leftTime;
+});
 
 export default function MobileBoardShell({
     board,
@@ -20,90 +18,81 @@ export default function MobileBoardShell({
     saveStatus,
     untitledLabel,
     onBack,
-    onOpenInstructions,
     onOpenSettings,
-    onForceSyncBoard,
-    isForceSyncing,
     onOpenCard,
-    onQuickSprout,
-    onExpandTopics
+    composer
 }) {
-    const [filter, setFilter] = useState('all');
+    const [filter, setFilter] = useState('conversation');
     const { language } = useLanguage();
     const copy = getMobileBoardCopy(language);
     const filters = useMemo(() => ([
-        { id: 'all', label: copy.filters.all },
         { id: 'conversation', label: copy.filters.conversation },
+        { id: 'all', label: copy.filters.all },
         { id: 'note', label: copy.filters.note }
     ]), [copy]);
 
-    const visibleCards = useMemo(() => {
-        const activeCards = cards.filter((card) => !card.deletedAt);
-        const filteredCards = activeCards.filter((card) => {
-            if (filter === 'conversation') return card.type !== 'note';
-            if (filter === 'note') return card.type === 'note';
-            return true;
-        });
-        return sortCards(filteredCards);
-    }, [cards, filter]);
-
-    const activeCardCount = useMemo(
-        () => cards.filter((card) => !card.deletedAt).length,
+    const activeCards = useMemo(
+        () => cards.filter((card) => !card.deletedAt),
         [cards]
     );
+    const visibleCards = useMemo(() => sortCards(activeCards.filter((card) => {
+        if (filter === 'conversation') return card.type !== 'note';
+        if (filter === 'note') return card.type === 'note';
+        return true;
+    })), [activeCards, filter]);
 
     return (
-        <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_top,#e0f2fe,transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_45%,#f8fafc_100%)] dark:bg-[radial-gradient(circle_at_top,#0f172a,transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_50%,#020617_100%)]">
+        <main className="absolute inset-0 flex min-h-0 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
             <MobileBoardHeader
                 board={board}
                 saveStatus={saveStatus}
-                cardCount={activeCardCount}
+                cardCount={activeCards.length}
                 onBack={onBack}
-                onOpenInstructions={onOpenInstructions}
                 onOpenSettings={onOpenSettings}
-                onForceSyncBoard={onForceSyncBoard}
-                isForceSyncing={isForceSyncing}
                 untitledLabel={untitledLabel}
             />
 
-            <div className="absolute inset-0 overflow-y-auto px-4 pb-[7.25rem] pt-[5.9rem] ios-scroll-fix">
-                <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
+            <nav className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-2 dark:border-white/10 dark:bg-slate-950" aria-label={copy.filtersLabel}>
+                <div className="flex gap-5">
                     {filters.map((item) => (
                         <button
                             key={item.id}
+                            type="button"
                             onClick={() => setFilter(item.id)}
-                            className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95 ${filter === item.id
-                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                                : 'bg-white/80 text-slate-600 dark:bg-white/5 dark:text-slate-300'
+                            className={`min-h-9 border-b-2 px-0.5 text-[13px] font-medium transition-colors ${filter === item.id
+                                ? 'border-cyan-500 text-slate-950 dark:text-white'
+                                : 'border-transparent text-slate-500 dark:text-slate-400'
                                 }`}
                         >
                             {item.label}
                         </button>
                     ))}
                 </div>
+            </nav>
 
+            <section className="ios-scroll-fix min-h-0 flex-1 overflow-y-auto px-4 py-3" aria-live="polite">
                 {visibleCards.length === 0 ? (
-                    <section className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 px-6 py-10 text-center shadow-[0_24px_70px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/50">
-                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-200">
-                            {filter === 'note' ? <StickyNote size={24} /> : <MessageSquarePlus size={24} />}
+                    <div className="flex min-h-full flex-col items-center justify-center px-8 pb-10 text-center">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200/70 text-slate-500 dark:bg-white/10 dark:text-slate-300">
+                            {filter === 'note' ? <StickyNote size={21} /> : <MessageSquarePlus size={21} />}
                         </div>
-                        <h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
+                        <h2 className="mt-4 text-[16px] font-semibold text-slate-900 dark:text-white">
                             {filter === 'note' ? copy.emptyNotesTitle : copy.emptyCardsTitle}
                         </h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                        <p className="mt-1.5 max-w-xs text-[13px] leading-5 text-slate-500 dark:text-slate-400">
                             {copy.emptyDescription}
                         </p>
-                    </section>
+                    </div>
                 ) : (
                     <MobileBoardWaterfall
                         cards={visibleCards}
                         generatingCardIds={generatingCardIds}
                         onOpen={onOpenCard}
-                        onQuickSprout={onQuickSprout}
-                        onExpandTopics={onExpandTopics}
                     />
                 )}
-            </div>
-        </div>
+            </section>
+
+            {composer}
+        </main>
     );
 }

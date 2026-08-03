@@ -13,8 +13,10 @@ import {
     setActiveStreamRouteDebug,
     summarizeMessagesForRouteDebug
 } from '../utils/streamRouteDebug';
+import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
 
 export default function NotePage({ onBack, isReadOnly = false }) {
+    const mobileMode = useIPhoneBoardMode();
     const { noteId } = useParams();
     const navigate = useNavigate();
     const cards = useStore(state => state.cards);
@@ -133,7 +135,7 @@ export default function NotePage({ onBack, isReadOnly = false }) {
     }
 
     return (
-        <div className="fixed inset-0 z-[200] bg-white dark:bg-slate-900 overflow-hidden">
+        <div className={`fixed inset-x-0 z-[200] overflow-hidden bg-white dark:bg-slate-900 ${mobileMode ? 'ios-mobile-viewport' : 'inset-y-0'}`}>
             {/* Read-Only Warning Banner */}
             {isReadOnly && (
                 <div className="absolute top-4 inset-x-0 mx-auto w-fit bg-amber-500/90 backdrop-blur-md text-white px-4 py-2 rounded-full flex items-center gap-2 z-[250] shadow-xl border border-amber-400">
@@ -143,7 +145,7 @@ export default function NotePage({ onBack, isReadOnly = false }) {
             )}
 
             {/* Back Button Overlay - optional if ChatView header handles close */}
-            <div className="absolute top-6 left-4 z-50 lg:hidden">
+            <div className={`absolute top-6 left-4 z-50 lg:hidden ${mobileMode ? 'hidden' : ''}`}>
                 <button onClick={handleClose} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 shadow-md">
                     <ArrowLeft size={20} />
                 </button>
@@ -159,6 +161,7 @@ export default function NotePage({ onBack, isReadOnly = false }) {
                 onToggleFavorite={isReadOnly ? () => { } : toggleFavorite}
                 isFullScreen={true}
                 isReadOnly={isReadOnly}
+                mobileMode={mobileMode}
             />
         </div>
     );

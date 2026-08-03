@@ -1,6 +1,8 @@
 const MOBILE_BOARD_COPY = {
     en: {
         boardLabel: 'iPhone Board',
+        backToBoards: 'Back to boards',
+        filtersLabel: 'Content filters',
         filters: {
             all: 'All',
             conversation: 'Chat',
@@ -29,10 +31,15 @@ const MOBILE_BOARD_COPY = {
         send: 'Send',
         instructions: 'Board instructions',
         settings: 'Settings',
-        cardCount: '{count} cards'
+        cardCount: '{count} cards',
+        messageCount: '{count} messages',
+        imagePreview: 'Image preview',
+        removeImage: 'Remove image'
     },
     zh: {
         boardLabel: 'iPhone 画板',
+        backToBoards: '返回画板列表',
+        filtersLabel: '内容筛选',
         filters: {
             all: '全部',
             conversation: '对话',
@@ -61,10 +68,15 @@ const MOBILE_BOARD_COPY = {
         send: '发送',
         instructions: '画板指令',
         settings: '设置',
-        cardCount: '{count} 张卡片'
+        cardCount: '{count} 张卡片',
+        messageCount: '{count} 条消息',
+        imagePreview: '图片预览',
+        removeImage: '移除图片'
     },
     ja: {
         boardLabel: 'iPhone Board',
+        backToBoards: 'ボード一覧に戻る',
+        filtersLabel: 'コンテンツフィルター',
         filters: {
             all: 'すべて',
             conversation: '会話',
@@ -93,10 +105,15 @@ const MOBILE_BOARD_COPY = {
         send: '送信',
         instructions: 'ボード指示',
         settings: '設定',
-        cardCount: '{count} 枚のカード'
+        cardCount: '{count} 枚のカード',
+        messageCount: '{count} 件のメッセージ',
+        imagePreview: '画像プレビュー',
+        removeImage: '画像を削除'
     },
     ko: {
         boardLabel: 'iPhone Board',
+        backToBoards: '보드 목록으로',
+        filtersLabel: '콘텐츠 필터',
         filters: {
             all: '전체',
             conversation: '대화',
@@ -125,7 +142,10 @@ const MOBILE_BOARD_COPY = {
         send: '전송',
         instructions: '보드 지시',
         settings: '설정',
-        cardCount: '{count}개의 카드'
+        cardCount: '{count}개의 카드',
+        messageCount: '메시지 {count}개',
+        imagePreview: '이미지 미리보기',
+        removeImage: '이미지 삭제'
     }
 };
 

@@ -7,6 +7,7 @@ import InstructionChips from './InstructionChips';
 import { IMAGE_UPLOAD_ACCEPT } from '../../services/image/uploadImageNormalizer';
 import { handleMathRichPaste } from '../../utils/richTextClipboard';
 import { useProgrammaticTextUndo } from '../../hooks/useProgrammaticTextUndo';
+import MobileChatInput from './MobileChatInput';
 
 /**
  * ChatInput Component - Integrated Card Style
@@ -27,7 +28,8 @@ export default function ChatInput({
     placeholder,
     instructions = [],
     onClearInstructions,
-    isReadOnly = false // NEW
+    isReadOnly = false, // NEW
+    mobileMode = false
 }) {
     const { t } = useLanguage();
     const [isFocused, setIsFocused] = React.useState(false);
@@ -117,6 +119,25 @@ export default function ChatInput({
         }
         previousInputRef.current = input;
     }, [input, isReadOnly, rememberTextUndoSnapshot]);
+
+    if (mobileMode) {
+        return (
+            <MobileChatInput
+                input={input}
+                setInput={setInput}
+                handleSend={handleSend}
+                handlePaste={handleRichPaste}
+                handleImageUpload={handleImageUpload}
+                images={images}
+                removeImage={removeImage}
+                fileInputRef={fileInputRef}
+                isStreaming={isBusy}
+                onStop={onStop}
+                placeholder={placeholder}
+                isReadOnly={isReadOnly}
+            />
+        );
+    }
 
     return (
         <div className="p-4 sm:p-8 pb-10 shrink-0">

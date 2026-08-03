@@ -54,16 +54,23 @@ body,
     /* iOS Safari 100vh fix - use CSS custom property */
     :root {
         --vh: 1vh;
+        --mobile-viewport-height: 100dvh;
+        --mobile-viewport-offset-top: 0px;
     }
 
     .h-screen-safe {
         height: 100vh;
-        height: calc(var(--vh, 1vh) * 100);
+        height: var(--mobile-viewport-height, calc(var(--vh, 1vh) * 100));
     }
 
     .min-h-screen-safe {
         min-height: 100vh;
-        min-height: calc(var(--vh, 1vh) * 100);
+        min-height: var(--mobile-viewport-height, calc(var(--vh, 1vh) * 100));
+    }
+
+    .ios-mobile-viewport {
+        top: var(--mobile-viewport-offset-top, 0px);
+        height: var(--mobile-viewport-height, calc(var(--vh, 1vh) * 100));
     }
 
     /* Touch target minimum size (44x44px for Apple HIG) */
@@ -245,6 +252,55 @@ body,
 
     .chat-messages-viewport {
         overscroll-behavior: contain;
+    }
+
+    .mobile-chat-shell .chat-message-frame--user>div:first-child:not(:last-child) {
+        display: none;
+    }
+
+    .mobile-chat-shell .chat-message-frame--user>div:last-child {
+        max-width: 88%;
+        padding: 0.85rem 1rem;
+        border-radius: 1.15rem;
+        border-top-right-radius: 0.3rem;
+    }
+
+    .mobile-chat-shell .chat-message-frame--assistant>div:last-child {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .mobile-chat-shell .chat-message-frame .prose {
+        font-size: 1rem;
+        line-height: 1.75;
+        letter-spacing: 0;
+    }
+
+    .mobile-chat-shell .chat-message-frame .prose h1,
+    .mobile-chat-shell .chat-message-frame .prose h2,
+    .mobile-chat-shell .chat-message-frame .prose h3,
+    .mobile-chat-shell .chat-message-frame .prose h4 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .mobile-chat-shell .chat-message-frame .prose p {
+        margin-bottom: 1rem;
+    }
+
+    .mobile-chat-shell [data-index] {
+        padding-bottom: 1.75rem !important;
+    }
+
+    .mobile-chat-shell .pb-\[64px\] {
+        padding-bottom: 1.75rem !important;
+    }
+
+    .mobile-chat-shell [style*="height: 128px"] {
+        height: 1.5rem !important;
     }
 
     @supports (content-visibility: auto) {

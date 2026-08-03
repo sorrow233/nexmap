@@ -22,6 +22,7 @@ import ShareModal from '../share/ShareModal';
 import ChatIndexSidebar from './ChatIndexSidebar';
 import ChatSelectionMenu from './ChatSelectionMenu';
 import ChatHeader from './ChatHeader';
+import MobileChatHeader from './MobileChatHeader';
 import { getSelectionSnapshot } from './selectionSnapshot';
 import {
     buildDeleteMessageConfirmText,
@@ -45,7 +46,8 @@ export default function ChatView({
     onToggleFavorite,
     isFullScreen = false,
     instructions = [],
-    isReadOnly = false // NEW
+    isReadOnly = false, // NEW
+    mobileMode = false
 }) {
     const [input, setInput] = useState('');
     const [showQueueDispatchNotice, setShowQueueDispatchNotice] = useState(false);
@@ -625,7 +627,7 @@ export default function ChatView({
     return (
         <div
             ref={modalRef}
-            className={`w-full h-full flex flex-col lg:flex-row overflow-hidden relative z-10
+            className={`w-full h-full flex flex-col overflow-hidden relative z-10 ${mobileMode ? 'mobile-chat-shell' : 'lg:flex-row'}
                 ${isFullScreen
                     ? 'bg-white dark:bg-slate-900'
                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
@@ -633,7 +635,7 @@ export default function ChatView({
             style={{ willChange: 'auto' }}
         >
             {/* Floating Action Menu */}
-            {!isReadOnly && (
+            {!mobileMode && !isReadOnly && (
                 <ChatSelectionMenu
                     selection={selection}
                     onCaptureNote={handleCaptureNote}
@@ -642,25 +644,36 @@ export default function ChatView({
             )}
 
             {/* Minimal Header (Top on Mobile, Left Sidebar on Desktop) */}
-            <ChatHeader
-                card={card}
-                onClose={onClose}
-                onUpdate={onUpdate}
-                onSprout={handleSproutClick}
-                isSprouting={isSprouting}
-                t={t}
-                isReadOnly={isReadOnly}
-            />
+            {mobileMode ? (
+                <MobileChatHeader
+                    card={card}
+                    onClose={onClose}
+                    isStreaming={isStreaming}
+                    t={t}
+                />
+            ) : (
+                <ChatHeader
+                    card={card}
+                    onClose={onClose}
+                    onUpdate={onUpdate}
+                    onSprout={handleSproutClick}
+                    isSprouting={isSprouting}
+                    t={t}
+                    isReadOnly={isReadOnly}
+                />
+            )}
 
             {/* Sprout Modal Overlay */}
-            <SproutModal
-                isOpen={showSproutModal}
-                onClose={() => setShowSproutModal(false)}
-                topics={sproutTopics}
-                selectedTopics={selectedTopics}
-                onToggleTopic={topic => !isReadOnly && toggleTopicSelection(topic)}
-                onConfirm={handleConfirmSprout}
-            />
+            {!mobileMode && (
+                <SproutModal
+                    isOpen={showSproutModal}
+                    onClose={() => setShowSproutModal(false)}
+                    topics={sproutTopics}
+                    selectedTopics={selectedTopics}
+                    onToggleTopic={topic => !isReadOnly && toggleTopicSelection(topic)}
+                    onConfirm={handleConfirmSprout}
+                />
+            )}
 
             {/* Main Content Column */}
             <div className="flex flex-col flex-grow min-w-0 h-full overflow-hidden relative">
@@ -684,10 +697,11 @@ export default function ChatView({
                         pendingMessages={pendingMessages}
                         onContinueTopic={isReadOnly ? null : handleContinueTopicForMessageList}
                         onBranch={isReadOnly ? null : handleBranchForMessageList}
+                        mobileMode={mobileMode}
                     />
 
                     {/* Sidebar Index for Quick Navigation */}
-                    {card.type !== 'note' && (
+                    {!mobileMode && card.type !== 'note' && (
                         <ChatIndexSidebar
                             messages={card.data.messages || []}
                             onScrollTo={(index) => {
@@ -730,6 +744,7 @@ export default function ChatView({
                     instructions={instructions}
                     onClearInstructions={() => { }}
                     isReadOnly={isReadOnly}
+                    mobileMode={mobileMode}
                 />
             </div>
 
