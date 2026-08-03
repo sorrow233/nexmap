@@ -9,7 +9,6 @@ const MobileBoardRuntime = React.memo(function MobileBoardRuntime({
     onBack,
     onCreateNote,
     onOpenInstructions,
-    onOpenSettings,
     onOpenConversationCard,
     onOpenNote,
     onQuickSprout,
@@ -67,7 +66,6 @@ const MobileBoardRuntime = React.memo(function MobileBoardRuntime({
             onBack={onBack}
             onCreateNote={onCreateNote}
             onOpenInstructions={onOpenInstructions}
-            onOpenSettings={onOpenSettings}
             onOpenCard={handleOpenCard}
             onEnterSelectionMode={handleEnterSelectionMode}
             onToggleSelection={handleToggleSelection}

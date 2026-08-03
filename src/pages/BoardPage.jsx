@@ -254,7 +254,6 @@ export default function BoardPage({
                         saveStatus={saveStatus}
                         untitledLabel={t.gallery?.untitledBoard || 'Untitled Board'}
                         onBack={onBack}
-                        onOpenSettings={() => setIsSettingsOpen(true)}
                         onOpenCard={handleMobileOpenCard}
                         composer={(
                             <MobileBoardComposer

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronRight, Loader2, MessageSquare, StickyNote } from 'lucide-react';
+import { ChevronRight, Loader2, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getCardMetrics, getCardPreview, getCardTitle } from './cardPreviewUtils';
 import { getMobileBoardCopy } from './mobileBoardCopy';
@@ -10,8 +10,6 @@ export default function MobileBoardFeedCard({ card, isGenerating, onOpen }) {
     const title = useMemo(() => getCardTitle(card, copy), [card, copy]);
     const preview = useMemo(() => getCardPreview(card, copy), [card, copy]);
     const metrics = useMemo(() => getCardMetrics(card), [card]);
-    const isNote = card.type === 'note';
-
     return (
         <article>
             <button
@@ -19,11 +17,8 @@ export default function MobileBoardFeedCard({ card, isGenerating, onOpen }) {
                 onClick={() => onOpen(card.id)}
                 className="flex w-full items-start gap-3 py-4 text-left active:bg-slate-100 dark:active:bg-white/5"
             >
-                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isNote
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
-                    : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-200'
-                    }`}>
-                    {isNote ? <StickyNote size={16} /> : <MessageSquare size={16} />}
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-200">
+                    <MessageSquare size={16} />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -42,7 +37,7 @@ export default function MobileBoardFeedCard({ card, isGenerating, onOpen }) {
                         {preview}
                     </p>
                     <span className="mt-1.5 block text-[11px] text-slate-400 dark:text-slate-500">
-                        {isNote ? copy.noteLabel : copy.messageCount.replace('{count}', metrics.messageCount)}
+                        {copy.messageCount.replace('{count}', metrics.messageCount)}
                     </span>
                 </div>
 
