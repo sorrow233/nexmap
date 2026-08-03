@@ -26,7 +26,7 @@ function getProviderAccentClass(providerId) {
     return PROVIDER_ACCENT_MAP[providerId] || PROVIDER_ACCENT_MAP.default;
 }
 
-export default function CardModelSwitcher({ card, onUpdate }) {
+export default function CardModelSwitcher({ card, onUpdate, mobileMode = false }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const { t } = useLanguage();
@@ -124,11 +124,20 @@ export default function CardModelSwitcher({ card, onUpdate }) {
 
     return (
         <div className="relative" ref={dropdownRef}>
+            {isOpen && mobileMode && (
+                <button
+                    type="button"
+                    className="fixed inset-0 z-[70] bg-slate-950/45"
+                    onClick={() => setIsOpen(false)}
+                    aria-label={t.common?.close || 'Close'}
+                />
+            )}
             <button
+                type="button"
                 onClick={() => setIsOpen((prev) => !prev)}
-                className={`
-                    group flex h-10 items-center justify-center gap-1.5 rounded-2xl border px-3
-                    transition-all duration-300 lg:h-11 lg:w-11 lg:px-0
+                className={`${mobileMode
+                    ? 'relative z-[71] flex h-9 max-w-[132px] items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'
+                    : 'group flex h-10 items-center justify-center gap-1.5 rounded-2xl border px-3 transition-all duration-300 lg:h-11 lg:w-11 lg:px-0'}
                     ${isOpen
                         ? 'border-brand-400/50 bg-[#172033] text-brand-100 shadow-[0_18px_40px_-24px_rgba(34,211,238,0.35)] dark:border-brand-400/50 dark:bg-[#172033]'
                         : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-[#2b3448] dark:bg-[#1a2234] dark:text-slate-100 dark:shadow-[0_18px_36px_-24px_rgba(2,8,23,0.95)] dark:hover:border-brand-400/30 dark:hover:bg-[#1e2840] dark:hover:text-white'
@@ -137,7 +146,7 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                 title={t.settings.roles?.chatTitle || '卡片模型'}
             >
                 <Bot size={15} className={isOpen ? 'text-brand-300' : 'text-slate-500 dark:text-slate-100'} />
-                <span className="max-w-[116px] truncate text-xs font-semibold lg:hidden">
+                <span className="max-w-[96px] truncate text-xs font-semibold lg:hidden">
                     {getModelDisplayName(currentModel, userModels, currentProviderId)}
                 </span>
                 <ChevronDown size={12} className={`transition-transform duration-300 lg:hidden ${isOpen ? 'rotate-180' : ''}`} />
@@ -150,7 +159,9 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 8 }}
                         transition={{ type: 'spring', damping: 26, stiffness: 360 }}
-                        className="absolute right-0 top-full z-50 mt-3 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[2rem] border border-[#2a3448] bg-[#101827] p-4 shadow-[0_32px_80px_-36px_rgba(2,8,23,0.92)] ring-1 ring-white/5 lg:left-full lg:right-auto lg:bottom-0 lg:top-auto lg:mt-0 lg:ml-4"
+                        className={`${mobileMode
+                            ? 'fixed inset-x-3 bottom-[max(env(safe-area-inset-bottom),0.75rem)] z-[80] max-h-[calc(var(--mobile-viewport-height)_-_5rem)]'
+                            : 'absolute right-0 top-full z-50 mt-3 w-[22rem] max-w-[calc(100vw-1.5rem)] lg:left-full lg:right-auto lg:bottom-0 lg:top-auto lg:mt-0 lg:ml-4'} overflow-hidden rounded-[2rem] border border-[#2a3448] bg-[#101827] p-4 shadow-[0_32px_80px_-36px_rgba(2,8,23,0.92)] ring-1 ring-white/5`}
                     >
                         <div className="flex items-start justify-between gap-3 px-1 pb-3">
                             <div className="min-w-0">
@@ -183,7 +194,10 @@ export default function CardModelSwitcher({ card, onUpdate }) {
 
                         <div className="h-px bg-white/8" />
 
-                        <div className="mt-4 max-h-[min(24rem,calc(100vh-11rem))] overflow-y-auto pr-1 custom-scrollbar">
+                        <div className={`mt-4 overflow-y-auto pr-1 custom-scrollbar ${mobileMode
+                            ? 'max-h-[calc(var(--mobile-viewport-height)_-_12rem)]'
+                            : 'max-h-[min(24rem,calc(100vh-11rem))]'
+                            }`}>
                             <div className="space-y-3">
                                 {displayModels.map((model) => {
                                     const isSelected = currentProviderId === model.providerId

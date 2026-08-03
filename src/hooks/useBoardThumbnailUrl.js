@@ -3,13 +3,27 @@ import { auth } from '../services/firebase';
 import { loadBoardThumbnailResource } from '../services/boardPersistence/boardThumbnailStorage';
 import { loadRemoteBoardThumbnailResource } from '../services/sync/boardThumbnailResourceSync';
 
-export function useBoardThumbnailUrl(boardId, thumbnailRef, legacyThumbnail = '', thumbnailUpdatedAt = 0) {
-    const [thumbnailUrl, setThumbnailUrl] = useState(legacyThumbnail || '');
+export function useBoardThumbnailUrl(
+    boardId,
+    thumbnailRef,
+    legacyThumbnail = '',
+    thumbnailUpdatedAt = 0,
+    options = {}
+) {
+    const enabled = options.enabled !== false;
+    const [thumbnailUrl, setThumbnailUrl] = useState(enabled ? (legacyThumbnail || '') : '');
     const currentUserId = auth.currentUser?.uid || '';
 
     useEffect(() => {
         let cancelled = false;
         const fallbackThumbnail = legacyThumbnail || '';
+
+        if (!enabled) {
+            setThumbnailUrl('');
+            return () => {
+                cancelled = true;
+            };
+        }
 
         if (!thumbnailRef) {
             setThumbnailUrl(fallbackThumbnail);
@@ -37,7 +51,7 @@ export function useBoardThumbnailUrl(boardId, thumbnailRef, legacyThumbnail = ''
         return () => {
             cancelled = true;
         };
-    }, [boardId, currentUserId, legacyThumbnail, thumbnailRef, thumbnailUpdatedAt]);
+    }, [boardId, currentUserId, enabled, legacyThumbnail, thumbnailRef, thumbnailUpdatedAt]);
 
     return thumbnailUrl;
 }

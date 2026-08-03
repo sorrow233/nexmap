@@ -23,7 +23,8 @@ export default function BoardCard({
     onGenerateBackground,
     generatingBoardId,
     variant = 'overlay', // 'overlay' | 'stacked'
-    shouldAnimate = true
+    shouldAnimate = true,
+    mobileLite = false
 }) {
     const { t } = useLanguage();
     const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
@@ -39,12 +40,16 @@ export default function BoardCard({
         board.id,
         board.thumbnailRef,
         board.thumbnail || '',
-        board.thumbnailUpdatedAt
+        board.thumbnailUpdatedAt,
+        { enabled: !mobileLite }
     );
-    const primaryBackgroundUrl = board.backgroundImage
+    const primaryBackgroundUrl = !mobileLite && board.backgroundImage
         ? optimizeImageUrl(board.backgroundImage, 600)
         : (resolvedThumbnailUrl || '');
-    const cachedBackgroundUrl = useCachedBackgroundImage(board.backgroundImage ? primaryBackgroundUrl : '');
+    const cachedBackgroundUrl = useCachedBackgroundImage(
+        !mobileLite && board.backgroundImage ? primaryBackgroundUrl : '',
+        { enabled: !mobileLite }
+    );
 
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
@@ -97,7 +102,7 @@ export default function BoardCard({
 
     // Variant: Stacked (Modern Grid Item)
     if (variant === 'stacked') {
-        const hasImage = Boolean(board.backgroundImage || resolvedThumbnailUrl);
+        const hasImage = !mobileLite && Boolean(board.backgroundImage || resolvedThumbnailUrl);
         return (
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
@@ -226,7 +231,7 @@ export default function BoardCard({
             `}
         >
             {/* Background */}
-            {board.backgroundImage || resolvedThumbnailUrl ? (
+            {!mobileLite && (board.backgroundImage || resolvedThumbnailUrl) ? (
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     style={{ backgroundImage: `url(${cachedBackgroundUrl || primaryBackgroundUrl})` }}

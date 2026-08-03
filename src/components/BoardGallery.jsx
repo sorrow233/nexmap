@@ -29,6 +29,7 @@ export default function BoardGallery({
     // Track if initial animation has played to prevent re-triggering on data updates
     const hasAnimatedRef = useRef(false);
     const [shouldAnimate, setShouldAnimate] = useState(true);
+    const [mobileVisibleCount, setMobileVisibleCount] = useState(24);
 
     useEffect(() => {
         // After initial mount + animation duration, mark animations as done
@@ -53,6 +54,10 @@ export default function BoardGallery({
         .filter(b => b.lastAccessedAt)
         .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
         .slice(0, 5);
+    const renderedBoards = isIPhoneGalleryMode
+        ? validBoards.slice(0, mobileVisibleCount)
+        : validBoards;
+    const hasMoreMobileBoards = isIPhoneGalleryMode && renderedBoards.length < validBoards.length;
 
     return (
         <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
@@ -99,7 +104,7 @@ export default function BoardGallery({
             <div className={`max-w-[1800px] mx-auto px-1 md:px-2 ${isIPhoneGalleryMode ? 'space-y-8' : 'space-y-12'}`}>
 
                 {/* Recently Visited - Horizontal Carousel */}
-                {!isTrashView && recentBoards.length > 0 && (
+                {!isTrashView && !isIPhoneGalleryMode && recentBoards.length > 0 && (
                     <div className={shouldAnimate ? "animate-fade-in-up delay-100" : ""}>
                         <div className="flex items-center gap-2 mb-4 px-1">
                             <Clock size={16} className="text-indigo-500" />
@@ -121,6 +126,7 @@ export default function BoardGallery({
                                             variant="overlay"
                                             isSystemCreditsUser={isSystemCreditsUser}
                                             shouldAnimate={shouldAnimate}
+                                            mobileLite={isIPhoneGalleryMode}
                                         />
                                     </div>
                                 ))}
@@ -144,7 +150,7 @@ export default function BoardGallery({
                     )}
 
                     <div className="masonry-grid px-1">
-                        {validBoards.map((board, index) => (
+                        {renderedBoards.map((board, index) => (
                             <div key={board.id} className="masonry-item">
                                 <BoardCard
                                     board={board}
@@ -159,9 +165,20 @@ export default function BoardGallery({
                                     variant="stacked"
                                     isSystemCreditsUser={isSystemCreditsUser}
                                     shouldAnimate={shouldAnimate}
+                                    mobileLite={isIPhoneGalleryMode}
                                 />
                             </div>
                         ))}
+
+                        {hasMoreMobileBoards && (
+                            <button
+                                type="button"
+                                onClick={() => setMobileVisibleCount((count) => count + 24)}
+                                className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 active:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:active:bg-white/10"
+                            >
+                                {t.gallery?.loadMore || '加载更多'}
+                            </button>
+                        )}
 
                         {validBoards.length === 0 && (
                             <div className="col-span-full py-32 glass-panel rounded-3xl flex flex-col items-center justify-center text-center animate-fade-in border-dashed border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">

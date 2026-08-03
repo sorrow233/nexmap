@@ -1,7 +1,8 @@
 import React from 'react';
 import { ChevronLeft, Loader2, MessageSquare, StickyNote } from 'lucide-react';
+import CardModelSwitcher from './CardModelSwitcher';
 
-export default function MobileChatHeader({ card, onClose, isStreaming, t }) {
+export default function MobileChatHeader({ card, onClose, onUpdate, isStreaming, t }) {
     const isNote = card.type === 'note';
     const title = card.data.title || (isNote ? t.chat.insightArchive : t.chat.conversation);
 
@@ -33,6 +34,14 @@ export default function MobileChatHeader({ card, onClose, isStreaming, t }) {
                         {isStreaming ? (t.ai?.generating || 'Generating') : (isNote ? t.chat.neuralNotepad : t.chat.neuralReader)}
                     </p>
                 </div>
+
+                {!isNote && (
+                    <CardModelSwitcher
+                        card={card}
+                        onUpdate={onUpdate}
+                        mobileMode
+                    />
+                )}
             </div>
         </header>
     );

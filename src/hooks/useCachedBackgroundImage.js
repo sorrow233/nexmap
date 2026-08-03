@@ -6,11 +6,17 @@ import {
     isCacheableBackgroundUrl
 } from '../services/backgroundImageCache';
 
-export default function useCachedBackgroundImage(sourceUrl) {
-    const [resolvedUrl, setResolvedUrl] = useState(sourceUrl || '');
+export default function useCachedBackgroundImage(sourceUrl, options = {}) {
+    const enabled = options.enabled !== false;
+    const [resolvedUrl, setResolvedUrl] = useState(enabled ? (sourceUrl || '') : '');
 
     useEffect(() => {
         const normalizedSourceUrl = typeof sourceUrl === 'string' ? sourceUrl.trim() : '';
+
+        if (!enabled) {
+            setResolvedUrl('');
+            return undefined;
+        }
 
         if (!isCacheableBackgroundUrl(normalizedSourceUrl)) {
             setResolvedUrl(normalizedSourceUrl);
@@ -68,7 +74,7 @@ export default function useCachedBackgroundImage(sourceUrl) {
                 URL.revokeObjectURL(cachedObjectUrl);
             }
         };
-    }, [sourceUrl]);
+    }, [enabled, sourceUrl]);
 
     return resolvedUrl;
 }

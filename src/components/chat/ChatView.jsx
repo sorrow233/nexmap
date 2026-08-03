@@ -648,6 +648,7 @@ export default function ChatView({
                 <MobileChatHeader
                     card={card}
                     onClose={onClose}
+                    onUpdate={onUpdate}
                     isStreaming={isStreaming}
                     t={t}
                 />
@@ -738,7 +739,7 @@ export default function ChatView({
                     images={images}
                     removeImage={removeImage}
                     fileInputRef={fileInputRef}
-                    isStreaming={isStreaming}
+                    isBusy={isStreaming}
                     onStop={handleStop}
                     placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
                     instructions={instructions}

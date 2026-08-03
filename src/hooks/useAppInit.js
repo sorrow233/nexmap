@@ -17,11 +17,13 @@ import { hydrateBoardsDisplayMetadataList } from '../services/boardPersistence/b
 import { migrateBoardsThumbnailMetadataList } from '../services/boardPersistence/boardThumbnailMigration';
 import { useStore } from '../store/useStore';
 import { hasUsableProviderRoute } from '../services/llm/providerAccess';
+import { shouldUseIPhoneSafariCompactLayout } from '../utils/browser';
 
 const TRASH_CLEANUP_LAST_KEY = 'mixboard_last_trash_cleanup_at';
 const TRASH_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export function useAppInit() {
+    const isIPhoneCompactMode = shouldUseIPhoneSafariCompactLayout();
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
     const [isInitialized, setIsInitialized] = useState(false);
@@ -50,11 +52,25 @@ export function useAppInit() {
                 debugLog.error('Failed to schedule trash cleanup', error);
             }
 
-            initScheduledBackup();
+            // A full scheduled backup reads every board body into one object. On iPhone,
+            // that creates a deterministic WebContent memory spike for established users.
+            if (!isIPhoneCompactMode) {
+                initScheduledBackup();
+            }
 
             const localBoards = loadBoardsMetadata();
             if (localBoards.length > 0) {
                 const normalizedBoards = normalizeBoardMetadataList(localBoards);
+
+                // The compact gallery only needs list metadata. Avoid eagerly loading every
+                // full board body and migrating every inline thumbnail during iPhone startup.
+                if (isIPhoneCompactMode) {
+                    setBoardsList(normalizedBoards);
+                    setHasHydratedLocalBoardsMetadata(true);
+                    setIsInitialized(true);
+                    return;
+                }
+
                 const migratedBoardsResult = await migrateBoardsThumbnailMetadataList(normalizedBoards, {
                     reason: 'useAppInit:local_boards_metadata'
                 });
@@ -101,7 +117,7 @@ export function useAppInit() {
         };
 
         void init();
-    }, []);
+    }, [isIPhoneCompactMode]);
 
     useEffect(() => {
         if (!auth) return undefined;
