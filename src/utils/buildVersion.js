@@ -25,13 +25,22 @@ function persistPendingBuildUpdate(latestBuild) {
         detectedAt: Date.now()
     };
 
-    window.localStorage.setItem(PENDING_BUILD_UPDATE_KEY, JSON.stringify(payload));
+    try {
+        window.localStorage.setItem(PENDING_BUILD_UPDATE_KEY, JSON.stringify(payload));
+    } catch (error) {
+        console.warn('[BuildVersion] Could not persist pending build update', error);
+    }
     window.dispatchEvent(new CustomEvent('build-update-available', { detail: payload }));
 }
 
 function clearPendingBuildUpdate() {
     if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(PENDING_BUILD_UPDATE_KEY);
+
+    try {
+        window.localStorage.removeItem(PENDING_BUILD_UPDATE_KEY);
+    } catch (error) {
+        console.warn('[BuildVersion] Could not clear pending build update', error);
+    }
 }
 
 async function fetchLatestBuildVersion(force = false) {
@@ -102,10 +111,14 @@ function reloadToLatestBuild(latestVersion, reason = 'new-build-detected') {
     if (typeof window === 'undefined') return;
 
     const reloadMarker = `${CURRENT_BUILD_ID}->${latestVersion}`;
-    window.sessionStorage.setItem(RELOAD_MARKER_KEY, JSON.stringify({
-        marker: reloadMarker,
-        timestamp: Date.now()
-    }));
+    try {
+        window.sessionStorage.setItem(RELOAD_MARKER_KEY, JSON.stringify({
+            marker: reloadMarker,
+            timestamp: Date.now()
+        }));
+    } catch (error) {
+        console.warn('[BuildVersion] Could not persist reload marker', error);
+    }
     window.location.replace(buildForceReloadUrl({
         latestBuildId: latestVersion,
         reason
@@ -116,10 +129,10 @@ function canRetryReload(latestVersion) {
     if (typeof window === 'undefined') return true;
 
     const reloadMarker = `${CURRENT_BUILD_ID}->${latestVersion}`;
-    const rawMarker = window.sessionStorage.getItem(RELOAD_MARKER_KEY);
-    if (!rawMarker) return true;
-
     try {
+        const rawMarker = window.sessionStorage.getItem(RELOAD_MARKER_KEY);
+        if (!rawMarker) return true;
+
         const payload = JSON.parse(rawMarker);
         if (payload?.marker !== reloadMarker) return true;
         return Date.now() - Number(payload.timestamp || 0) > VERSION_CHECK_COOLDOWN_MS;
@@ -134,7 +147,11 @@ export async function ensureLatestBuildOrRefresh({ force = false, reload = true 
 
     if (!latestBuildId || latestBuildId === CURRENT_BUILD_ID) {
         if (typeof window !== 'undefined') {
-            window.sessionStorage.removeItem(RELOAD_MARKER_KEY);
+            try {
+                window.sessionStorage.removeItem(RELOAD_MARKER_KEY);
+            } catch (error) {
+                console.warn('[BuildVersion] Could not clear reload marker', error);
+            }
         }
         clearPendingBuildUpdate();
         return true;

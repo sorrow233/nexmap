@@ -36,3 +36,9 @@
 
 /version.json
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/startup-recovery.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/assets/*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0

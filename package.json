@@ -1,7 +1,7 @@
 {
   "name": "mixboard-canvas",
   "private": false,
-  "version": "2.4.2",
+  "version": "2.4.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,8 +17,8 @@
     "ship:main": "npm run deploy:main && git push origin main",
     "ship:beta": "npm run deploy:beta && git push origin beta",
     "ship:alpha": "npm run deploy:alpha && git push origin alpha",
-    "deploy": "npm run deploy:beta",
-    "ship": "npm run ship:beta"
+    "deploy": "npm run deploy:main",
+    "ship": "npm run ship:main"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",

@@ -51,10 +51,10 @@ export const isLikelyChunkLoadError = (reason, resourceUrl = '') => {
 const canAttemptRecovery = (fingerprint) => {
     if (typeof window === 'undefined') return false;
 
-    const raw = window.sessionStorage.getItem(CHUNK_RELOAD_STORAGE_KEY);
-    if (!raw) return true;
-
     try {
+        const raw = window.sessionStorage.getItem(CHUNK_RELOAD_STORAGE_KEY);
+        if (!raw) return true;
+
         const payload = JSON.parse(raw);
         if (payload?.fingerprint !== fingerprint) return true;
         return Date.now() - Number(payload.timestamp || 0) > CHUNK_RELOAD_COOLDOWN_MS;
@@ -66,16 +66,35 @@ const canAttemptRecovery = (fingerprint) => {
 const markRecoveryAttempt = (fingerprint) => {
     if (typeof window === 'undefined') return;
 
-    window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, JSON.stringify({
-        fingerprint,
-        timestamp: Date.now()
-    }));
+    try {
+        window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, JSON.stringify({
+            fingerprint,
+            timestamp: Date.now()
+        }));
+    } catch (error) {
+        console.warn('[ChunkLoadRecovery] Could not persist recovery attempt', error);
+    }
 };
 
 const clearRecoveryAttempt = () => {
     if (typeof window === 'undefined') return;
-    window.sessionStorage.removeItem(CHUNK_RELOAD_STORAGE_KEY);
+
+    try {
+        window.sessionStorage.removeItem(CHUNK_RELOAD_STORAGE_KEY);
+    } catch (error) {
+        console.warn('[ChunkLoadRecovery] Could not clear recovery attempt', error);
+    }
 };
+
+export function forceChunkLoadRecovery(reason = 'manual-chunk-recovery') {
+    if (typeof window === 'undefined') return false;
+
+    clearRecoveryAttempt();
+    return forceHardRefresh({
+        latestBuildId: CURRENT_BUILD_ID,
+        reason
+    });
+}
 
 export async function recoverFromChunkLoadError({ reason, resourceUrl = '', source = 'unknown' } = {}) {
     if (typeof window === 'undefined') return false;
@@ -107,10 +126,7 @@ export async function recoverFromChunkLoadError({ reason, resourceUrl = '', sour
         return true;
     }
 
-    forceHardRefresh({
-        latestBuildId: CURRENT_BUILD_ID,
-        reason: 'chunk-load-fallback'
-    });
+    forceChunkLoadRecovery('chunk-load-fallback');
 
     return true;
 }

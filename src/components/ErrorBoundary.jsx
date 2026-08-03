@@ -1,6 +1,10 @@
 import React from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
-import { isLikelyChunkLoadError, recoverFromChunkLoadError } from '../utils/chunkLoadRecovery';
+import {
+    forceChunkLoadRecovery,
+    isLikelyChunkLoadError,
+    recoverFromChunkLoadError
+} from '../utils/chunkLoadRecovery';
 
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -24,6 +28,15 @@ export default class ErrorBoundary extends React.Component {
             this.props.onError(error, errorInfo);
         }
     }
+
+    handleReload = () => {
+        if (isLikelyChunkLoadError(this.state.error)) {
+            forceChunkLoadRecovery('error-boundary-manual-reload');
+            return;
+        }
+
+        window.location.reload();
+    };
 
     render() {
         if (this.state.hasError) {
@@ -59,7 +72,7 @@ export default class ErrorBoundary extends React.Component {
                         </p>
                         <div className="flex gap-3">
                             <button
-                                onClick={() => window.location.reload()}
+                                onClick={this.handleReload}
                                 className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
                             >
                                 <RefreshCw className="w-4 h-4" />
@@ -100,7 +113,7 @@ export default class ErrorBoundary extends React.Component {
 
                         <div className="flex justify-end gap-3">
                             <button
-                                onClick={() => window.location.reload()}
+                                onClick={this.handleReload}
                                 className="px-6 py-2.5 bg-brand-500 text-white font-medium rounded-xl hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/20 flex items-center gap-2"
                             >
                                 <RefreshCw className="w-4 h-4" />
