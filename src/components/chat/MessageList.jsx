@@ -81,6 +81,7 @@ const MessageList = React.memo(function MessageList({
                         pendingMessages={pendingMessages}
                         onContinueTopic={onContinueTopic}
                         onBranch={onBranch}
+                        mobileMode={mobileMode}
                     />
                 )}
             </div>

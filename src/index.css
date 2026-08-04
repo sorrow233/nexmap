@@ -254,6 +254,11 @@ body,
         overscroll-behavior: contain;
     }
 
+    .mobile-chat-shell .chat-messages-viewport {
+        overflow-anchor: none;
+        scroll-behavior: auto;
+    }
+
     .mobile-chat-shell .chat-message-frame--user>div:first-child:not(:last-child) {
         display: none;
     }
@@ -326,6 +331,13 @@ body,
 
         .chat-message-block--code {
             contain-intrinsic-size: 1px 360px;
+        }
+
+        .mobile-chat-shell .chat-message-frame,
+        .mobile-chat-shell .chat-message-block {
+            content-visibility: visible;
+            contain: none;
+            contain-intrinsic-size: none;
         }
     }
 

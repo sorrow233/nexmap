@@ -40,29 +40,41 @@ export function setupMobileViewportFix() {
     if (!browserWindow) return () => {};
 
     const viewport = browserWindow.visualViewport;
+    let updateFrame = null;
+    let lastMetrics = '';
     const setViewportMetrics = () => {
-        const viewportHeight = viewport?.height || browserWindow.innerHeight;
-        const viewportOffsetTop = viewport?.offsetTop || 0;
+        updateFrame = null;
+        const viewportHeight = Math.round((viewport?.height || browserWindow.innerHeight) * 2) / 2;
+        const viewportOffsetTop = Math.round((viewport?.offsetTop || 0) * 2) / 2;
+        const nextMetrics = `${viewportHeight}:${viewportOffsetTop}`;
+        if (nextMetrics === lastMetrics) return;
+
+        lastMetrics = nextMetrics;
         const vh = viewportHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
         document.documentElement.style.setProperty('--mobile-viewport-height', `${viewportHeight}px`);
         document.documentElement.style.setProperty('--mobile-viewport-offset-top', `${viewportOffsetTop}px`);
     };
+    const scheduleViewportMetrics = () => {
+        if (updateFrame !== null) return;
+        updateFrame = browserWindow.requestAnimationFrame(setViewportMetrics);
+    };
     const handleOrientationChange = () => {
-        browserWindow.setTimeout(setViewportMetrics, 100);
+        browserWindow.setTimeout(scheduleViewportMetrics, 100);
     };
 
     setViewportMetrics();
-    browserWindow.addEventListener('resize', setViewportMetrics);
+    browserWindow.addEventListener('resize', scheduleViewportMetrics);
     browserWindow.addEventListener('orientationchange', handleOrientationChange);
-    viewport?.addEventListener('resize', setViewportMetrics);
-    viewport?.addEventListener('scroll', setViewportMetrics);
+    viewport?.addEventListener('resize', scheduleViewportMetrics);
 
     return () => {
-        browserWindow.removeEventListener('resize', setViewportMetrics);
+        if (updateFrame !== null) {
+            browserWindow.cancelAnimationFrame(updateFrame);
+        }
+        browserWindow.removeEventListener('resize', scheduleViewportMetrics);
         browserWindow.removeEventListener('orientationchange', handleOrientationChange);
-        viewport?.removeEventListener('resize', setViewportMetrics);
-        viewport?.removeEventListener('scroll', setViewportMetrics);
+        viewport?.removeEventListener('resize', scheduleViewportMetrics);
     };
 }
 

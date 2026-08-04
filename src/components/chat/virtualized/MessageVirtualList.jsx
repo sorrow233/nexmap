@@ -61,7 +61,8 @@ export default function MessageVirtualList({
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
-    onBranch
+    onBranch,
+    mobileMode = false
 }) {
     useStore((state) => state.favoritesLastUpdate);
 
@@ -83,6 +84,7 @@ export default function MessageVirtualList({
         : messages;
 
     const rowVirtualizer = useVirtualizer({
+        enabled: !mobileMode,
         count: virtualizedMessages.length,
         getScrollElement: () => scrollContainerRef.current,
         getItemKey: (index) => virtualizedMessages[index]?.id || `${cardId}-${index}`,
@@ -115,6 +117,14 @@ export default function MessageVirtualList({
         };
 
         scrollToMessageIndexRef.current = (index, options = {}) => {
+            if (mobileMode) {
+                document.getElementById(`message-${index}`)?.scrollIntoView({
+                    behavior: options.behavior || 'auto',
+                    block: options.align || 'center'
+                });
+                return;
+            }
+
             const virtualizedIndex = resolveVirtualizedIndex(index);
             if (virtualizedIndex === null) {
                 messagesEndRef.current?.scrollIntoView({
@@ -138,6 +148,7 @@ export default function MessageVirtualList({
         detachedStreamingMessageIndex,
         hasDetachedStreamingMessage,
         messagesEndRef,
+        mobileMode,
         rowVirtualizer,
         scrollToMessageIndexRef,
         virtualizedMessages.length
@@ -192,79 +203,43 @@ export default function MessageVirtualList({
         showStreamingIndicator
     ]);
 
-    return (
-        <div className="w-full">
-            <div
-                className="relative w-full"
-                style={{ height: `${totalMessagesHeight}px` }}
-            >
-                {virtualRows.map((virtualRow) => {
-                    const message = virtualizedMessages[virtualRow.index];
+    const resolveOriginalMessageIndex = (virtualizedIndex) => (
+        hasDetachedStreamingMessage && virtualizedIndex >= detachedStreamingMessageIndex
+            ? virtualizedIndex + 1
+            : virtualizedIndex
+    );
 
-                    return (
-                        <div
-                            key={virtualRow.key}
-                            ref={rowVirtualizer.measureElement}
-                            data-index={virtualRow.index}
-                            className="absolute left-0 top-0 w-full"
-                            style={{
-                                transform: `translateY(${virtualRow.start}px)`,
-                                paddingBottom: `${ITEM_GAP_PX}px`
-                            }}
-                        >
-                            <ErrorBoundary level="card">
-                                <MessageItem
-                                    cardId={cardId}
-                                    message={message}
-                                    index={virtualRow.index}
-                                    marks={marks}
-                                    capturedNotes={capturedNotes}
-                                    parseModelOutput={parseModelOutput}
-                                    isStreaming={false}
-                                    handleRetry={handleRetry}
-                                    onShare={onShare}
-                                    onToggleFavorite={onToggleFavorite}
-                                    onDeleteMessage={onDeleteMessage}
-                                    isFavorite={favoritesService.isFavorite(
-                                        cardId,
-                                        message?.id || null,
-                                        virtualRow.index,
-                                        message?.content
-                                    )}
-                                    onContinueTopic={onContinueTopic}
-                                    onBranch={onBranch}
-                                />
-                            </ErrorBoundary>
-                        </div>
-                    );
-                })}
-            </div>
+    const renderMessage = (message, messageIndex, streaming = false) => (
+        <ErrorBoundary level="card">
+            <MessageItem
+                cardId={cardId}
+                message={message}
+                index={messageIndex}
+                marks={marks}
+                capturedNotes={capturedNotes}
+                parseModelOutput={parseModelOutput}
+                isStreaming={streaming}
+                handleRetry={handleRetry}
+                onShare={onShare}
+                onToggleFavorite={onToggleFavorite}
+                onDeleteMessage={onDeleteMessage}
+                isFavorite={favoritesService.isFavorite(
+                    cardId,
+                    message?.id || null,
+                    messageIndex,
+                    message?.content
+                )}
+                onContinueTopic={onContinueTopic}
+                onBranch={onBranch}
+            />
+        </ErrorBoundary>
+    );
 
+    const trailingContent = (
+        <>
             {detachedStreamingMessage && (
                 <div className="pb-[64px]">
-                    <ErrorBoundary level="card">
-                        <MessageItem
-                            cardId={cardId}
-                            message={detachedStreamingMessage}
-                            index={detachedStreamingMessageIndex}
-                            marks={marks}
-                            capturedNotes={capturedNotes}
-                            parseModelOutput={parseModelOutput}
-                            isStreaming
-                            handleRetry={handleRetry}
-                            onShare={onShare}
-                            onToggleFavorite={onToggleFavorite}
-                            onDeleteMessage={onDeleteMessage}
-                            isFavorite={favoritesService.isFavorite(
-                                cardId,
-                                detachedStreamingMessage?.id || null,
-                                detachedStreamingMessageIndex,
-                                detachedStreamingMessage?.content
-                            )}
-                            onContinueTopic={onContinueTopic}
-                            onBranch={onBranch}
-                        />
-                    </ErrorBoundary>
+                    {renderMessage(detachedStreamingMessage, detachedStreamingMessageIndex, true)}
                 </div>
             )}
 
@@ -301,6 +276,52 @@ export default function MessageVirtualList({
                 className="w-full"
                 style={{ height: `${BOTTOM_SENTINEL_HEIGHT}px` }}
             />
+        </>
+    );
+
+    if (mobileMode) {
+        return (
+            <div className="mobile-message-flow w-full">
+                {virtualizedMessages.map((message, virtualizedIndex) => {
+                    const messageIndex = resolveOriginalMessageIndex(virtualizedIndex);
+                    return (
+                        <div key={message?.id || `${cardId}-${messageIndex}`} className="pb-7">
+                            {renderMessage(message, messageIndex)}
+                        </div>
+                    );
+                })}
+                {trailingContent}
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full">
+            <div
+                className="relative w-full"
+                style={{ height: `${totalMessagesHeight}px` }}
+            >
+                {virtualRows.map((virtualRow) => {
+                    const message = virtualizedMessages[virtualRow.index];
+                    const messageIndex = resolveOriginalMessageIndex(virtualRow.index);
+
+                    return (
+                        <div
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="absolute left-0 top-0 w-full"
+                            style={{
+                                transform: `translateY(${virtualRow.start}px)`,
+                                paddingBottom: `${ITEM_GAP_PX}px`
+                            }}
+                        >
+                            {renderMessage(message, messageIndex)}
+                        </div>
+                    );
+                })}
+            </div>
+            {trailingContent}
         </div>
     );
 }
