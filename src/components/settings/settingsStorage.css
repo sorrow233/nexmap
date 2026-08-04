@@ -1,0 +1,352 @@
+.settings-jp-storage-intro {
+    background: var(--settings-accent-soft) !important;
+    border: 1px solid rgba(79, 138, 120, 0.12) !important;
+    border-radius: 14px !important;
+    color: var(--settings-muted) !important;
+    font-size: 11px !important;
+    line-height: 1.65;
+    padding: 13px 15px !important;
+}
+
+.settings-jp-storage-intro p {
+    margin: 0;
+}
+
+.settings-jp-storage-intro p:first-child {
+    color: var(--settings-accent-strong);
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.settings-jp-storage-toggle {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.84) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 17px !important;
+    display: flex;
+    justify-content: space-between;
+    padding: 16px !important;
+}
+
+.settings-jp-storage-toggle h3,
+.settings-jp-storage-panel h3,
+.settings-jp-storage-section > h3,
+.settings-jp-storage-section > div:first-child h3,
+.settings-jp-migration-head h3 {
+    color: var(--settings-ink) !important;
+    font-size: 13px !important;
+    font-weight: 690 !important;
+    margin: 0;
+}
+
+.settings-jp-storage-toggle p,
+.settings-jp-storage-panel h3 + p,
+.settings-jp-storage-section > div:first-child h3 + p,
+.settings-jp-migration-head p {
+    color: var(--settings-muted) !important;
+    font-size: 10px !important;
+    line-height: 1.6;
+    margin: 3px 0 0;
+}
+
+.settings-jp-switch-track {
+    background: #dbe4df !important;
+    border-radius: 999px !important;
+    height: 24px;
+    position: relative;
+    transition: background-color 180ms ease, box-shadow 180ms ease;
+    width: 43px;
+}
+
+.settings-jp-switch-track::after {
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 7px rgba(36, 49, 45, 0.18);
+    content: "";
+    height: 19px;
+    left: 3px;
+    position: absolute;
+    top: 2.5px;
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    width: 19px;
+}
+
+.peer:checked + .settings-jp-switch-track {
+    background: var(--settings-accent) !important;
+}
+
+.peer:checked + .settings-jp-switch-track::after {
+    transform: translateX(18px);
+}
+
+.peer:focus-visible + .settings-jp-switch-track {
+    box-shadow: 0 0 0 4px rgba(79, 138, 120, 0.14);
+}
+
+.settings-jp-storage-form {
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid var(--settings-line);
+    border-radius: 18px;
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+}
+
+.settings-jp-storage-form > .grid {
+    gap: 12px;
+}
+
+.settings-jp-storage-panel {
+    background: rgba(255, 255, 255, 0.86) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 19px !important;
+    padding: 19px !important;
+}
+
+.settings-jp-storage-panel h4,
+.settings-jp-storage-manual h4 {
+    color: var(--settings-ink) !important;
+    font-size: 12px !important;
+    font-weight: 680 !important;
+    margin: 0;
+}
+
+.settings-jp-storage-panel p,
+.settings-jp-storage-manual p,
+.settings-jp-storage-section {
+    color: var(--settings-muted);
+}
+
+.settings-jp-storage-panel .font-mono,
+.settings-jp-storage-section .font-mono {
+    color: var(--settings-muted);
+    font-size: 10px;
+}
+
+.settings-jp-storage-panel > div + div,
+.settings-jp-storage-panel .border-t {
+    border-color: var(--settings-line) !important;
+}
+
+.settings-jp-storage-panel .rounded-2xl.border,
+.settings-jp-storage-history-item {
+    background: var(--settings-surface-soft) !important;
+    border-color: var(--settings-line) !important;
+    box-shadow: none !important;
+}
+
+.settings-jp-storage-section {
+    border-top: 1px solid var(--settings-line) !important;
+    padding-top: 19px !important;
+}
+
+.settings-jp-storage-section > h3 {
+    margin-bottom: 12px;
+}
+
+.settings-jp-storage-recovery {
+    background: var(--settings-accent-soft) !important;
+    border: 1px solid rgba(79, 138, 120, 0.13) !important;
+    border-radius: 16px !important;
+    color: var(--settings-muted) !important;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    padding: 15px !important;
+}
+
+.settings-jp-storage-recovery h4 {
+    color: var(--settings-accent-strong) !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+.settings-jp-storage-recovery p {
+    color: var(--settings-muted) !important;
+    font-size: 10px !important;
+    line-height: 1.6;
+}
+
+.settings-jp-storage-empty {
+    align-items: center;
+    background: var(--settings-surface-soft) !important;
+    border: 1px dashed var(--settings-line) !important;
+    border-radius: 13px !important;
+    color: var(--settings-muted) !important;
+    display: flex;
+    font-size: 11px !important;
+    gap: 7px;
+    justify-content: center;
+    padding: 14px !important;
+    text-align: center;
+}
+
+.settings-jp-storage-manual {
+    background: var(--settings-surface-soft) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+    margin-top: 12px;
+    padding: 16px !important;
+}
+
+.settings-jp-storage-section.is-scheduled > div:first-child {
+    gap: 16px;
+}
+
+.settings-jp-storage-section.is-scheduled > .rounded-2xl {
+    background: var(--settings-surface-soft) !important;
+    border-color: var(--settings-line) !important;
+    color: var(--settings-muted) !important;
+}
+
+.settings-jp-storage-history-item {
+    align-items: center;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 13px !important;
+    display: flex;
+    justify-content: space-between;
+    padding: 11px !important;
+}
+
+.settings-jp-storage-history-item p:first-child {
+    color: var(--settings-ink) !important;
+    font-size: 11px !important;
+    font-weight: 680 !important;
+}
+
+.settings-jp-storage-history-item p:last-child {
+    color: var(--settings-muted) !important;
+    font-size: 10px !important;
+}
+
+/* Data migration */
+.settings-jp-migration {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.settings-jp-migration-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-jp-migration-card {
+    background: var(--settings-surface-soft) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 16px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 250px;
+    overflow: hidden;
+    padding: 17px !important;
+    position: relative;
+}
+
+.settings-jp-migration-card.is-dropzone {
+    border-style: dashed !important;
+}
+
+.settings-jp-migration-card.is-dropzone.border-brand-500 {
+    background: var(--settings-accent-soft) !important;
+    border-color: var(--settings-accent) !important;
+}
+
+.settings-jp-migration-card h4 {
+    color: var(--settings-ink) !important;
+    font-size: 12px !important;
+    font-weight: 690 !important;
+    margin: 0 0 3px !important;
+}
+
+.settings-jp-migration-card p,
+.settings-jp-migration-card .text-sm {
+    color: var(--settings-muted) !important;
+    font-size: 10px !important;
+    line-height: 1.6;
+}
+
+.settings-jp-migration-card .bg-blue-100,
+.settings-jp-migration-card .bg-slate-200,
+.settings-jp-migration-card .bg-brand-100 {
+    background: var(--settings-accent-soft) !important;
+    color: var(--settings-accent-strong) !important;
+}
+
+.settings-jp-migration-dialog {
+    background: var(--settings-surface) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 21px !important;
+    box-shadow: 0 28px 70px rgba(27, 42, 36, 0.22) !important;
+    max-width: 440px;
+    padding: 24px !important;
+    position: relative;
+    width: 100%;
+}
+
+.settings-jp-migration-dialog h3 {
+    color: var(--settings-ink) !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    margin: 0;
+}
+
+.settings-jp-migration-dialog .bg-slate-50,
+.settings-jp-migration-dialog .bg-amber-50 {
+    background: var(--settings-surface-soft) !important;
+    border-color: var(--settings-line) !important;
+}
+
+.settings-jp-migration-dialog.is-success {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.dark .settings-jp-storage-toggle,
+.dark .settings-jp-storage-form,
+.dark .settings-jp-storage-panel,
+.dark .settings-jp-storage-manual {
+    background: rgba(31, 41, 37, 0.9) !important;
+    border-color: var(--settings-line) !important;
+}
+
+.dark .settings-jp-storage-intro,
+.dark .settings-jp-storage-recovery {
+    background: var(--settings-accent-soft) !important;
+}
+
+.dark .settings-jp-switch-track {
+    background: #33433c !important;
+}
+
+@media (max-width: 640px) {
+    .settings-jp-storage-form > .grid,
+    .settings-jp-migration-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-jp-storage-panel,
+    .settings-jp-storage-form,
+    .settings-jp-storage-toggle {
+        border-radius: 16px !important;
+        padding: 15px !important;
+    }
+
+    .settings-jp-storage-section.is-scheduled > div:first-child,
+    .settings-jp-storage-history-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-jp-switch-track,
+    .settings-jp-switch-track::after {
+        transition: none;
+    }
+}

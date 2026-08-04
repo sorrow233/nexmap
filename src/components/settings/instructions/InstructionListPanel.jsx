@@ -36,31 +36,31 @@ export default function InstructionListPanel({
     isEmptyState = false
 }) {
     return (
-        <section className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 dark:border-slate-800/80 dark:bg-[#141c26]/90">
+        <section className="settings-jp-instruction-list">
             <div className="mb-3 flex items-center justify-between gap-2">
                 <h4 className="text-sm font-semibold text-[#4a3e33] dark:text-slate-100">
                     {t.settings?.customInstructions || '自定义指令'}
                 </h4>
                 <button
                     onClick={onAddInstruction}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#efb65a] px-3 py-1.5 text-xs font-semibold text-[#332412] transition-colors hover:bg-[#f3bf6c]"
+                    className="settings-jp-feature-button is-primary is-compact"
                 >
                     <Plus size={12} />
                     {t.settings?.addInstruction || '新增指令'}
                 </button>
             </div>
 
-            <div className="mb-3 grid grid-cols-2 gap-2 text-[11px]">
-                <span className="rounded-xl bg-[#f4eee6] px-2 py-1 text-[#7d6c5a] dark:bg-[#17202c] dark:text-slate-200">
+            <div className="settings-jp-instruction-metrics">
+                <span>
                     {(t.settings?.instructionMetricTotal || '总数')} {summary?.total ?? 0}
                 </span>
-                <span className="rounded-xl bg-[#f8f2e8] px-2 py-1 text-[#8d6d49] dark:bg-[#17202c] dark:text-slate-200">
+                <span>
                     {(t.settings?.instructionMetricEnabled || '已启用')} {summary?.enabled ?? 0}
                 </span>
-                <span className="rounded-xl bg-[#edf5ee] px-2 py-1 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
+                <span className="is-positive">
                     {(t.settings?.instructionMetricGlobal || '全局')} {summary?.global ?? 0}
                 </span>
-                <span className="rounded-xl bg-[#fbf3e7] px-2 py-1 text-[#b17d31] dark:bg-amber-500/10 dark:text-amber-200">
+                <span className="is-warning">
                     {(t.settings?.instructionMetricEmpty || '空内容')} {summary?.empty ?? 0}
                 </span>
             </div>
@@ -72,7 +72,7 @@ export default function InstructionListPanel({
                         value={query}
                         onChange={(e) => onQueryChange?.(e.target.value)}
                         placeholder={t.settings?.canvasInstructionOpenSettings ? '搜索标题或正文...' : '搜索...'}
-                        className={`w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-8 pr-3 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
+                        className={`settings-jp-feature-field has-leading-icon ${settingsDarkFieldSoft}`}
                     />
                 </div>
 
@@ -82,7 +82,7 @@ export default function InstructionListPanel({
                         <select
                             value={filter}
                             onChange={(e) => onFilterChange?.(e.target.value)}
-                            className={`w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
+                            className={`settings-jp-feature-field has-leading-icon ${settingsDarkFieldSoft}`}
                         >
                             {FILTER_OPTIONS.map(option => (
                                 <option key={option.id} value={option.id}>
@@ -97,7 +97,7 @@ export default function InstructionListPanel({
                         <select
                             value={sort}
                             onChange={(e) => onSortChange?.(e.target.value)}
-                            className={`w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
+                            className={`settings-jp-feature-field has-leading-icon ${settingsDarkFieldSoft}`}
                         >
                             {SORT_OPTIONS.map(option => (
                                 <option key={option.id} value={option.id}>{option.label}</option>
@@ -146,7 +146,7 @@ export default function InstructionListPanel({
                         <button
                             key={item.id}
                             onClick={() => onSelect?.(item.id)}
-                            className={`group w-full rounded-xl border px-3 py-2 text-left transition-all ${isActive
+                            className={`settings-jp-instruction-item group${isActive ? ' is-active' : ''} ${isActive
                                 ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#1b2430] dark:shadow-[0_14px_28px_rgba(2,6,23,0.42)]'
                                 : 'border-[#eee3d7] bg-[#fffdf9] hover:bg-white dark:border-slate-700/80 dark:bg-[#111923]/88 dark:hover:border-slate-600/80 dark:hover:bg-[#1a2330]'
                                 }`}

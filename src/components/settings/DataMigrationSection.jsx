@@ -155,21 +155,21 @@ export default function DataMigrationSection() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-1">
-                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">
-                    {t.settings?.dataExport?.title || "Data Migration"}
+        <div className="settings-jp-migration">
+            <div className="settings-jp-migration-head">
+                <h3>
+                    {t.settings?.dataExport?.title || "数据迁移"}
                 </h3>
-                <p className="text-sm text-slate-500">
-                    {t.settings?.dataExport?.desc || "Manage your data snapshots. Export for safekeeping or migrate to another device."}
+                <p>
+                    {t.settings?.dataExport?.desc || "管理数据快照，用于安全备份或迁移到其他设备。"}
                 </p>
             </div>
 
             {/* Main Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="settings-jp-migration-grid">
 
                 {/* Export Card */}
-                <div className="relative p-5 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 flex flex-col justify-between group overflow-hidden">
+                <div className="settings-jp-migration-card group">
                     {/* Decorative bg icon */}
                     <div className="absolute -right-4 -bottom-4 opacity-5 dark:opacity-10 pointer-events-none transform group-hover:scale-110 transition-transform duration-500">
                         <Download size={120} />
@@ -181,23 +181,23 @@ export default function DataMigrationSection() {
                                 <HardDrive size={20} />
                             </div>
                             <div>
-                                <h4 className="font-bold text-slate-700 dark:text-slate-200">Export Backup</h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Create local snapshot</p>
+                                <h4>导出备份</h4>
+                                <p>创建本地完整快照</p>
                             </div>
                         </div>
 
                         <div className="text-sm text-slate-600 dark:text-slate-400 mb-6 space-y-1">
                             <p className="flex items-center gap-2">
                                 <CheckCircle2 size={14} className="text-emerald-500" />
-                                <span>Export all boards & content</span>
+                                <span>导出全部画板与内容</span>
                             </p>
                             <p className="flex items-center gap-2">
                                 <CheckCircle2 size={14} className="text-emerald-500" />
-                                <span>Includes favorites & prompts</span>
+                                <span>包含收藏与提示词</span>
                             </p>
                             <p className="flex items-center gap-2">
                                 <AlertCircle size={14} className="text-amber-500" />
-                                <span>Contains API Keys (Sensitive)</span>
+                                <span>包含 API 密钥等敏感数据</span>
                             </p>
                         </div>
                     </div>
@@ -205,22 +205,22 @@ export default function DataMigrationSection() {
                     <button
                         onClick={handleExport}
                         disabled={exportStatus === 'exporting'}
-                        className="relative z-10 w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/5 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="settings-jp-feature-button is-primary is-wide"
                     >
                         {exportStatus === 'exporting' ? (
                             <>
                                 <RotateCcw size={18} className="animate-spin" />
-                                <span>Exporting...</span>
+                                <span>正在导出...</span>
                             </>
                         ) : exportStatus === 'success' ? (
                             <>
                                 <CheckCircle2 size={18} />
-                                <span>Success!</span>
+                                <span>导出成功</span>
                             </>
                         ) : (
                             <>
                                 <Download size={18} />
-                                <span>Download Snapshot</span>
+                                <span>下载快照</span>
                             </>
                         )}
                     </button>
@@ -228,7 +228,7 @@ export default function DataMigrationSection() {
 
                 {/* Import Card (Drag & Drop) */}
                 <div
-                    className={`relative p-5 rounded-2xl border-2 transition-all flex flex-col justify-between
+                    className={`settings-jp-migration-card is-dropzone
                         ${dragActive
                             ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 dark:border-brand-500'
                             : 'border-dashed border-slate-300 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/50 hover:border-slate-400 dark:hover:border-white/20'
@@ -255,20 +255,20 @@ export default function DataMigrationSection() {
                             )}
                         </div>
 
-                        <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-1">
-                            {importStatus === 'reading' ? "Reading File..." : "Restore Data"}
+                        <h4>
+                            {importStatus === 'reading' ? "正在读取文件..." : "恢复数据"}
                         </h4>
 
-                        <p className="text-xs text-slate-500 px-6 mb-4">
-                            Drag and drop your backup JSON file here, or click to browse.
+                        <p>
+                            将备份 JSON 拖到这里，或点击选择文件。
                         </p>
 
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={importStatus === 'reading'}
-                            className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm"
+                            className="settings-jp-feature-button is-quiet"
                         >
-                            Browse File
+                            选择文件
                         </button>
                     </div>
 
@@ -291,7 +291,7 @@ export default function DataMigrationSection() {
                     />
 
                     {/* Modal Content */}
-                    <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 p-6 animate-scale-in">
+                    <div className="settings-jp-migration-dialog animate-scale-in">
                         <button
                             onClick={cancelImport}
                             className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
@@ -304,7 +304,7 @@ export default function DataMigrationSection() {
                                 <Database size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-xl text-slate-900 dark:text-white">Verify Restore</h3>
+                                <h3>确认恢复内容</h3>
                                 <p className="text-xs text-slate-500">{previewData.timestamp}</p>
                             </div>
                         </div>
@@ -312,11 +312,11 @@ export default function DataMigrationSection() {
                         {/* Stats Grid */}
                         <div className="grid grid-cols-2 gap-3 mb-6">
                             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5">
-                                <p className="text-xs text-slate-500 mb-1">Boards</p>
+                                <p className="text-xs text-slate-500 mb-1">画板</p>
                                 <p className="font-mono text-xl font-bold text-slate-800 dark:text-slate-200">{previewData.boardCount}</p>
                             </div>
                             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5">
-                                <p className="text-xs text-slate-500 mb-1">Version</p>
+                                <p className="text-xs text-slate-500 mb-1">版本</p>
                                 <p className="font-mono text-xl font-bold text-slate-800 dark:text-slate-200">{previewData.version}</p>
                             </div>
                         </div>
@@ -327,9 +327,9 @@ export default function DataMigrationSection() {
                                 <div className="flex items-start gap-3">
                                     <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 mt-0.5" />
                                     <div>
-                                        <h5 className="font-bold text-amber-800 dark:text-amber-300 text-sm">Warning: Overwrite</h5>
+                                        <h5 className="font-bold text-amber-800 dark:text-amber-300 text-sm">覆盖提醒</h5>
                                         <p className="text-xs text-amber-700 dark:text-amber-400/80 mt-1">
-                                            Restoring will overwrite existing items with matching IDs. New items will be added.
+                                            恢复会覆盖 ID 相同的现有项目，并添加新的项目。
                                         </p>
                                     </div>
                                 </div>
@@ -348,9 +348,9 @@ export default function DataMigrationSection() {
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200">Restore System Settings</span>
+                                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200">同时恢复系统设置</span>
                                     <p className="text-xs text-slate-500">
-                                        Includes API Keys and Providers. <span className="text-red-500 font-bold">CAUTION</span>
+                                        包含 API 密钥和提供商配置，请谨慎选择。
                                     </p>
                                 </div>
                             </label>
@@ -360,15 +360,15 @@ export default function DataMigrationSection() {
                         <div className="flex gap-3">
                             <button
                                 onClick={cancelImport}
-                                className="flex-1 py-3 font-bold text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                                className="settings-jp-feature-button is-quiet is-wide"
                             >
-                                Cancel
+                                取消
                             </button>
                             <button
                                 onClick={executeImport}
-                                className="flex-1 py-3 bg-emerald-600 text-white font-bold text-sm rounded-xl hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-900/20"
+                                className="settings-jp-feature-button is-primary is-wide"
                             >
-                                Restore Data
+                                恢复数据
                             </button>
                         </div>
                     </div>
@@ -378,13 +378,13 @@ export default function DataMigrationSection() {
             {/* Restore Success Overlay */}
             {importStatus === 'success' && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-scale-in">
+                    <div className="settings-jp-migration-dialog is-success animate-scale-in">
                         <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-4">
                             <CheckCircle2 size={40} />
                         </div>
-                        <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-2">Restoration Complete</h3>
+                        <h3>恢复完成</h3>
                         <p className="text-slate-500 text-sm mb-4 text-center max-w-xs">{importMsg}</p>
-                        <p className="text-xs text-slate-400">Reloading application...</p>
+                        <p className="text-xs text-slate-400">应用即将重新载入...</p>
                     </div>
                 </div>
             )}

@@ -17,6 +17,11 @@
     box-shadow: 0 0 0 4px rgba(79, 138, 120, 0.1) !important;
 }
 
+.settings-jp-content input[type="checkbox"],
+.settings-jp-content input[type="radio"] {
+    accent-color: var(--settings-accent);
+}
+
 .settings-jp-accordion-body [class*="rounded-"]:not([class*="rounded-full"]),
 .settings-jp-ai-advanced [class*="rounded-"]:not([class*="rounded-full"]) {
     border-radius: 14px !important;
@@ -34,7 +39,7 @@
 .dark .settings-jp-content input:not([type="checkbox"]):not([type="radio"]),
 .dark .settings-jp-content select,
 .dark .settings-jp-content textarea {
-    background-color: var(--settings-paper-soft);
+    background-color: var(--settings-surface-soft);
     border-color: var(--settings-line);
     color: var(--settings-ink);
 }

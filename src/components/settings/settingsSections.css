@@ -557,22 +557,34 @@
 }
 
 .settings-jp-accordion {
-    background: rgba(255, 255, 255, 0.78);
-    border: 1px solid rgba(231, 237, 233, 0.9);
-    border-radius: 18px;
-    box-shadow: 0 10px 26px rgba(42, 65, 56, 0.035);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--settings-line);
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
     transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .settings-jp-accordion:hover {
-    box-shadow: 0 16px 34px rgba(42, 65, 56, 0.06);
-    transform: translateY(-1px);
+    box-shadow: none;
+    transform: none;
 }
 
 .settings-jp-accordion.is-open {
-    background: #fff;
-    box-shadow: 0 18px 42px rgba(42, 65, 56, 0.075);
+    background: transparent;
+    box-shadow: none;
+}
+
+.settings-jp-advanced-list {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--settings-line);
+    border-radius: 21px;
+    overflow: hidden;
+}
+
+.settings-jp-advanced-list .settings-jp-accordion:last-child {
+    border-bottom: 0;
 }
 
 .settings-jp-accordion-trigger {
@@ -585,7 +597,7 @@
     gap: 12px;
     grid-template-columns: 36px minmax(0, 1fr) 28px;
     outline: none;
-    padding: 15px 17px;
+    padding: 16px 18px;
     text-align: left;
     width: 100%;
 }
@@ -644,7 +656,7 @@
 .settings-jp-accordion-body {
     animation: settings-accordion-in 220ms ease-out both;
     border-top: 1px solid var(--settings-line);
-    padding: 21px;
+    padding: 22px 18px 24px;
 }
 
 @keyframes settings-accordion-in {
@@ -662,7 +674,8 @@
 .dark .settings-jp-role-row,
 .dark .settings-jp-connection,
 .dark .settings-jp-ai-advanced,
-.dark .settings-jp-accordion {
+.dark .settings-jp-accordion,
+.dark .settings-jp-advanced-list {
     background: rgba(31, 41, 37, 0.9);
     border-color: var(--settings-line);
 }

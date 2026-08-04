@@ -20,7 +20,7 @@ export default function InstructionEditorPanel({
 }) {
     if (!item) {
         return (
-            <section className={`rounded-[26px] border border-dashed border-[#e4d7c9] bg-[rgba(255,252,247,0.72)] p-8 text-center ${settingsDarkSurfaceMuted}`}>
+            <section className={`settings-jp-instruction-editor is-empty ${settingsDarkSurfaceMuted}`}>
                 <p className="text-sm text-[#8f7e6b] dark:text-slate-300">
                     请选择左侧一条指令进行编辑，或新建一条指令开始。
                 </p>
@@ -31,7 +31,7 @@ export default function InstructionEditorPanel({
     const isEmpty = !String(item.content || '').trim();
 
     return (
-        <section className={`rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 ${settingsDarkSurfaceMuted}`}>
+        <section className={`settings-jp-instruction-editor ${settingsDarkSurfaceMuted}`}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h4 className="text-base font-semibold text-[#3f3429] dark:text-slate-100">
@@ -68,7 +68,7 @@ export default function InstructionEditorPanel({
                         value={item.title || ''}
                         onChange={(e) => onChange?.(item.id, { title: e.target.value.slice(0, MAX_TITLE_LENGTH) })}
                         placeholder={t.settings?.instructionTitlePlaceholder || '指令标题（可选）'}
-                        className={`w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] px-3 py-2 text-sm text-[#4f4337] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
+                        className={`settings-jp-feature-field ${settingsDarkFieldSoft}`}
                     />
                     <p className="mt-1 text-right text-[11px] text-[#b0a08e]">
                         {(item.title || '').length}/{MAX_TITLE_LENGTH}
@@ -83,7 +83,7 @@ export default function InstructionEditorPanel({
                         value={item.content || ''}
                         onChange={(e) => onChange?.(item.id, { content: e.target.value.slice(0, MAX_CONTENT_LENGTH) })}
                         placeholder={t.settings?.customInstructionsPlaceholder || '示例：请用轻松友好的语气回复。使用项目符号列表。回答尽量简洁。'}
-                        className={`custom-scrollbar min-h-[220px] w-full resize-y rounded-[24px] border p-3 text-sm leading-relaxed text-[#4f4337] outline-none transition-colors focus:border-[#e7d4bb] ${isEmpty
+                        className={`settings-jp-feature-field is-textarea custom-scrollbar ${isEmpty
                             ? 'border-[#eed8ae] bg-[#fff7ed] dark:border-amber-300/40 dark:bg-amber-500/10 dark:text-slate-100'
                             : `border-[#eee3d7] bg-[#fffdf9] ${settingsDarkFieldSoft}`
                             }`}

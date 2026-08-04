@@ -218,7 +218,7 @@ export default function SettingsAISection({
 
                     <div className="mt-3 space-y-3">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                            <label className="settings-jp-field-label is-block">
                                 {t.settings.apiKey || 'API 密钥'}
                             </label>
                             <div className="relative">
@@ -235,7 +235,7 @@ export default function SettingsAISection({
                                         : (t.settings.openaiKeyPlaceholder || 'sk-...')}
                                 />
                             </div>
-                            <p className="mt-2 text-xs leading-6 text-[#8d7b68] dark:text-slate-300/75">
+                            <p className="settings-jp-field-help">
                                 不填也能用默认体验；只有你要接自己的服务时才需要这里。
                             </p>
                         </div>
@@ -247,7 +247,7 @@ export default function SettingsAISection({
                         )}
 
                         {imageRoleNeedsProviderWarning && (
-                            <div className="rounded-[20px] border border-[#f0d2c2] bg-[#fdf1ea] px-4 py-3 text-sm text-[#8c5c45] dark:border-orange-300/20 dark:bg-orange-500/10 dark:text-orange-100">
+                            <div className="settings-jp-notice is-warning">
                                 当前图片角色正指向这个 Google / Vertex 直连提供商，但图片生成链路尚未接入这里。建议把图片角色切回支持图片的提供商后再使用。
                             </div>
                         )}
@@ -262,14 +262,14 @@ export default function SettingsAISection({
                             </button>
 
                             {testStatus === 'success' && (
-                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-300">
+                                <span className="settings-jp-inline-status is-success">
                                     <CheckCircle2 size={15} />
                                     {testMessage}
                                 </span>
                             )}
 
                             {testStatus === 'error' && (
-                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-rose-600 dark:text-rose-300">
+                                <span className="settings-jp-inline-status is-error">
                                     <AlertCircle size={15} />
                                     {testMessage}
                                 </span>
@@ -315,7 +315,7 @@ export default function SettingsAISection({
                                             className="min-w-0 flex-1 text-left"
                                         >
                                             <div className="truncate text-sm font-semibold">{provider.name || 'Untitled Provider'}</div>
-                                            <div className="truncate text-xs text-[#938270] dark:text-slate-300/70">
+                                            <div className="settings-jp-provider-meta">
                                                 {provider.protocol === 'gemini'
                                                     ? (t.settings.geminiNative || 'Gemini 原生')
                                                     : (t.settings.openaiCompat || 'OpenAI 兼容')}
@@ -324,7 +324,7 @@ export default function SettingsAISection({
                                         {providerList.length > 1 && (
                                             <button
                                                 onClick={() => handleRemoveProvider(provider.id)}
-                                                className="rounded-full p-1 text-[#b0a08e] transition-all hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                                                className="settings-jp-icon-action is-danger"
                                                 aria-label={`删除 ${provider.name || provider.id}`}
                                             >
                                                 <Trash2 size={14} />
@@ -338,7 +338,7 @@ export default function SettingsAISection({
                         <div className="grid gap-4">
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="settings-jp-field-label is-block">
                                         {t.settings.providerName || '提供商名称'}
                                     </label>
                                     <input
@@ -350,7 +350,7 @@ export default function SettingsAISection({
                                 </div>
 
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="settings-jp-field-label is-block">
                                         {t.settings.protocol || '协议'}
                                     </label>
                                     <select
@@ -366,7 +366,7 @@ export default function SettingsAISection({
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="settings-jp-field-label is-block">
                                         {t.settings.baseUrl || 'Base URL'}
                                     </label>
                                     <input
@@ -381,7 +381,7 @@ export default function SettingsAISection({
                                 </div>
 
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="settings-jp-field-label is-block">
                                         {t.settings.modelName || '模型名称'}
                                     </label>
                                     <input
@@ -394,7 +394,7 @@ export default function SettingsAISection({
                             </div>
 
                             <div>
-                                <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                <label className="settings-jp-field-label is-block">
                                     {t.settings?.modelList || '可用模型列表'}
                                 </label>
                                 <textarea

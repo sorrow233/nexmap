@@ -90,59 +90,61 @@ export default function SettingsAdvancedSection({
                 </button>
             </div>
 
-            <AdvancedPanel
-                index="01"
-                title="额度与兑换"
-                description="查看更详细的额度信息、兑换码与购买入口。"
-                icon={Gift}
-                open={activePanel === 'credits'}
-                onToggle={() => togglePanel('credits')}
-            >
-                <SettingsCreditsTab onOpenAdvanced={onOpenAITab} />
-            </AdvancedPanel>
+            <div className="settings-jp-advanced-list">
+                <AdvancedPanel
+                    index="01"
+                    title="额度与兑换"
+                    description="查看详细额度、兑换码与购买入口。"
+                    icon={Gift}
+                    open={activePanel === 'credits'}
+                    onToggle={() => togglePanel('credits')}
+                >
+                    <SettingsCreditsTab onOpenAdvanced={onOpenAITab} />
+                </AdvancedPanel>
 
-            <AdvancedPanel
-                index="02"
-                title="高级指令库"
-                description="多条规则、画布可选规则、AI 推荐等仍然保留在这里。"
-                icon={FileText}
-                open={activePanel === 'instructions'}
-                onToggle={() => togglePanel('instructions')}
-            >
-                <SettingsInstructionsTab
-                    customInstructions={customInstructions}
-                    setCustomInstructions={setCustomInstructions}
-                />
-            </AdvancedPanel>
+                <AdvancedPanel
+                    index="02"
+                    title="高级指令库"
+                    description="管理全局规则与画布可选指令。"
+                    icon={FileText}
+                    open={activePanel === 'instructions'}
+                    onToggle={() => togglePanel('instructions')}
+                >
+                    <SettingsInstructionsTab
+                        customInstructions={customInstructions}
+                        setCustomInstructions={setCustomInstructions}
+                    />
+                </AdvancedPanel>
 
-            <AdvancedPanel
-                index="03"
-                title="存储与恢复"
-                description="S3、自定义备份、恢复、导入导出等能力。"
-                icon={Database}
-                open={activePanel === 'storage'}
-                onToggle={() => togglePanel('storage')}
-            >
-                <SettingsStorageTab
-                    s3Config={s3Config}
-                    setS3ConfigState={setS3ConfigState}
-                />
-            </AdvancedPanel>
+                <AdvancedPanel
+                    index="03"
+                    title="存储与恢复"
+                    description="配置 S3、备份、恢复与数据迁移。"
+                    icon={Database}
+                    open={activePanel === 'storage'}
+                    onToggle={() => togglePanel('storage')}
+                >
+                    <SettingsStorageTab
+                        s3Config={s3Config}
+                        setS3ConfigState={setS3ConfigState}
+                    />
+                </AdvancedPanel>
 
-            <AdvancedPanel
-                index="04"
-                title="跨应用联动"
-                description="管理 FlowStudio 与 Light 的 UID 本地绑定。"
-                icon={Link2}
-                open={activePanel === 'linkage'}
-                onToggle={() => togglePanel('linkage')}
-            >
-                <SettingsLinkageTab
-                    linkageSettings={linkageSettings}
-                    onLinkageFieldChange={onLinkageFieldChange}
-                    appUserUid={appUserUid}
-                />
-            </AdvancedPanel>
+                <AdvancedPanel
+                    index="04"
+                    title="跨应用联动"
+                    description="管理 FlowStudio 与 Light 的本地绑定。"
+                    icon={Link2}
+                    open={activePanel === 'linkage'}
+                    onToggle={() => togglePanel('linkage')}
+                >
+                    <SettingsLinkageTab
+                        linkageSettings={linkageSettings}
+                        onLinkageFieldChange={onLinkageFieldChange}
+                        appUserUid={appUserUid}
+                    />
+                </AdvancedPanel>
+            </div>
         </section>
     );
 }

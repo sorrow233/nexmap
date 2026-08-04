@@ -1,3 +1,5 @@
 @import "./settingsShell.css";
 @import "./settingsSections.css";
+@import "./settingsFeaturePanels.css";
+@import "./settingsStorage.css";
 @import "./settingsCompatibility.css";

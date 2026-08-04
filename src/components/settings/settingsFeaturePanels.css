@@ -1,0 +1,666 @@
+.settings-jp-feature {
+    color: var(--settings-ink);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.settings-jp-feature-panel,
+.settings-jp-feature-intro,
+.settings-jp-instruction-list,
+.settings-jp-instruction-editor,
+.settings-jp-linkage-card {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid var(--settings-line);
+    border-radius: 20px;
+}
+
+.settings-jp-feature-panel {
+    padding: 20px;
+}
+
+.settings-jp-feature-panel.is-compact {
+    margin-inline: auto;
+    max-width: 560px;
+    padding: 18px;
+    text-align: center;
+}
+
+.settings-jp-feature-intro {
+    overflow: hidden;
+    padding: 20px 22px;
+    position: relative;
+}
+
+.settings-jp-feature-intro h3 {
+    align-items: center;
+    color: var(--settings-ink);
+    display: flex;
+    font-size: 18px;
+    font-weight: 700;
+    gap: 9px;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+.settings-jp-feature-intro h3 svg {
+    color: var(--settings-accent);
+}
+
+.settings-jp-feature-intro p,
+.settings-jp-feature-panel > p,
+.settings-jp-linkage-card p {
+    color: var(--settings-muted);
+    font-size: 12px;
+    line-height: 1.65;
+    margin: 5px 0 0;
+}
+
+.settings-jp-feature-orb {
+    background: var(--settings-accent-soft);
+    border-radius: 50%;
+    height: 130px;
+    opacity: 0.7;
+    pointer-events: none;
+    position: absolute;
+    right: -48px;
+    top: -62px;
+    width: 130px;
+}
+
+.settings-jp-feature-note,
+.settings-jp-feature-footnote {
+    color: var(--settings-faint) !important;
+    font-size: 10px !important;
+    line-height: 1.65 !important;
+    margin-top: 8px !important;
+}
+
+.settings-jp-feature-eyebrow {
+    color: var(--settings-faint);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    margin: 0 0 10px;
+    text-transform: uppercase;
+}
+
+.settings-jp-feature-icon {
+    align-items: center;
+    background: var(--settings-accent-soft) !important;
+    border-radius: 11px !important;
+    color: var(--settings-accent-strong) !important;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 36px;
+    justify-content: center;
+    padding: 0 !important;
+    width: 36px;
+}
+
+.settings-jp-feature-label,
+.settings-jp-field-label.is-block {
+    color: var(--settings-muted) !important;
+    display: block;
+    font-size: 11px !important;
+    font-weight: 680 !important;
+    margin: 0 0 7px !important;
+}
+
+.settings-jp-field-help {
+    color: var(--settings-faint);
+    font-size: 10px;
+    line-height: 1.65;
+    margin: 7px 0 0;
+}
+
+.settings-jp-feature-field {
+    background: var(--settings-surface-soft) !important;
+    border: 1px solid transparent !important;
+    border-radius: 12px !important;
+    color: var(--settings-ink) !important;
+    font: inherit;
+    font-size: 12px !important;
+    min-height: 41px;
+    outline: none;
+    padding: 10px 12px !important;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    width: 100%;
+}
+
+.settings-jp-feature-field.is-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.settings-jp-feature-field.is-textarea {
+    line-height: 1.7;
+    min-height: 220px;
+    resize: vertical;
+}
+
+.settings-jp-feature-field.has-leading-icon {
+    padding-left: 32px !important;
+}
+
+.settings-jp-feature-field:hover {
+    background: var(--settings-surface) !important;
+    border-color: var(--settings-line) !important;
+}
+
+.settings-jp-feature-field:focus {
+    background: var(--settings-surface) !important;
+    border-color: var(--settings-accent) !important;
+    box-shadow: 0 0 0 4px rgba(79, 138, 120, 0.1) !important;
+}
+
+.settings-jp-feature-field::placeholder {
+    color: var(--settings-faint);
+}
+
+.settings-jp-feature-button {
+    align-items: center;
+    border: 0;
+    border-radius: 11px !important;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 11px;
+    font-weight: 680;
+    gap: 6px;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 14px !important;
+    transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.settings-jp-feature-button.is-primary {
+    background: var(--settings-accent-strong) !important;
+    box-shadow: 0 9px 20px rgba(55, 107, 92, 0.16) !important;
+    color: #fff !important;
+}
+
+.settings-jp-feature-button.is-primary:hover:not(:disabled) {
+    background: #2f6052 !important;
+    box-shadow: 0 12px 24px rgba(55, 107, 92, 0.21) !important;
+    transform: translateY(-1px);
+}
+
+.settings-jp-feature-button.is-quiet {
+    background: var(--settings-surface-soft) !important;
+    border: 1px solid var(--settings-line) !important;
+    color: var(--settings-muted) !important;
+}
+
+.settings-jp-feature-button.is-quiet:hover:not(:disabled) {
+    background: var(--settings-surface) !important;
+    color: var(--settings-ink) !important;
+}
+
+.settings-jp-feature-button.is-danger {
+    background: #faeeee !important;
+    border: 1px solid rgba(195, 101, 101, 0.13) !important;
+    color: var(--settings-danger) !important;
+}
+
+.settings-jp-feature-button.is-compact {
+    min-height: 32px;
+    padding: 0 10px !important;
+}
+
+.settings-jp-feature-button.is-wide {
+    flex: 1;
+    width: 100%;
+}
+
+.settings-jp-feature-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.settings-jp-feature-button:focus-visible,
+.settings-jp-inline-link:focus-visible,
+.settings-jp-icon-action:focus-visible {
+    outline: 3px solid rgba(79, 138, 120, 0.2);
+    outline-offset: 2px;
+}
+
+.settings-jp-inline-link {
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    color: var(--settings-accent-strong);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: inherit;
+    font-weight: 680;
+    padding: 2px 4px;
+}
+
+.settings-jp-inline-link:hover {
+    background: var(--settings-accent-soft);
+}
+
+.settings-jp-icon-action {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: var(--settings-faint);
+    cursor: pointer;
+    display: inline-flex;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+}
+
+.settings-jp-icon-action:hover {
+    background: var(--settings-surface-soft);
+    color: var(--settings-ink);
+}
+
+.settings-jp-icon-action.is-danger:hover {
+    background: #faeeee;
+    color: var(--settings-danger);
+}
+
+.settings-jp-status-pill {
+    align-items: center;
+    background: var(--settings-accent-soft) !important;
+    border: 1px solid rgba(79, 138, 120, 0.12) !important;
+    border-radius: 999px !important;
+    color: var(--settings-accent-strong) !important;
+    display: inline-flex;
+    font-size: 10px !important;
+    font-weight: 680 !important;
+    gap: 5px;
+    padding: 5px 9px !important;
+}
+
+.settings-jp-status-pill.is-muted {
+    background: var(--settings-surface-soft) !important;
+    border-color: var(--settings-line) !important;
+    color: var(--settings-muted) !important;
+}
+
+.settings-jp-inline-form {
+    background: var(--settings-surface-soft);
+    border: 1px solid var(--settings-line);
+    border-radius: 14px;
+    padding: 5px;
+}
+
+.settings-jp-notice {
+    align-items: flex-start;
+    background: var(--settings-surface-soft);
+    border: 1px solid var(--settings-line);
+    border-radius: 14px;
+    color: var(--settings-muted);
+    display: flex;
+    font-size: 11px;
+    gap: 10px;
+    line-height: 1.65;
+    padding: 12px 13px;
+}
+
+.settings-jp-notice > svg {
+    color: var(--settings-accent);
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+.settings-jp-notice.is-warning {
+    background: #fbf6ec;
+    border-color: #efe4cf;
+    color: #806d50;
+}
+
+.settings-jp-notice.is-warning > svg {
+    color: #b28b50;
+}
+
+.settings-jp-notice-title {
+    color: var(--settings-ink) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    margin: 0 0 4px !important;
+}
+
+.settings-jp-inline-status {
+    align-items: center;
+    display: inline-flex;
+    font-size: 11px;
+    font-weight: 680;
+    gap: 5px;
+}
+
+.settings-jp-inline-status.is-success {
+    color: var(--settings-accent-strong);
+}
+
+.settings-jp-inline-status.is-error {
+    color: var(--settings-danger);
+}
+
+.settings-jp-provider-meta {
+    color: var(--settings-faint);
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Credits */
+.settings-jp-credits-hero {
+    background: #eaf4ef !important;
+    border: 1px solid rgba(79, 138, 120, 0.1) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 18px 42px rgba(53, 92, 77, 0.065) !important;
+    color: var(--settings-ink) !important;
+    padding: 24px !important;
+}
+
+.settings-jp-credits-hero.is-pro {
+    background: #f2f3e8 !important;
+    border-color: rgba(137, 132, 82, 0.12) !important;
+}
+
+.settings-jp-credits-glow {
+    background: rgba(255, 255, 255, 0.64) !important;
+}
+
+.settings-jp-credits-glow.is-secondary {
+    background: rgba(212, 232, 221, 0.7) !important;
+}
+
+.settings-jp-credits-icon {
+    background: rgba(255, 255, 255, 0.72) !important;
+    border-radius: 15px !important;
+    color: var(--settings-accent-strong) !important;
+}
+
+.settings-jp-credits-hero h2 {
+    color: var(--settings-ink);
+    font-size: clamp(23px, 3vw, 30px) !important;
+}
+
+.settings-jp-feature-description {
+    color: var(--settings-muted) !important;
+    font-size: 13px !important;
+    line-height: 1.7 !important;
+}
+
+.settings-jp-feature-description strong {
+    color: var(--settings-accent-strong);
+}
+
+.settings-jp-credit-meter {
+    background: rgba(255, 255, 255, 0.72) !important;
+    border: 1px solid rgba(79, 138, 120, 0.1) !important;
+    border-radius: 14px !important;
+    padding: 14px !important;
+}
+
+.settings-jp-credit-meter-label,
+.settings-jp-credit-meter-total {
+    color: var(--settings-muted) !important;
+}
+
+.settings-jp-credit-meter-value {
+    color: var(--settings-ink) !important;
+}
+
+.settings-jp-credit-meter-track {
+    background: rgba(79, 138, 120, 0.1) !important;
+    height: 7px !important;
+}
+
+.settings-jp-credit-meter-bar {
+    background: var(--settings-accent) !important;
+}
+
+.settings-jp-credit-meter-bar.is-image {
+    background: #81a69a !important;
+}
+
+.settings-jp-redeem-panel > div:first-child h3 {
+    color: var(--settings-ink);
+    font-size: 14px;
+    font-weight: 680;
+    margin: 0;
+}
+
+.settings-jp-redeem-panel > div:first-child p {
+    color: var(--settings-muted);
+    font-size: 10px;
+    margin: 3px 0 0;
+}
+
+.settings-jp-benefit-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-jp-benefit-card {
+    background: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 16px !important;
+}
+
+/* Instructions */
+.settings-jp-instruction-workspace {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(270px, 0.72fr) minmax(0, 1.28fr);
+}
+
+.settings-jp-instruction-support,
+.settings-jp-linkage-grid,
+.settings-jp-linkage-notes {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-jp-instruction-list,
+.settings-jp-instruction-editor {
+    padding: 17px;
+}
+
+.settings-jp-instruction-editor.is-empty {
+    border-style: dashed;
+    color: var(--settings-muted);
+    display: grid;
+    min-height: 320px;
+    place-items: center;
+    text-align: center;
+}
+
+.settings-jp-instruction-metrics {
+    display: grid;
+    font-size: 10px;
+    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 12px;
+}
+
+.settings-jp-instruction-metrics span {
+    background: var(--settings-surface-soft) !important;
+    border-radius: 9px !important;
+    color: var(--settings-muted) !important;
+    padding: 6px 8px !important;
+}
+
+.settings-jp-instruction-metrics span.is-positive {
+    background: var(--settings-accent-soft) !important;
+    color: var(--settings-accent-strong) !important;
+}
+
+.settings-jp-instruction-metrics span.is-warning {
+    background: #fbf6ec !important;
+    color: #9a7744 !important;
+}
+
+.settings-jp-instruction-item {
+    background: var(--settings-surface-soft) !important;
+    border: 1px solid transparent !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    color: var(--settings-ink);
+    padding: 10px 11px !important;
+}
+
+.settings-jp-instruction-item:hover {
+    background: var(--settings-surface) !important;
+    border-color: var(--settings-line) !important;
+}
+
+.settings-jp-instruction-item.is-active {
+    background: var(--settings-accent-soft) !important;
+    border-color: rgba(79, 138, 120, 0.18) !important;
+}
+
+.settings-jp-example-button {
+    align-items: flex-start;
+    background: var(--settings-surface-soft);
+    border: 1px solid transparent;
+    border-radius: 11px;
+    color: var(--settings-muted);
+    display: inline-flex;
+    font-size: 11px;
+    gap: 8px;
+    padding: 9px 10px;
+    text-align: left;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.settings-jp-example-button svg {
+    color: var(--settings-accent);
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.settings-jp-example-button:hover {
+    background: var(--settings-surface);
+    border-color: var(--settings-line);
+    color: var(--settings-ink);
+}
+
+/* Linkage */
+.settings-jp-linkage-grid {
+    align-items: stretch;
+}
+
+.settings-jp-linkage-card {
+    box-shadow: none !important;
+    padding: 19px !important;
+}
+
+.settings-jp-linkage-card h4 {
+    color: var(--settings-ink);
+    font-size: 14px;
+    font-weight: 680;
+    margin: 0;
+}
+
+.settings-jp-linkage-logo {
+    background: var(--settings-surface-soft) !important;
+    border: 1px solid var(--settings-line) !important;
+    border-radius: 12px !important;
+    height: 40px;
+    object-fit: contain;
+    padding: 6px;
+    width: 40px;
+}
+
+.settings-jp-linkage-state {
+    background: var(--settings-surface-soft) !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    margin-top: 15px;
+    padding: 12px !important;
+}
+
+.settings-jp-linkage-state > div {
+    align-items: center;
+    color: var(--settings-ink);
+    display: flex;
+    font-size: 11px;
+    gap: 7px;
+    margin-bottom: 4px;
+}
+
+.settings-jp-linkage-state > p,
+.settings-jp-linkage-notes p:not(.settings-jp-notice-title) {
+    color: var(--settings-muted) !important;
+    font-size: 10px !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+}
+
+.dark .settings-jp-feature-panel,
+.dark .settings-jp-feature-intro,
+.dark .settings-jp-instruction-list,
+.dark .settings-jp-instruction-editor,
+.dark .settings-jp-linkage-card {
+    background: rgba(31, 41, 37, 0.9) !important;
+    border-color: var(--settings-line) !important;
+}
+
+.dark .settings-jp-credits-hero,
+.dark .settings-jp-credits-hero.is-pro {
+    background: #20362e !important;
+    border-color: var(--settings-line) !important;
+}
+
+.dark .settings-jp-credit-meter,
+.dark .settings-jp-inline-form {
+    background: rgba(18, 28, 24, 0.46) !important;
+    border-color: var(--settings-line) !important;
+}
+
+.dark .settings-jp-notice.is-warning {
+    background: rgba(132, 99, 44, 0.13);
+    border-color: rgba(191, 150, 79, 0.2);
+    color: #d5c29e;
+}
+
+@media (max-width: 900px) {
+    .settings-jp-instruction-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-jp-instruction-list > div:last-child {
+        max-height: 300px;
+    }
+}
+
+@media (max-width: 640px) {
+    .settings-jp-benefit-grid,
+    .settings-jp-instruction-support,
+    .settings-jp-linkage-grid,
+    .settings-jp-linkage-notes {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-jp-feature-intro,
+    .settings-jp-feature-panel,
+    .settings-jp-instruction-list,
+    .settings-jp-instruction-editor,
+    .settings-jp-linkage-card {
+        border-radius: 17px;
+        padding: 16px !important;
+    }
+
+    .settings-jp-credits-hero {
+        border-radius: 18px !important;
+        padding: 18px !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-jp-feature-button,
+    .settings-jp-example-button,
+    .settings-jp-icon-action {
+        transition: none;
+    }
+}

@@ -9,14 +9,6 @@ import AdminCodePanel from '../AdminCodePanel';
 import ProBadge from '../ProBadge';
 import CreditMeterCard from './CreditMeterCard';
 import CreditBenefitCard from './CreditBenefitCard';
-import {
-    settingsDarkChip,
-    settingsDarkFieldSoft,
-    settingsDarkIcon,
-    settingsDarkSurfaceGradient,
-    settingsDarkSurfaceStrong,
-    settingsDarkTrack
-} from './themeClasses';
 
 /**
  * SettingsCreditsTab
@@ -94,42 +86,25 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const imageCreditsValue = typeof systemImageCredits === 'number' ? systemImageCredits : imageCreditsCap;
     const imageCreditsPercent = Math.max(0, Math.min(100, (imageCreditsValue / imageCreditsCap) * 100));
 
-    const heroTheme = isPro
-        ? {
-            wrapper: 'border border-[#ead6b5] bg-[linear-gradient(135deg,rgba(255,248,235,0.96),rgba(248,237,221,0.94))] text-[#2f241a] shadow-[0_22px_54px_rgba(168,124,54,0.10)] dark:border-amber-200/15 dark:bg-[linear-gradient(135deg,rgba(39,28,12,0.92),rgba(29,22,14,0.96))] dark:text-white dark:shadow-[0_24px_60px_rgba(2,6,23,0.45)]',
-            glowPrimary: 'bg-[#f6dea7]/40 dark:bg-amber-300/10',
-            glowSecondary: 'bg-[#f1c9b2]/30 dark:bg-orange-300/10',
-            texture: '',
-            iconBox: 'bg-[#f5e2bf] ring-[#ebcf9b] dark:bg-amber-300/15 dark:ring-amber-200/20',
-            description: 'text-[#7b6751] dark:text-amber-50/80',
-            highlightPill: 'border-[#ead6b5] bg-[#fff8ec] text-[#9a7338] dark:border-amber-200/15 dark:bg-amber-300/10 dark:text-amber-100',
-            meterContainer: `border-[#eadcc9] bg-white/85 ${settingsDarkSurfaceStrong}`,
-            meterLabel: 'text-[#8f7d69] dark:text-slate-300/75',
-            meterValue: 'text-[#2f241a] dark:text-white',
-            meterTotal: 'text-[#a88b68] dark:text-slate-400',
-            meterTrack: `bg-[#f5eee5] ${settingsDarkTrack}`,
-            conversationBar: 'bg-gradient-to-r from-[#f3c97b] to-[#e59f6b]',
-            imageBar: 'bg-gradient-to-r from-[#d7c5e9] to-[#a9bfd8]'
-        }
-        : {
-            wrapper: 'border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(246,240,234,0.94))] text-[#2f241a] shadow-[0_22px_54px_rgba(95,74,50,0.08)] dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))] dark:text-white dark:shadow-[0_24px_60px_rgba(2,6,23,0.45)]',
-            glowPrimary: 'bg-[#efe1f7]/45 dark:bg-violet-300/10',
-            glowSecondary: 'bg-[#dfe8ef]/45 dark:bg-cyan-300/10',
-            texture: '',
-            iconBox: `bg-[#f0e7da] ring-[#ebddca] ${settingsDarkIcon} dark:ring-slate-700/70`,
-            description: 'text-[#7b6a58] dark:text-slate-300',
-            highlightPill: `border-[#eadcc9] bg-[#fffaf3] text-[#8d6d49] ${settingsDarkChip}`,
-            meterContainer: `border-[#eadcc9] bg-white/85 ${settingsDarkSurfaceStrong}`,
-            meterLabel: 'text-[#8f7d69] dark:text-slate-300/75',
-            meterValue: 'text-[#2f241a] dark:text-white',
-            meterTotal: 'text-[#a88b68] dark:text-slate-400',
-            meterTrack: `bg-[#f5eee5] ${settingsDarkTrack}`,
-            conversationBar: 'bg-gradient-to-r from-[#f3c97b] to-[#e59f6b]',
-            imageBar: 'bg-gradient-to-r from-[#d7c5e9] to-[#a9bfd8]'
-        };
+    const heroTheme = {
+        wrapper: `settings-jp-credits-hero${isPro ? ' is-pro' : ''}`,
+        glowPrimary: 'settings-jp-credits-glow is-primary',
+        glowSecondary: 'settings-jp-credits-glow is-secondary',
+        texture: '',
+        iconBox: 'settings-jp-credits-icon',
+        description: 'settings-jp-feature-description',
+        highlightPill: 'settings-jp-status-pill',
+        meterContainer: 'settings-jp-credit-meter',
+        meterLabel: 'settings-jp-credit-meter-label',
+        meterValue: 'settings-jp-credit-meter-value',
+        meterTotal: 'settings-jp-credit-meter-total',
+        meterTrack: 'settings-jp-credit-meter-track',
+        conversationBar: 'settings-jp-credit-meter-bar',
+        imageBar: 'settings-jp-credit-meter-bar is-image'
+    };
 
     return (
-        <div className="space-y-6">
+        <div className="settings-jp-feature settings-jp-credits">
             {/* Main Welcome Card */}
             <div className={`relative overflow-hidden rounded-[30px] p-6 transition-all duration-500 sm:p-8 ${heroTheme.wrapper}`}>
                 <div className={`pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl ${heroTheme.glowPrimary}`} />
@@ -141,13 +116,13 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         <div className={`relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl backdrop-blur-md ring-1 shadow-inner ${heroTheme.iconBox}`}>
                             {isPro ? (
                                 <>
-                                    <Crown size={32} className="text-[#9a7338] drop-shadow-md" />
+                                    <Crown size={32} />
                                     <div className="absolute -right-1 -top-1">
-                                        <Sparkles size={16} className="animate-pulse text-[#d89e47] dark:text-amber-200" />
+                                        <Sparkles size={16} className="animate-pulse" />
                                     </div>
                                 </>
                             ) : (
-                                <CheckCircle2 size={32} className="text-[#8d6d49] dark:text-slate-100" />
+                                <CheckCircle2 size={32} />
                             )}
                         </div>
 
@@ -165,7 +140,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                             <>
                                 <h2 className="text-3xl font-semibold tracking-[-0.02em] sm:text-[34px]">{t.credits.noConfigNeeded}</h2>
                                 <p className={`mt-2 max-w-lg text-lg leading-relaxed ${heroTheme.description}`}>
-                                    {t.credits.readyToUse} <strong className="border-b-2 border-[#ead6b5] text-[#2f241a] dark:border-amber-200/30 dark:text-white">{totalCap}</strong> {t.credits.conversations}
+                                    {t.credits.readyToUse} <strong>{totalCap}</strong> {t.credits.conversations}
                                 </p>
                             </>
                         )}
@@ -207,18 +182,18 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
             </div>
 
             {/* Redeem Section */}
-            <div className={`rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(248,243,237,0.92))] p-5 shadow-[0_10px_40px_rgba(95,74,50,0.07)] ${settingsDarkSurfaceGradient} sm:p-6`}>
+            <div className="settings-jp-feature-panel settings-jp-redeem-panel">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className={`rounded-2xl bg-[#f3e7d2] p-2 text-[#af7c36] ${settingsDarkIcon}`}>
+                    <div className="settings-jp-feature-icon">
                         <Ticket size={20} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-[#3b3025] dark:text-white">{t.credits.redeemCode}</h3>
-                        <p className="text-xs text-[#8f7e6b] dark:text-slate-400">{t.credits.redeemCodeDesc}</p>
+                        <h3>{t.credits.redeemCode}</h3>
+                        <p>{t.credits.redeemCodeDesc}</p>
                     </div>
                 </div>
 
-                <div className="rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.88)] p-1.5 dark:border-slate-700/80 dark:bg-[#101924]/92">
+                <div className="settings-jp-inline-form">
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <input
                             type="text"
@@ -230,12 +205,12 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                                 }
                             }}
                             placeholder={t.credits.enterCodePlaceholder}
-                            className={`flex-1 rounded-2xl border border-transparent bg-transparent px-4 py-2.5 text-sm uppercase text-[#4e4237] outline-none transition-all placeholder:text-[#b0a08e] focus:border-[#e7d4bb] focus:bg-white dark:focus:bg-[#0f1722] font-mono ${settingsDarkFieldSoft}`}
+                            className="settings-jp-feature-field is-mono"
                         />
                         <button
                             onClick={handleRedeem}
                             disabled={redeemStatus === 'loading' || !redeemInput.trim()}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#efb65a] px-6 py-2.5 font-semibold text-[#322515] shadow-[0_10px_26px_rgba(226,174,92,0.26)] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="settings-jp-feature-button is-primary"
                         >
                             {redeemStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : t.credits.redeem}
                         </button>
@@ -260,7 +235,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                     <div className="flex justify-center">
                         <button
                             onClick={() => setShowAdmin(!showAdmin)}
-                            className={`inline-flex items-center gap-1 rounded-full border border-[#eadfce] bg-[#fffaf4] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#8d6d49] transition-colors hover:text-[#6d5d4d] dark:hover:text-white ${settingsDarkChip}`}
+                            className="settings-jp-feature-button is-quiet is-compact"
                         >
                             <Lock size={10} />
                             {showAdmin ? t.credits.hideAdminTools : t.credits.adminTools}
@@ -276,40 +251,40 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
             )}
 
             {/* Features Info */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="settings-jp-benefit-grid">
                 <CreditBenefitCard
                     icon={Zap}
                     title={t.credits.fastResponse}
                     description={t.credits.fastResponseDesc}
-                    containerClassName={`border-[#eee3d7] bg-[rgba(255,252,247,0.9)] ${settingsDarkSurfaceStrong}`}
-                    iconWrapClassName={`bg-[#f8f2e8] text-[#8d6d49] ${settingsDarkIcon}`}
+                    containerClassName="settings-jp-benefit-card"
+                    iconWrapClassName="settings-jp-feature-icon"
                 />
                 <CreditBenefitCard
                     icon={Infinity}
                     title={t.credits.longLasting}
                     description={t.credits.longLastingDesc}
-                    containerClassName={`border-[#eee3d7] bg-[rgba(255,252,247,0.9)] ${settingsDarkSurfaceStrong}`}
-                    iconWrapClassName={`bg-[#ece6f7] text-[#776496] ${settingsDarkIcon}`}
+                    containerClassName="settings-jp-benefit-card"
+                    iconWrapClassName="settings-jp-feature-icon"
                 />
             </div>
 
             {/* Info Box - HIDDEN FOR CHINA USERS */}
             {!isChinaUser && (
                 <div className="space-y-4 text-center">
-                    <div className={`mx-auto max-w-xl rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(248,243,237,0.92))] p-4 ${settingsDarkSurfaceGradient} sm:p-5`}>
+                    <div className="settings-jp-feature-panel is-compact">
                         <button
                             onClick={() => setIsPaymentOpen(true)}
-                            className="mx-auto flex items-center gap-2 rounded-2xl bg-[#efb65a] px-6 py-3 font-semibold text-[#322515] shadow-[0_10px_32px_rgba(226,174,92,0.24)] transition-all hover:bg-[#f3bf6c] active:scale-95"
+                            className="settings-jp-feature-button is-primary"
                         >
                             <Gift size={20} />
                             {t.credits.getMore}
                         </button>
 
-                        <p className="mt-3 text-xs leading-relaxed text-[#8f7e6b] dark:text-slate-400">
+                        <p className="settings-jp-feature-footnote">
                             {t.credits.advancedNote}{' '}
-                            <span className="cursor-pointer font-semibold text-[#5b4c3d] hover:underline dark:text-slate-200" onClick={onOpenAdvanced}>
+                            <button type="button" className="settings-jp-inline-link" onClick={onOpenAdvanced}>
                                 {t.credits.advancedLink}
-                            </span>{' '}
+                            </button>{' '}
                             {t.credits.toConfig}
                         </p>
                     </div>

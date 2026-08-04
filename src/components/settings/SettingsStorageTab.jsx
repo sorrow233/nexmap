@@ -69,7 +69,7 @@ const buildRemoteBackupSummaryMessage = (backups) => {
     return '';
 };
 
-const storageFieldClassName = `w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] ${settingsDarkField}`;
+const storageFieldClassName = `settings-jp-feature-field is-mono ${settingsDarkField}`;
 
 export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const { t } = useLanguage();
@@ -436,19 +436,19 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
 
 
     return (
-        <div className="space-y-6">
+        <div className="settings-jp-feature settings-jp-storage">
 
 
-            <div className={`rounded-[24px] border border-[#eadfce] bg-[#f8f2e8] p-4 text-sm text-[#7d6b57] ${settingsDarkSurfaceStrong} dark:text-slate-200`}>
-                <p className="font-bold mb-1">{t.settings.storageConfig?.byok || 'BYOK (Bring Your Own Key)'}</p>
-                <p>{t.settings.storageConfig?.byokDesc || 'Use your own S3 storage (AWS, Cloudflare R2, MinIO) to store images.'}</p>
+            <div className={`settings-jp-storage-intro ${settingsDarkSurfaceStrong}`}>
+                <p className="font-bold mb-1">{t.settings.storageConfig?.byok || '使用自己的存储密钥（BYOK）'}</p>
+                <p>{t.settings.storageConfig?.byokDesc || '使用你自己的 S3 存储服务（AWS、Cloudflare R2 或 MinIO）保存图片。'}</p>
             </div>
 
             {/* Enable Toggle */}
-            <div className={`flex items-center justify-between rounded-[24px] border border-[#eee3d7] p-4 ${settingsDarkSurfaceMuted}`}>
+            <div className={`settings-jp-storage-toggle ${settingsDarkSurfaceMuted}`}>
                 <div>
-                    <h3 className="font-semibold text-[#43372c] dark:text-slate-200">{t.settings.storageConfig?.enable || 'Enable S3 Storage'}</h3>
-                    <p className="text-xs text-[#8f7e6b] dark:text-slate-400">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
+                    <h3>{t.settings.storageConfig?.enable || '启用 S3 存储'}</h3>
+                    <p>{t.settings.storageConfig?.enableDesc || '将图片上传到你自己的云存储桶'}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -457,14 +457,14 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         checked={s3Config.enabled}
                         onChange={e => setS3ConfigState({ ...s3Config, enabled: e.target.checked })}
                     />
-                    <div className="h-6 w-11 rounded-full bg-[#e9dfd2] peer after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-[#e1d4c4] after:bg-white after:transition-all after:content-[''] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#f4e7d2] peer-checked:bg-[#efb65a] peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-[#1b2430] dark:border-slate-600 dark:peer-focus:ring-slate-700/60"></div>
+                    <div className="settings-jp-switch-track"></div>
                 </label>
             </div>
 
             {s3Config.enabled && (
-                <div className="space-y-4 animate-fade-in">
+                <div className="settings-jp-storage-form animate-fade-in">
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.endpoint || 'Endpoint URL'}</label>
+                        <label className="settings-jp-feature-label">{t.settings.storageConfig?.endpoint || 'Endpoint URL'}</label>
                         <input
                             type="text"
                             value={s3Config.endpoint}
@@ -475,7 +475,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.region || 'Region'}</label>
+                            <label className="settings-jp-feature-label">{t.settings.storageConfig?.region || '区域'}</label>
                             <input
                                 type="text"
                                 value={s3Config.region}
@@ -485,7 +485,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.bucket || 'Bucket Name'}</label>
+                            <label className="settings-jp-feature-label">{t.settings.storageConfig?.bucket || '存储桶名称'}</label>
                             <input
                                 type="text"
                                 value={s3Config.bucket}
@@ -496,7 +496,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.accessKey || 'Access Key ID'}</label>
+                            <label className="settings-jp-feature-label">{t.settings.storageConfig?.accessKey || 'Access Key ID'}</label>
                             <input
                                 type="text"
                                 value={s3Config.accessKeyId}
@@ -505,7 +505,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.secretKey || 'Secret Access Key'}</label>
+                            <label className="settings-jp-feature-label">{t.settings.storageConfig?.secretKey || 'Secret Access Key'}</label>
                             <input
                                 type="password"
                                 value={s3Config.secretAccessKey}
@@ -517,7 +517,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 </div>
             )}
 
-            <div className={`rounded-[24px] border border-[#eee3d7] bg-[#fffaf2] p-5 ${settingsDarkSurface}`}>
+            <div className={`settings-jp-storage-panel ${settingsDarkSurface}`}>
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                         <div>
@@ -537,7 +537,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     <button
                         onClick={handleUploadFullBackupToS3}
                         disabled={s3BackupStatus === 'uploading' || !isS3Configured}
-                        className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="settings-jp-feature-button is-primary"
                     >
                         {s3BackupStatus === 'uploading' ? (
                             <>
@@ -594,7 +594,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         <button
                             onClick={handleRefreshRemoteBackups}
                             disabled={remoteBackupStatus === 'loading' || remoteBackupStatus === 'restoring'}
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] px-4 py-2 text-sm font-semibold text-[#6f604f] transition-all hover:bg-[#f8f2e8] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:text-slate-300 dark:hover:bg-[#1a2330]"
+                            className="settings-jp-feature-button is-quiet"
                         >
                             {remoteBackupStatus === 'loading' ? (
                                 <>
@@ -666,7 +666,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                         <button
                                             onClick={() => handleRestoreRemoteBackup(backup)}
                                             disabled={restoringBackupId === backup.id || remoteBackupStatus === 'loading' || !backup.isRestorable}
-                                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="settings-jp-feature-button is-primary"
                                         >
                                             {restoringBackupId === backup.id ? (
                                                 <>
@@ -693,11 +693,11 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             </div>
 
             {/* Data Recovery Section */}
-            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">{t.settings.storageConfig?.recovery || 'Data Recovery'}</h3>
+            <div className="settings-jp-storage-section">
+                <h3>{t.settings.storageConfig?.recovery || '数据恢复'}</h3>
 
                 {hasBackup ? (
-                    <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/10 backdrop-blur-md border border-emerald-100 dark:border-emerald-500/20 rounded-[2rem] space-y-3">
+                    <div className="settings-jp-storage-recovery is-available">
                         <div className="flex items-start gap-3">
                             <div className="p-2 bg-emerald-100 dark:bg-emerald-800/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
                                 <Database size={18} />
@@ -705,7 +705,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <div>
                                 <h4 className="font-bold text-emerald-800 dark:text-emerald-300">{t.settings.storageConfig?.backupFound || 'Safety Backup Found'}</h4>
                                 <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
-                                    {t.settings.storageConfig?.backupFoundDesc || 'We found a local backup of your boards created before the last logout. You can restore this data back to this device.'}
+                                    {t.settings.storageConfig?.backupFoundDesc || '发现一份退出前创建的本地画板备份，可以恢复到当前设备。'}
                                 </p>
                             </div>
                         </div>
@@ -723,17 +723,17 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 <button
                                     onClick={handleRestoreBackup}
                                     disabled={restoreStatus === 'restoring'}
-                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                    className="settings-jp-feature-button is-primary"
                                 >
                                     {restoreStatus === 'restoring' ? (
                                         <>
                                             <RotateCcw size={14} className="animate-spin" />
-                                            {t.settings.storageConfig?.restoring || 'Restoring...'}
+                                            {t.settings.storageConfig?.restoring || '恢复中...'}
                                         </>
                                     ) : (
                                         <>
                                             <RotateCcw size={14} />
-                                            {t.settings.storageConfig?.restore || 'Restore Backup'}
+                                            {t.settings.storageConfig?.restore || '恢复备份'}
                                         </>
                                     )}
                                 </button>
@@ -741,32 +741,32 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         )}
                         {restoreStatus === 'error' && (
                             <div className="text-xs text-red-500 font-bold mt-2">
-                                Error: {restoreMsg}
+                                错误：{restoreMsg}
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700/80 dark:bg-[#17202c] dark:text-slate-400">
+                    <div className="settings-jp-storage-empty">
                         <CheckCircle2 size={16} className="text-slate-400" />
-                        {t.settings.storageConfig?.noBackup || 'No pending safety backups found.'}
+                        {t.settings.storageConfig?.noBackup || '当前没有待恢复的安全备份。'}
                     </div>
                 )}
             </div>
 
             {/* Manual Import Section (Always available) */}
-            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+            <div className="settings-jp-storage-section is-manual">
                 <button
                     onClick={() => setShowManualImport(!showManualImport)}
-                    className="flex items-center gap-1 text-xs font-semibold text-[#a08e7b] transition-colors hover:text-[#8d6d49] dark:hover:text-slate-200"
+                    className="settings-jp-inline-link"
                 >
-                    {showManualImport ? (t.settings.storageConfig?.hideAdvancedRecovery || "Hide Advanced Recovery") : (t.settings.storageConfig?.advancedRecovery || "Show Advanced Recovery (Manual Import)")}
+                    {showManualImport ? (t.settings.storageConfig?.hideAdvancedRecovery || "收起高级恢复") : (t.settings.storageConfig?.advancedRecovery || "展开高级恢复（手动导入）")}
                 </button>
 
                 {showManualImport && (
-                    <div className="mt-4 rounded-[2rem] border border-slate-200 bg-slate-50/80 p-6 shadow-xl backdrop-blur-xl animate-fade-in dark:border-slate-700/80 dark:bg-[#111923]/90">
-                        <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">{t.settings.storageConfig?.manualImport || "Manual JSON Import"}</h4>
-                        <p className="text-xs text-slate-500 mb-3">
-                            {t.settings.storageConfig?.manualImportDesc || "Paste the raw backup data JSON provided by support below."}
+                    <div className="settings-jp-storage-manual animate-fade-in">
+                        <h4>{t.settings.storageConfig?.manualImport || "手动导入 JSON"}</h4>
+                        <p>
+                            {t.settings.storageConfig?.manualImportDesc || "将支持人员提供的原始备份 JSON 粘贴到下方。"}
                         </p>
 
                         <textarea
@@ -784,9 +784,9 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <button
                                 onClick={handleManualImport}
                                 disabled={manualRestoreStatus === 'restoring' || !manualJson.trim()}
-                                className="rounded-full bg-[#efb65a] px-4 py-2 text-xs font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="settings-jp-feature-button is-primary is-compact"
                             >
-                                {manualRestoreStatus === 'restoring' ? (t.settings.storageConfig?.importing || "Importing...") : (t.settings.storageConfig?.importRestore || "Import & Restore")}
+                                {manualRestoreStatus === 'restoring' ? (t.settings.storageConfig?.importing || "导入中...") : (t.settings.storageConfig?.importRestore || "导入并恢复")}
                             </button>
                         </div>
                     </div>
@@ -794,21 +794,21 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             </div>
 
             {/* Scheduled Backups Section */}
-            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+            <div className="settings-jp-storage-section is-scheduled">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storageConfig?.scheduledBackups || "Scheduled Backups"}</h3>
+                        <h3>{t.settings.storageConfig?.scheduledBackups || "定时备份"}</h3>
                         <p className="text-xs text-slate-500">每 30 分钟检查一次；只有本地数据变化时才会更新当天那 1 份备份，并且最多只保留最近 3 天。</p>
                     </div>
                     <button
                         onClick={handleForceBackup}
                         disabled={backupActionStatus === 'loading'}
-                        className="flex items-center gap-1.5 rounded-full bg-[#efb65a] px-3 py-1.5 text-xs font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="settings-jp-feature-button is-primary is-compact"
                     >
                         {backupActionStatus === 'loading' ? (
-                            <><RotateCcw size={12} className="animate-spin" /> {t.settings.storageConfig?.backingUp || "Backing up..."}</>
+                            <><RotateCcw size={12} className="animate-spin" /> {t.settings.storageConfig?.backingUp || "备份中..."}</>
                         ) : (
-                            <><Database size={12} /> {t.settings.storageConfig?.backupNow || "Backup Now"}</>
+                            <><Database size={12} /> {t.settings.storageConfig?.backupNow || "立即备份"}</>
                         )}
                     </button>
                 </div>
@@ -829,7 +829,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <button
                                 onClick={handlePruneScheduledBackups}
                                 disabled={scheduledCleanupStatus === 'loading'}
-                                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] px-4 py-2 text-xs font-semibold text-[#6f604f] transition-all hover:bg-[#f8f2e8] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:text-slate-300 dark:hover:bg-[#1a2330]"
+                                className="settings-jp-feature-button is-quiet is-compact"
                             >
                                 {scheduledCleanupStatus === 'loading' ? (
                                     <>
@@ -846,7 +846,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <button
                                 onClick={handleTrimScheduledBackups}
                                 disabled={scheduledCleanupStatus === 'loading' || scheduledBackupStats.count <= 1}
-                                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-xs font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="settings-jp-feature-button is-danger is-compact"
                             >
                                 <Trash2 size={12} />
                                 只保留最新 1 份
@@ -869,7 +869,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 {nextBackupTime && (
                     <div className="flex items-center gap-2 mb-3 text-xs text-slate-500 dark:text-slate-400">
                         <Clock size={12} />
-                        {t.settings.storageConfig?.nextBackup || "Next backup:"} {nextBackupTime.toLocaleString()}
+                        {t.settings.storageConfig?.nextBackup || "下次备份："} {nextBackupTime.toLocaleString()}
                     </div>
                 )}
 
@@ -883,15 +883,15 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 )}
 
                 {backupHistory.length === 0 ? (
-                    <div className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-[#17202c] dark:text-slate-400">
-                        {t.settings.storageConfig?.noBackupsYet || "No backups yet. Backups are created automatically at scheduled times."}
+                    <div className="settings-jp-storage-empty">
+                        {t.settings.storageConfig?.noBackupsYet || "还没有备份，系统会按计划自动创建。"}
                     </div>
                 ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
                         {backupHistory.map((backup) => (
                             <div
                                 key={backup.id}
-                                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#17202c]"
+                                className="settings-jp-storage-history-item"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={`rounded-lg bg-[#f8f2e8] p-1.5 text-[#8d6d49] ${settingsDarkChip}`}>
@@ -902,16 +902,16 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                             {backup.formattedDate}
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                            {backup.boardCount} boards · {formatBytes(backup.sizeBytes || 0)}
+                                            {backup.boardCount} 个画板 · {formatBytes(backup.sizeBytes || 0)}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => handleRestoreScheduledBackup(backup.id)}
-                                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700/80 dark:bg-[#1a2330] dark:text-slate-300 dark:hover:bg-[#233041]"
+                                        className="settings-jp-feature-button is-quiet is-compact"
                                     >
-                                        {t.settings.storageConfig?.restore || "Restore"}
+                                        {t.settings.storageConfig?.restore || "恢复"}
                                     </button>
                                     <button
                                         onClick={() => handleDeleteScheduledBackup(backup.id)}
@@ -927,7 +927,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             </div>
 
             {/* Data Export/Import Section */}
-            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+            <div className="settings-jp-storage-section is-migration">
                 <DataMigrationSection />
             </div>
 
