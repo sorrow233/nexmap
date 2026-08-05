@@ -124,6 +124,17 @@ export const app = {
         capturedInsight: "Captured Insight",
         clearMarks: "Clear Marks",
         thinking: "Thinking...",
+        answerPerformance: {
+            duration: "Time",
+            seconds: "s",
+            speed: "Speed",
+            tokensPerSecond: "tokens/s",
+            total: "Total",
+            tokens: "tokens",
+            estimated: "≈ ",
+            includesThinking: "hidden thinking included",
+            ariaLabel: "AI response performance"
+        },
         sproutIdeas: "Sprout New Ideas",
         selectTopic: "Select a topic to answer:",
         generateCards: "Generate {count} Cards",

@@ -309,6 +309,17 @@ export const ko = {
         capturedInsight: "캡처된 인사이트",
         clearMarks: "마크 지우기",
         thinking: "생각 중...",
+        answerPerformance: {
+            duration: "소요 시간",
+            seconds: "초",
+            speed: "속도",
+            tokensPerSecond: "tokens/초",
+            total: "합계",
+            tokens: "tokens",
+            estimated: "약 ",
+            includesThinking: "숨겨진 사고 포함",
+            ariaLabel: "AI 응답 성능"
+        },
         sproutIdeas: "아이디어 발아",
         quickSprout: "발아",
         branch: "분기",

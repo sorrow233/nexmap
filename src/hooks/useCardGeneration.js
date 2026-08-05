@@ -1,6 +1,5 @@
 import { useStore } from '../store/useStore';
 import { uuid } from '../utils/uuid';
-import { createPerformanceMonitor } from '../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
 import { debugLog } from '../utils/debugLogger';
 import {
@@ -49,14 +48,6 @@ export function useCardGeneration() {
 
             // Queue the streaming task
             try {
-                const perfMonitor = createPerformanceMonitor({
-                    cardId: newId,
-                    model: chatModel,
-                    providerId: providerId,
-                    messages: [{ role: 'user', content: messageContent }],
-                    stream: true
-                });
-
                 debugLog.ai(`Queueing AI task for card ${newId}`);
 
                 let firstToken = true;
@@ -77,17 +68,25 @@ export function useCardGeneration() {
                                 store.setAssistantMessageMeta(newId, assistantMsg.id, {
                                     usedSearch: metadata.usedSearch === true
                                 });
+                            },
+                            onPerformanceMetrics: (metrics = {}) => {
+                                const store = useStore.getState();
+                                const freshCard = store.getCardById?.(newId)
+                                    || store.cards.find(c => c.id === newId);
+                                const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                                if (!assistantMsg?.id || typeof store.setAssistantMessageMeta !== 'function') return;
+                                store.setAssistantMessageMeta(newId, assistantMsg.id, {
+                                    responsePerformance: metrics
+                                });
                             }
                         }
                     },
                     tags: [`card:${newId}`],
                     onProgress: (chunk) => {
                         if (firstToken) {
-                            perfMonitor.onFirstToken();
                             debugLog.ai(`Received first token for card ${newId}`);
                             firstToken = false;
                         }
-                        perfMonitor.onChunk(chunk);
 
                         // Find the assistant message ID to ensure isolated buffering
                         const freshCard = useStore.getState().getCardById?.(newId)
@@ -98,7 +97,6 @@ export function useCardGeneration() {
                 });
 
                 debugLog.ai(`AI task completed for card ${newId}`);
-                perfMonitor.onComplete();
             } catch (innerError) {
                 debugLog.error(`Streaming failed for card ${newId}`, innerError);
                 const errMsg = innerError.message || 'Generation failed';

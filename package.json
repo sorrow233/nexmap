@@ -12,6 +12,7 @@
     "test:card-clipboard": "node scripts/test-card-clipboard.mjs",
     "test:message-batch-delete": "node scripts/test-message-batch-delete.mjs",
     "test:cross-board-card-clipboard": "node scripts/test-cross-board-card-clipboard.mjs",
+    "test:answer-performance": "node scripts/test-answer-performance.mjs",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy:main": "npm run build && npx wrangler pages deploy dist --project-name aimainmap --branch main",

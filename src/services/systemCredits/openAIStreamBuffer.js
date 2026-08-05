@@ -1,7 +1,7 @@
 import { parseOpenAIStreamLine } from '../llm/providers/openai/streamProtocol.js';
 
 export const drainOpenAIStreamBuffer = (buffer, onToken, options = {}) => {
-    const { flushTail = false } = options;
+    const { flushTail = false, onRawOutputDelta = null } = options;
     if (!buffer) {
         return {
             emittedText: '',
@@ -17,7 +17,13 @@ export const drainOpenAIStreamBuffer = (buffer, onToken, options = {}) => {
 
     for (const line of segments) {
         const parsed = parseOpenAIStreamLine(line);
+        if (parsed.reasoningDelta && typeof onRawOutputDelta === 'function') {
+            onRawOutputDelta(parsed.reasoningDelta, { isThinking: true });
+        }
         if (parsed.delta) {
+            if (typeof onRawOutputDelta === 'function') {
+                onRawOutputDelta(parsed.delta, { isThinking: false });
+            }
             onToken(parsed.delta);
             emitted.push(parsed.delta);
         }
@@ -29,7 +35,13 @@ export const drainOpenAIStreamBuffer = (buffer, onToken, options = {}) => {
 
     if (flushTail && !sawTerminal && trailingBuffer) {
         const parsed = parseOpenAIStreamLine(trailingBuffer);
+        if (parsed.reasoningDelta && typeof onRawOutputDelta === 'function') {
+            onRawOutputDelta(parsed.reasoningDelta, { isThinking: true });
+        }
         if (parsed.delta) {
+            if (typeof onRawOutputDelta === 'function') {
+                onRawOutputDelta(parsed.delta, { isThinking: false });
+            }
             onToken(parsed.delta);
             emitted.push(parsed.delta);
         }

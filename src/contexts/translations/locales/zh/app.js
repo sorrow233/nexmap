@@ -124,6 +124,17 @@ export const app = {
         capturedInsight: "已捕获的洞见",
         clearMarks: "清除标记",
         thinking: "思考中...",
+        answerPerformance: {
+            duration: "用时",
+            seconds: "秒",
+            speed: "速度",
+            tokensPerSecond: "tokens/秒",
+            total: "共",
+            tokens: "tokens",
+            estimated: "约 ",
+            includesThinking: "含隐藏思考",
+            ariaLabel: "AI 回答性能"
+        },
         sproutIdeas: "发散新想法",
         selectTopic: "选择你想回答的问题:",
         generateCards: "生成 {count} 张卡片",

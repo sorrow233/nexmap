@@ -11,6 +11,7 @@ import {
     getActiveStreamRouteDebug,
     logStreamRouteDebug
 } from '../../utils/streamRouteDebug';
+import AnswerPerformanceMeta from './AnswerPerformanceMeta';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
@@ -383,6 +384,10 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                         ))
                     )}
                 </div>
+
+                {!isUser && !isStreaming && (
+                    <AnswerPerformanceMeta metrics={message?.meta?.responsePerformance} />
+                )}
 
                 {/* Action Bar (Share, etc.) */}
                 {showAssistantActionBar && (

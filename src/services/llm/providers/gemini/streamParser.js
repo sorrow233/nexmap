@@ -1,5 +1,9 @@
 import { isRetryableError } from './errorUtils.js';
-import { extractCandidateText } from './partUtils.js';
+import {
+    extractCandidateAllText,
+    extractCandidateText,
+    extractCandidateThoughtText
+} from './partUtils.js';
 import { settleStreamReader } from '../../streamTailGrace.js';
 import { createPartialStreamReplayBlockedError } from './streamReplayGuard.js';
 
@@ -33,10 +37,12 @@ export function didCandidateUseSearch(candidate) {
  * @param {Function} onLog - Callback for logging (optional)
  * @returns {Promise<{ usedSearch: boolean }>}
  */
-export async function parseGeminiStream(reader, onToken, onLog = console.log) {
+export async function parseGeminiStream(reader, onToken, onLog = console.log, onRawOutputDelta = null) {
     const decoder = new TextDecoder();
     let lastVisibleText = '';
     let lastFallbackText = '';
+    let lastRawText = '';
+    let lastThoughtText = '';
     let buffer = '';
     let usedSearch = false;
     let hasVisibleText = false;
@@ -45,11 +51,32 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let chunkCount = 0;
     let envelopeCount = 0;
     let parseErrorCount = 0;
+    let usage = null;
+
+    const resolveDelta = (currentText, previousText) => {
+        if (!currentText) return '';
+        return currentText.startsWith(previousText)
+            ? currentText.slice(previousText.length)
+            : currentText;
+    };
 
     const emitVisibleDelta = (candidate) => {
         const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
         const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
+        const rawText = extractCandidateAllText(candidate);
+        const thoughtText = extractCandidateThoughtText(candidate);
+        const rawDelta = resolveDelta(rawText, lastRawText);
+        const thoughtDelta = resolveDelta(thoughtText, lastThoughtText);
+        lastRawText = rawText || lastRawText;
+        lastThoughtText = thoughtText || lastThoughtText;
         lastFallbackText = fallbackText || lastFallbackText;
+
+        if (rawDelta && typeof onRawOutputDelta === 'function') {
+            onRawOutputDelta(rawDelta, {
+                thinkingCharCountDelta: thoughtDelta.length,
+                isThinking: thoughtDelta.length === rawDelta.length
+            });
+        }
 
         if (!visibleText) return;
 
@@ -118,6 +145,9 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                 try {
                     const data = JSON.parse(cleanLine);
                     envelopeCount += 1;
+                    if (data.usageMetadata && typeof data.usageMetadata === 'object') {
+                        usage = data.usageMetadata;
+                    }
 
                     // CRITICAL: Check for API errors that might be returned as JSON (even with 200 OK)
                     if (data.error) {
@@ -180,6 +210,9 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     sawTerminal = true;
                 } else {
                     const data = JSON.parse(cleanLine);
+                    if (data.usageMetadata && typeof data.usageMetadata === 'object') {
+                        usage = data.usageMetadata;
+                    }
                     if (data.error) {
                         const errMsg = data.error.message || JSON.stringify(data.error);
                         if (isRetryableError(errMsg)) {
@@ -244,7 +277,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
             visibleTextLength: lastVisibleText.length,
             fallbackTextLength: lastFallbackText.length
         });
-        return { usedSearch };
+        return { usedSearch, usage };
     } catch (error) {
         if (hasVisibleText) {
             throw createPartialStreamReplayBlockedError(error, {

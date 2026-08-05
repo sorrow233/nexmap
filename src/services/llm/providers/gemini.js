@@ -1095,15 +1095,23 @@ export class GeminiProvider extends LLMProvider {
                     }
 
                     try {
-                        const streamMeta = await parseGeminiStream(reader, onToken, (event, payload = {}) => {
-                            debugLog(event, payload);
-                        });
+                        const streamMeta = await parseGeminiStream(
+                            reader,
+                            onToken,
+                            (event, payload = {}) => {
+                                debugLog(event, payload);
+                            },
+                            options.onRawOutputDelta
+                        );
                         debugLog('stream parse complete', {
                             usedSearch: !!streamMeta?.usedSearch
                         });
                         if (typeof options.onResponseMetadata === 'function') {
                             try {
-                                options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
+                                options.onResponseMetadata({
+                                    usedSearch: !!streamMeta?.usedSearch,
+                                    usage: streamMeta?.usage || null
+                                });
                             } catch (metaError) {
                                 console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
                             }

@@ -283,8 +283,18 @@ export class OpenAIProvider extends LLMProvider {
                 continue;
             }
 
-            this._emitResponseMetadata(options, { usedSearch });
-            return this._stripThinkingContent(choice.message?.content || '', modelToUse);
+            const rawContent = choice.message?.content || '';
+            const rawReasoning = choice.message?.reasoning_content || '';
+            if (rawReasoning && typeof options.onRawOutputDelta === 'function') {
+                options.onRawOutputDelta(rawReasoning, { isThinking: true });
+            }
+            if (rawContent && typeof options.onRawOutputDelta === 'function') {
+                options.onRawOutputDelta(rawContent, {
+                    isThinking: rawContent.includes('</think>')
+                });
+            }
+            this._emitResponseMetadata(options, { usedSearch, usage: data.usage || null });
+            return this._stripThinkingContent(rawContent, modelToUse);
         }
 
         throw new Error('Kimi 联网搜索工具调用超过最大轮数');
@@ -401,6 +411,7 @@ export class OpenAIProvider extends LLMProvider {
                 let buffer = '';
                 let sawTerminal = false;
                 let finishReason = '';
+                let responseUsage = null;
                 const pendingClaudeChunks = [];
 
                 // 思考过程过滤 - 基于模型名预判
@@ -417,6 +428,12 @@ export class OpenAIProvider extends LLMProvider {
 
                 const processContent = (content) => {
                     if (!content) return;
+
+                    if (typeof options.onRawOutputDelta === 'function') {
+                        options.onRawOutputDelta(content, {
+                            isThinking: isThinkingModel && !foundThinkEnd
+                        });
+                    }
 
                     if (foundThinkEnd) {
                         // 非 thinking 模型或已过滤完思考：直通输出
@@ -450,6 +467,10 @@ export class OpenAIProvider extends LLMProvider {
                         for (const line of lines) {
                             try {
                                 const parsed = parseOpenAIStreamLine(line);
+                                if (parsed.usage) responseUsage = parsed.usage;
+                                if (parsed.reasoningDelta && typeof options.onRawOutputDelta === 'function') {
+                                    options.onRawOutputDelta(parsed.reasoningDelta, { isThinking: true });
+                                }
                                 if (parsed.delta) {
                                     processContent(parsed.delta);
                                 }
@@ -473,6 +494,10 @@ export class OpenAIProvider extends LLMProvider {
                     if (!sawTerminal && buffer.trim()) {
                         try {
                             const parsed = parseOpenAIStreamLine(buffer);
+                            if (parsed.usage) responseUsage = parsed.usage;
+                            if (parsed.reasoningDelta && typeof options.onRawOutputDelta === 'function') {
+                                options.onRawOutputDelta(parsed.reasoningDelta, { isThinking: true });
+                            }
                             if (parsed.delta) {
                                 processContent(parsed.delta);
                             }
@@ -502,6 +527,10 @@ export class OpenAIProvider extends LLMProvider {
 
                     if (requireConfirmedCompleteStream && pendingClaudeChunks.length > 0) {
                         replayGuard.onToken(pendingClaudeChunks.join(''));
+                    }
+
+                    if (responseUsage) {
+                        this._emitResponseMetadata(options, { usage: responseUsage });
                     }
 
                     return;

@@ -1,6 +1,5 @@
 import { getCurrentBoardId } from '../../services/storage';
 import { uuid } from '../../utils/uuid';
-import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 
 import favoritesService from '../../services/favoritesService';
@@ -537,16 +536,6 @@ export const createAISlice = (set, get) => {
                     `[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`
                 );
 
-                // Create performance monitor
-                const perfMonitor = createPerformanceMonitor({
-                    cardId,
-                    model: runModel,
-                    providerId: runProviderId,
-                    messages: fullMessages,
-                    temperature: undefined,
-                    stream: true
-                });
-
                 let firstToken = true;
                 let fallbackAssistantResolutionLogged = false;
                 const resolveLatestAssistantMessageId = () => {
@@ -581,6 +570,13 @@ export const createAISlice = (set, get) => {
                                 get().setAssistantMessageMeta(cardId, assistantMessageId, {
                                     usedSearch: metadata.usedSearch === true
                                 });
+                            },
+                            onPerformanceMetrics: (metrics = {}) => {
+                                const assistantMessageId = resolveLatestAssistantMessageId();
+                                if (!assistantMessageId) return;
+                                get().setAssistantMessageMeta(cardId, assistantMessageId, {
+                                    responsePerformance: metrics
+                                });
                             }
                         }
                     },
@@ -588,7 +584,6 @@ export const createAISlice = (set, get) => {
                     onProgress: (chunk) => {
                         const resolvedAssistantMessageId = resolveLatestAssistantMessageId();
                         if (firstToken) {
-                            perfMonitor.onFirstToken();
                             firstToken = false;
                             const liveCard = readLiveCard();
                             const liveMessages = liveCard?.data?.messages || [];
@@ -611,13 +606,9 @@ export const createAISlice = (set, get) => {
                                 ...summarizeChunkForRouteDebug(chunk)
                             }));
                         }
-                        perfMonitor.onChunk(chunk);
-
                         onToken(chunk, resolvedAssistantMessageId);
                     }
                 });
-
-                perfMonitor.onComplete();
             } catch (e) {
                 logStreamRouteDebug(routeTraceId, 'generation_failed', () => ({
                     cardId,

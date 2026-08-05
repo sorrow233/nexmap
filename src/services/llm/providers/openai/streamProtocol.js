@@ -41,6 +41,10 @@ export function parseOpenAIStreamLine(line = '') {
         isSse: true,
         isTerminal: TERMINAL_FINISH_REASONS.has(finishReason),
         finishReason,
-        delta: typeof choice.delta?.content === 'string' ? choice.delta.content : ''
+        delta: typeof choice.delta?.content === 'string' ? choice.delta.content : '',
+        reasoningDelta: typeof choice.delta?.reasoning_content === 'string'
+            ? choice.delta.reasoning_content
+            : (typeof choice.delta?.reasoning === 'string' ? choice.delta.reasoning : ''),
+        usage: data.usage && typeof data.usage === 'object' ? data.usage : null
     };
 }

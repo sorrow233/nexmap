@@ -3,6 +3,7 @@ import { getSystemPrompt } from './promptUtils.js';
 import { streamChatCompletion, imageGeneration } from '../llm.js';
 import { userStatsService } from '../stats/userStatsService.js';
 import { resolveActiveInstructionsForCurrentBoard } from '../customInstructionsService.js';
+import { createPerformanceMonitor } from '../../utils/performanceMonitor.js';
 import {
     logAITaskFinished,
     logAITaskQueued,
@@ -326,6 +327,29 @@ class AIManager {
         if (task.type === 'chat') {
             const { messages, model, temperature } = task.payload;
             let fullText = '';
+            const taskOptions = task.payload.options || {};
+            const {
+                onPerformanceMetrics,
+                onRawOutputDelta,
+                onResponseMetadata,
+                ...providerOptions
+            } = taskOptions;
+            const performanceMonitor = createPerformanceMonitor({
+                taskId: task.id,
+                cardId: task.cardId,
+                model,
+                providerId: task.payload.config?.id || task.payload.config?.providerId || ''
+            }, {
+                startedAt: task.timestamp
+            });
+            const safelyNotifyPerformance = (metrics) => {
+                if (typeof onPerformanceMetrics !== 'function') return;
+                try {
+                    onPerformanceMetrics(metrics);
+                } catch (metricsError) {
+                    console.warn('[AIManager] Response performance callback failed:', metricsError);
+                }
+            };
 
             // Resolve active instructions: global + current-board enabled optional instructions
             const activeInstructions = resolveActiveInstructionsForCurrentBoard();
@@ -335,22 +359,41 @@ class AIManager {
             const enhancedMessages = [timeSystemMsg, ...messages];
 
             // Wrapped streamChatCompletion that respects AbortSignal
-            await streamChatCompletion(
-                enhancedMessages,
-                config, // Pass config explicitly
-                (chunk) => {
-                    if (signal.aborted) return;
-                    fullText += chunk;
-                    if (task.onProgress) task.onProgress(chunk);
-                },
-                model || config.model,
-                {
-                    providerId: config.id,
-                    signal, // Need to pass signal to lower layer!
-                    temperature,
-                    ...task.payload.options // Pass other options
-                }
-            );
+            try {
+                await streamChatCompletion(
+                    enhancedMessages,
+                    config, // Pass config explicitly
+                    (chunk) => {
+                        if (signal.aborted) return;
+                        fullText += chunk;
+                        performanceMonitor.onChunk(chunk);
+                        if (task.onProgress) task.onProgress(chunk);
+                    },
+                    model || config.model,
+                    {
+                        ...providerOptions,
+                        providerId: config.id,
+                        signal, // Need to pass signal to lower layer!
+                        temperature,
+                        onRawOutputDelta: (chunk, details = {}) => {
+                            performanceMonitor.onRawOutputDelta(chunk, details);
+                            if (typeof onRawOutputDelta === 'function') {
+                                onRawOutputDelta(chunk, details);
+                            }
+                        },
+                        onResponseMetadata: (metadata = {}) => {
+                            performanceMonitor.onProviderMetadata(metadata);
+                            if (typeof onResponseMetadata === 'function') {
+                                onResponseMetadata(metadata);
+                            }
+                        }
+                    }
+                );
+                safelyNotifyPerformance(performanceMonitor.onComplete());
+            } catch (error) {
+                safelyNotifyPerformance(performanceMonitor.onError(error));
+                throw error;
+            }
 
             // Track usage stats (characters generated)
             if (fullText && fullText.length > 0) {

@@ -123,7 +123,9 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
             }
 
             buffer += decoder.decode(value, { stream: true });
-            const drained = drainOpenAIStreamBuffer(buffer, onToken);
+            const drained = drainOpenAIStreamBuffer(buffer, onToken, {
+                onRawOutputDelta: options.onRawOutputDelta
+            });
             fullText += drained.emittedText;
             buffer = drained.remainingBuffer;
             if (drained.sawTerminal) {
@@ -137,7 +139,10 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
             return fullText;
         }
 
-        const flushedTail = drainOpenAIStreamBuffer(buffer, onToken, { flushTail: true });
+        const flushedTail = drainOpenAIStreamBuffer(buffer, onToken, {
+            flushTail: true,
+            onRawOutputDelta: options.onRawOutputDelta
+        });
         fullText += flushedTail.emittedText;
 
         return fullText;

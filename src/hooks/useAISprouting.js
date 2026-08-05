@@ -53,15 +53,22 @@ export function useAISprouting() {
         return positions;
     };
 
-    const applySearchMetaToLatestAssistant = (cardId, metadata = {}) => {
+    const applyMetaToLatestAssistant = (cardId, metaUpdates = {}) => {
         const store = useStore.getState();
         const card = store.getCardById?.(cardId) || store.cards.find(c => c.id === cardId);
         const assistantMsg = card?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
         if (!assistantMsg?.id || typeof store.setAssistantMessageMeta !== 'function') return;
-        store.setAssistantMessageMeta(cardId, assistantMsg.id, {
-            usedSearch: metadata.usedSearch === true
-        });
+        store.setAssistantMessageMeta(cardId, assistantMsg.id, metaUpdates);
     };
+
+    const buildResponseTrackingOptions = (cardId) => ({
+        onResponseMetadata: (metadata = {}) => applyMetaToLatestAssistant(cardId, {
+            usedSearch: metadata.usedSearch === true
+        }),
+        onPerformanceMetrics: (metrics = {}) => applyMetaToLatestAssistant(cardId, {
+            responsePerformance: metrics
+        })
+    });
 
     const runWithConcurrency = async (jobs, concurrency, runner) => {
         if (!Array.isArray(jobs) || jobs.length === 0) return [];
@@ -130,9 +137,7 @@ export function useAISprouting() {
                             messages: [{ role: 'user', content: mark }],
                             model: config.model,
                             config,
-                            options: {
-                                onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
-                            }
+                            options: buildResponseTrackingOptions(newId)
                         },
                         tags: [`card:${generatedId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -196,9 +201,7 @@ export function useAISprouting() {
                                 }],
                                 model: config.model,
                                 config,
-                                options: {
-                                    onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
-                                }
+                                options: buildResponseTrackingOptions(newId)
                             },
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -279,9 +282,7 @@ export function useAISprouting() {
                                     }],
                                     model: config.model,
                                     config,
-                                    options: {
-                                        onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
-                                    }
+                                    options: buildResponseTrackingOptions(newId)
                                 },
                                 tags: [`card:${newId}`],
                                 onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -445,9 +446,7 @@ Respond in the same language as the focus topic.
                             }],
                             model: config.model,
                             config,
-                            options: {
-                                onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
-                            }
+                            options: buildResponseTrackingOptions(newId)
                         },
                         tags: [`card:${newId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -520,9 +519,7 @@ Respond in the same language as the focus topic.
                                 }],
                                 model: config.model,
                                 config,
-                                options: {
-                                    onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
-                                }
+                                options: buildResponseTrackingOptions(newId)
                             },
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -755,9 +752,7 @@ ${isStructuredPassthrough ? '7. This is a fixed numbered-item passthrough task. 
                                 messages: [{ role: 'user', content: executionContent }],
                                 model: runConfig.model,
                                 config: runConfig,
-                                options: {
-                                    onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(job.cardId, metadata)
-                                }
+                                options: buildResponseTrackingOptions(job.cardId)
                             },
                             tags: [`card:${job.cardId}`, `agent:${agentRunId}`],
                             onProgress: (chunk) => updateCardContent(job.cardId, chunk)

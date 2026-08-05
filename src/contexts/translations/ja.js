@@ -309,6 +309,17 @@ export const ja = {
         capturedInsight: "キャプチャされたインサイト",
         clearMarks: "マークをクリア",
         thinking: "考え中...",
+        answerPerformance: {
+            duration: "所要時間",
+            seconds: "秒",
+            speed: "速度",
+            tokensPerSecond: "tokens/秒",
+            total: "合計",
+            tokens: "tokens",
+            estimated: "約 ",
+            includesThinking: "非表示の思考を含む",
+            ariaLabel: "AI回答パフォーマンス"
+        },
         sproutIdeas: "アイデアを発芽",
         quickSprout: "発芽",
         branch: "ブランチ",
