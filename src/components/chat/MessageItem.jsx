@@ -32,7 +32,7 @@ const getLastSafeStreamingBoundary = (text = '') => {
     return boundary;
 };
 
-const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, onDeleteMessage, isFavorite, onContinueTopic, onBranch }) => {
+const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, onStartMessageSelection, isSelectionMode = false, isSelected = false, onToggleMessageSelection, isFavorite, onContinueTopic, onBranch }) => {
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
@@ -176,13 +176,14 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
 
     const normalizedShareContent = React.useMemo(() => normalizeShareContent(content), [content]);
     const canShareMessage = React.useMemo(() => isShareableMessageContent(content), [content]);
-    const canDeleteMessage = Boolean(onDeleteMessage) && !isStreaming;
-    const showAssistantActionBar = !isUser && !isStreaming && (
+    const canStartMessageSelection = Boolean(onStartMessageSelection) && !isStreaming && !isSelectionMode;
+    const canToggleMessageSelection = Boolean(onToggleMessageSelection) && !isStreaming && isSelectionMode;
+    const showAssistantActionBar = !isUser && !isStreaming && !isSelectionMode && (
         Boolean(onToggleFavorite)
         || canShareMessage
         || Boolean(onContinueTopic)
         || Boolean(onBranch)
-        || canDeleteMessage
+        || canStartMessageSelection
     );
     const stableMarks = marks || EMPTY_MESSAGE_ANNOTATIONS;
     const stableCapturedNotes = capturedNotes || EMPTY_MESSAGE_ANNOTATIONS;
@@ -218,8 +219,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
     };
 
     const handleDelete = () => {
-        if (!canDeleteMessage) return;
-        onDeleteMessage(message, index);
+        if (!canStartMessageSelection) return;
+        onStartMessageSelection(message, index);
+    };
+
+    const handleSelectionToggle = (event) => {
+        if (!canToggleMessageSelection) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onToggleMessageSelection(message, index);
     };
 
     return (
@@ -227,7 +235,21 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
             id={`message-${index}`}
             className={`chat-message-frame ${isUser ? 'chat-message-frame--user justify-end' : 'chat-message-frame--assistant justify-start'} flex group relative`}
         >
-            {isUser && (
+            {canToggleMessageSelection && (
+                <button
+                    type="button"
+                    onClick={handleSelectionToggle}
+                    className={`mt-3 mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all ${isSelected
+                        ? 'border-rose-500 bg-rose-500 text-white shadow-sm shadow-rose-500/20'
+                        : 'border-slate-300 bg-white text-transparent hover:border-rose-300 dark:border-slate-600 dark:bg-slate-900'
+                        }`}
+                    aria-pressed={isSelected}
+                    aria-label={isSelected ? '取消选择此消息' : '选择此消息'}
+                >
+                    <Check size={15} strokeWidth={3} />
+                </button>
+            )}
+            {isUser && !isSelectionMode && (
                 <div className="flex flex-col justify-end gap-2 pb-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={handleCopy}
@@ -238,7 +260,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                     >
                         {copySuccess ? <Check size={14} /> : <Copy size={14} />}
                     </button>
-                    {canDeleteMessage && (
+                    {canStartMessageSelection && (
                         <button
                             onClick={handleDelete}
                             className="p-2 rounded-full text-slate-400 hover:text-rose-500 bg-white/50 hover:bg-rose-50 ring-1 ring-transparent hover:ring-rose-200 dark:bg-white/5 dark:hover:bg-rose-500/10 transition-all ring-inset"
@@ -249,10 +271,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                     )}
                 </div>
             )}
-            <div className={`rounded-3xl p-6 shadow-sm relative ${isUser
+            <div
+                onClickCapture={canToggleMessageSelection ? handleSelectionToggle : undefined}
+                className={`rounded-3xl p-6 shadow-sm relative transition-[box-shadow,background-color,border-color] ${isSelected
+                    ? 'ring-2 ring-rose-400/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-950'
+                    : ''} ${canToggleMessageSelection ? 'cursor-pointer select-none' : ''} ${isUser
                 ? 'max-w-[85%] sm:max-w-[75%] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tr-none'
                 : 'w-full max-w-full bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-tl-none'
-                }`}>
+                }`}
+            >
 
                 {/* Images in Message (User) */}
                 {msgImages.length > 0 && (
@@ -407,7 +434,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                                 <GitBranch size={16} />
                             </button>
                         )}
-                        {canDeleteMessage && (
+                        {canStartMessageSelection && (
                             <button
                                 onClick={handleDelete}
                                 className="p-2 rounded-full text-slate-400 hover:text-rose-500 bg-slate-50/50 hover:bg-rose-50 ring-1 ring-transparent hover:ring-rose-200 dark:bg-white/5 dark:hover:bg-rose-500/10 transition-all ring-inset"
@@ -445,7 +472,10 @@ const areMessageItemPropsEqual = (prevProps, nextProps) => (
     prevProps.capturedNotes === nextProps.capturedNotes &&
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isFavorite === nextProps.isFavorite &&
-    Boolean(prevProps.onDeleteMessage) === Boolean(nextProps.onDeleteMessage)
+    prevProps.isSelectionMode === nextProps.isSelectionMode &&
+    prevProps.isSelected === nextProps.isSelected &&
+    Boolean(prevProps.onStartMessageSelection) === Boolean(nextProps.onStartMessageSelection) &&
+    Boolean(prevProps.onToggleMessageSelection) === Boolean(nextProps.onToggleMessageSelection)
 );
 
 const MessageItem = React.memo(MessageItemComponent, areMessageItemPropsEqual);

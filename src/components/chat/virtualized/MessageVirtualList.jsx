@@ -10,6 +10,7 @@ import {
     getActiveStreamRouteDebug,
     logStreamRouteDebug
 } from '../../../utils/streamRouteDebug';
+import { getMessageSelectionKey } from '../messageSelection';
 
 const ITEM_GAP_PX = 64;
 const DEFAULT_OVERSCAN = 4;
@@ -57,7 +58,10 @@ export default function MessageVirtualList({
     parseModelOutput,
     onShare,
     onToggleFavorite,
-    onDeleteMessage,
+    onStartMessageSelection,
+    isSelectionMode = false,
+    selectedMessageKeys,
+    onToggleMessageSelection,
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
@@ -222,7 +226,10 @@ export default function MessageVirtualList({
                 handleRetry={handleRetry}
                 onShare={onShare}
                 onToggleFavorite={onToggleFavorite}
-                onDeleteMessage={onDeleteMessage}
+                onStartMessageSelection={onStartMessageSelection}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedMessageKeys?.has(getMessageSelectionKey(message, messageIndex)) || false}
+                onToggleMessageSelection={onToggleMessageSelection}
                 isFavorite={favoritesService.isFavorite(
                     cardId,
                     message?.id || null,

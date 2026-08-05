@@ -136,6 +136,27 @@ const favoritesService = {
         runtimeLog(`[Favorites] Removed snapshot for message ${messageId || messageIndex} of card ${cardId}`);
     },
 
+    removeFavoritesForMessages: (cardId, messageSnapshots = []) => {
+        if (!cardId || !Array.isArray(messageSnapshots) || messageSnapshots.length === 0) {
+            return;
+        }
+
+        const list = getRawFavorites();
+        const newList = list.filter((favorite) => !messageSnapshots.some((snapshot) => (
+            matchesFavoriteSource(favorite, {
+                cardId,
+                messageId: snapshot.messageId,
+                messageIndex: snapshot.messageIndex,
+                messageContent: snapshot.messageContent
+            })
+        )));
+
+        if (newList.length !== list.length) {
+            saveFavorites(newList);
+            runtimeLog(`[Favorites] Removed ${list.length - newList.length} message snapshots from card ${cardId}`);
+        }
+    },
+
     removeFavoriteById: (favId) => {
         const list = getRawFavorites();
         const newList = list.filter(item => item.id !== favId);

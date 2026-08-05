@@ -23,11 +23,13 @@ import ChatIndexSidebar from './ChatIndexSidebar';
 import ChatSelectionMenu from './ChatSelectionMenu';
 import ChatHeader from './ChatHeader';
 import MobileChatHeader from './MobileChatHeader';
+import MessageBatchDeleteBar from './MessageBatchDeleteBar';
 import { getSelectionSnapshot } from './selectionSnapshot';
 import {
-    buildDeleteMessageConfirmText,
-    removeMessageFavoriteSnapshot,
-    removeMessageFromCardData
+    buildBatchDeleteMessageConfirmText,
+    getMessageSelectionKey,
+    removeMessagesFromCardData,
+    removeSelectedMessageFavoriteSnapshots
 } from './messageDeletion';
 import {
     applyInlineImageMigrationsToCardData,
@@ -73,6 +75,8 @@ export default function ChatView({
 
     const [shareContent, setShareContent] = useState(null);
     const [isAtBottom, setIsAtBottom] = useState(true);
+    const [isMessageSelectionMode, setIsMessageSelectionMode] = useState(false);
+    const [selectedMessageKeys, setSelectedMessageKeys] = useState(() => new Set());
     const isAtBottomRef = useRef(true);
     const scrollRequestRef = useRef(null);
     const scrollCommitRef = useRef(null);
@@ -95,6 +99,9 @@ export default function ChatView({
     const [selection, setSelection] = useState(null);
     const { t } = useLanguage();
     const hasActiveSelection = Boolean(selection?.text);
+    const messageSelectionKeys = React.useMemo(() => (
+        (card.data.messages || []).map((message, index) => getMessageSelectionKey(message, index))
+    ), [card.data.messages]);
 
     // Quick Sprout Hook (for one-click topic decomposition)
     const { handleContinueTopic, handleBranch } = useAISprouting();
@@ -605,24 +612,83 @@ export default function ChatView({
         handleBranch(card.id, msgId);
     }, [card.id, handleBranch, isReadOnly]);
 
-    const handleDeleteMessage = React.useCallback((message, messageIndex) => {
-        if (isReadOnly || !message) return;
+    const cancelMessageSelection = React.useCallback(() => {
+        setIsMessageSelectionMode(false);
+        setSelectedMessageKeys(new Set());
+    }, []);
 
-        const confirmed = window.confirm(buildDeleteMessageConfirmText(message));
+    const handleStartMessageSelection = React.useCallback((message, messageIndex) => {
+        if (isReadOnly || isStreaming || !message) return;
+        window.getSelection()?.removeAllRanges();
+        setSelection(null);
+        setIsMessageSelectionMode(true);
+        setSelectedMessageKeys(new Set([getMessageSelectionKey(message, messageIndex)]));
+    }, [isReadOnly, isStreaming]);
+
+    const handleToggleMessageSelection = React.useCallback((message, messageIndex) => {
+        const selectionKey = getMessageSelectionKey(message, messageIndex);
+        setSelectedMessageKeys((currentKeys) => {
+            const nextKeys = new Set(currentKeys);
+            if (nextKeys.has(selectionKey)) {
+                nextKeys.delete(selectionKey);
+            } else {
+                nextKeys.add(selectionKey);
+            }
+            return nextKeys;
+        });
+    }, []);
+
+    const handleToggleAllMessages = React.useCallback(() => {
+        setSelectedMessageKeys((currentKeys) => (
+            currentKeys.size === messageSelectionKeys.length
+                ? new Set()
+                : new Set(messageSelectionKeys)
+        ));
+    }, [messageSelectionKeys]);
+
+    const handleDeleteSelectedMessages = React.useCallback(() => {
+        if (isReadOnly || selectedMessageKeys.size === 0) return;
+        const confirmed = window.confirm(buildBatchDeleteMessageConfirmText(
+            selectedMessageKeys.size,
+            t.chat?.batchDeleteConfirm
+        ));
         if (!confirmed) return;
 
-        removeMessageFavoriteSnapshot({
+        removeSelectedMessageFavoriteSnapshots({
             cardId: card.id,
-            message,
-            messageIndex
+            messages: card.data.messages || [],
+            selectedMessageKeys
         });
         useStore.setState({ favoritesLastUpdate: Date.now() });
+        onUpdate(card.id, (currentData) => removeMessagesFromCardData(
+            currentData,
+            selectedMessageKeys
+        ));
+        cancelMessageSelection();
+    }, [
+        cancelMessageSelection,
+        card.data.messages,
+        card.id,
+        isReadOnly,
+        onUpdate,
+        selectedMessageKeys,
+        t.chat?.batchDeleteConfirm
+    ]);
 
-        onUpdate(card.id, (currentData) => removeMessageFromCardData(currentData, {
-            messageId: message?.id || null,
-            messageIndex
-        }));
-    }, [card.id, isReadOnly, onUpdate]);
+    useEffect(() => {
+        cancelMessageSelection();
+    }, [cancelMessageSelection, card.id]);
+
+    useEffect(() => {
+        if (!isMessageSelectionMode) return undefined;
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                cancelMessageSelection();
+            }
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [cancelMessageSelection, isMessageSelectionMode]);
 
     return (
         <div
@@ -635,7 +701,7 @@ export default function ChatView({
             style={{ willChange: 'auto' }}
         >
             {/* Floating Action Menu */}
-            {!mobileMode && !isReadOnly && (
+            {!mobileMode && !isReadOnly && !isMessageSelectionMode && (
                 <ChatSelectionMenu
                     selection={selection}
                     onCaptureNote={handleCaptureNote}
@@ -693,7 +759,10 @@ export default function ChatView({
                         onUpdate={onUpdate}
                         onShare={handleShareOpen}
                         onToggleFavorite={onToggleFavorite}
-                        onDeleteMessage={isReadOnly ? null : handleDeleteMessage}
+                        onStartMessageSelection={isReadOnly || isStreaming ? null : handleStartMessageSelection}
+                        isSelectionMode={isMessageSelectionMode}
+                        selectedMessageKeys={selectedMessageKeys}
+                        onToggleMessageSelection={isReadOnly ? null : handleToggleMessageSelection}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
                         onContinueTopic={isReadOnly ? null : handleContinueTopicForMessageList}
@@ -728,25 +797,36 @@ export default function ChatView({
                     </div>
                 )}
 
-                {/* Premium Input Bar */}
-                <ChatInput
-                    input={input}
-                    setInput={setInput}
-                    handleSend={onSendClick}
-                    handlePaste={handlePaste}
-                    handleImageUpload={handleImageUpload}
-                    handleImageDrop={handleDrop}
-                    images={images}
-                    removeImage={removeImage}
-                    fileInputRef={fileInputRef}
-                    isBusy={isStreaming}
-                    onStop={handleStop}
-                    placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
-                    instructions={instructions}
-                    onClearInstructions={() => { }}
-                    isReadOnly={isReadOnly}
-                    mobileMode={mobileMode}
-                />
+                {isMessageSelectionMode ? (
+                    <MessageBatchDeleteBar
+                        selectedCount={selectedMessageKeys.size}
+                        totalCount={messageSelectionKeys.length}
+                        onToggleAll={handleToggleAllMessages}
+                        onCancel={cancelMessageSelection}
+                        onDelete={handleDeleteSelectedMessages}
+                        copy={t.chat}
+                        mobileMode={mobileMode}
+                    />
+                ) : (
+                    <ChatInput
+                        input={input}
+                        setInput={setInput}
+                        handleSend={onSendClick}
+                        handlePaste={handlePaste}
+                        handleImageUpload={handleImageUpload}
+                        handleImageDrop={handleDrop}
+                        images={images}
+                        removeImage={removeImage}
+                        fileInputRef={fileInputRef}
+                        isBusy={isStreaming}
+                        onStop={handleStop}
+                        placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
+                        instructions={instructions}
+                        onClearInstructions={() => { }}
+                        isReadOnly={isReadOnly}
+                        mobileMode={mobileMode}
+                    />
+                )}
             </div>
 
             {/* Share Modal */}

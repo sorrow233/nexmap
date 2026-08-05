@@ -13,7 +13,10 @@ const MessageList = React.memo(function MessageList({
     onUpdate,
     onShare,
     onToggleFavorite,
-    onDeleteMessage,
+    onStartMessageSelection,
+    isSelectionMode = false,
+    selectedMessageKeys,
+    onToggleMessageSelection,
     pendingCount = 0,
     pendingMessages = [],
     onContinueTopic,
@@ -69,14 +72,17 @@ const MessageList = React.memo(function MessageList({
                         scrollContainerRef={scrollContainerRef}
                         messagesEndRef={messagesEndRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        isStreaming={isStreaming}
+                        isResponseStreaming={isStreaming}
                         handleRetry={handleRetry}
                         marks={card.data.marks}
                         capturedNotes={card.data.capturedNotes}
                         parseModelOutput={parseModelOutput}
                         onShare={onShare}
                         onToggleFavorite={onToggleFavorite}
-                        onDeleteMessage={onDeleteMessage}
+                        onStartMessageSelection={onStartMessageSelection}
+                        isSelectionMode={isSelectionMode}
+                        selectedMessageKeys={selectedMessageKeys}
+                        onToggleMessageSelection={onToggleMessageSelection}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}
                         onContinueTopic={onContinueTopic}

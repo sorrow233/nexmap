@@ -1,4 +1,15 @@
-import favoritesService from '../../services/favoritesService';
+import favoritesService from '../../services/favoritesService.js';
+import {
+    buildBatchDeleteMessageConfirmText,
+    getMessageSelectionKey,
+    removeMessagesFromCardData
+} from './messageSelection.js';
+
+export {
+    buildBatchDeleteMessageConfirmText,
+    getMessageSelectionKey,
+    removeMessagesFromCardData
+} from './messageSelection.js';
 
 const DELETE_PREVIEW_LIMIT = 120;
 
@@ -41,26 +52,10 @@ export const buildDeleteMessageConfirmText = (message) => {
 };
 
 export const removeMessageFromCardData = (currentData, { messageId = null, messageIndex = -1 } = {}) => {
-    if (!currentData || !Array.isArray(currentData.messages)) {
-        return currentData;
-    }
-
-    const nextMessages = currentData.messages.filter((message, index) => {
-        if (messageId && message?.id) {
-            return message.id !== messageId;
-        }
-
-        return index !== messageIndex;
-    });
-
-    if (nextMessages.length === currentData.messages.length) {
-        return currentData;
-    }
-
-    return {
-        ...currentData,
-        messages: nextMessages
-    };
+    const selectionKey = messageId
+        ? `id:${messageId}`
+        : `index:${messageIndex}`;
+    return removeMessagesFromCardData(currentData, new Set([selectionKey]));
 };
 
 export const removeMessageFavoriteSnapshot = ({ cardId, message, messageIndex }) => {
@@ -74,4 +69,27 @@ export const removeMessageFavoriteSnapshot = ({ cardId, message, messageIndex })
         messageIndex,
         message?.content
     );
+};
+
+export const removeSelectedMessageFavoriteSnapshots = ({
+    cardId,
+    messages = [],
+    selectedMessageKeys
+}) => {
+    const selectedKeys = selectedMessageKeys instanceof Set
+        ? selectedMessageKeys
+        : new Set(selectedMessageKeys || []);
+
+    const messageSnapshots = messages.reduce((snapshots, message, messageIndex) => {
+        if (selectedKeys.has(getMessageSelectionKey(message, messageIndex))) {
+            snapshots.push({
+                messageId: message?.id || null,
+                messageIndex,
+                messageContent: message?.content
+            });
+        }
+        return snapshots;
+    }, []);
+
+    favoritesService.removeFavoritesForMessages(cardId, messageSnapshots);
 };
