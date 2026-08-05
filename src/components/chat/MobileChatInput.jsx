@@ -62,7 +62,7 @@ export default function MobileChatInput({
                 </div>
             )}
 
-            <div className="flex items-end gap-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+            <div className="mobile-composer-row flex items-end gap-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
                 <input
                     type="file"
                     ref={fileInputRef}

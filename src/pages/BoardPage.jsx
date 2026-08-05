@@ -16,6 +16,7 @@ import { useStore } from '../store/useStore';
 import { useTabLock } from '../hooks/useTabLock';
 import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
+import { useMobileViewportLock } from '../hooks/useMobileViewportLock';
 import useBoardThumbnailUrl from '../hooks/useBoardThumbnailUrl';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
@@ -42,6 +43,7 @@ export default function BoardPage({
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
+    useMobileViewportLock(isIPhoneBoardMode);
     const getCardById = useStore(state => state.getCardById);
     const perfBoardIdRef = React.useRef('');
     const perfBoardReadyRef = React.useRef('');
@@ -215,8 +217,12 @@ export default function BoardPage({
     }, [cards, getCardById, handleFullScreen, setExpandedCardId]);
 
 
+    const boardViewportClass = isIPhoneBoardMode
+        ? 'ios-mobile-viewport fixed inset-x-0 z-0'
+        : 'relative h-screen';
+
     return (
-        <div className={`${isIPhoneBoardMode ? 'h-screen-safe' : 'h-screen'} w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative`}>
+        <div className={`${boardViewportClass} w-screen overflow-hidden bg-slate-50 dark:bg-slate-950`}>
             <BoardRuntimeEffects
                 board={currentBoard}
                 boardId={currentBoardId}

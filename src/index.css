@@ -73,6 +73,23 @@ body,
         height: var(--mobile-viewport-height, calc(var(--vh, 1vh) * 100));
     }
 
+    html.ios-app-viewport-lock,
+    body.ios-app-viewport-lock {
+        height: 100%;
+        width: 100%;
+        overflow: hidden !important;
+        overscroll-behavior: none;
+    }
+
+    body.ios-app-viewport-lock {
+        position: fixed;
+        inset: 0;
+    }
+
+    .ios-keyboard-active .mobile-composer-row {
+        padding-bottom: 0.5rem !important;
+    }
+
     /* Touch target minimum size (44x44px for Apple HIG) */
     .touch-target {
         min-width: 44px;
