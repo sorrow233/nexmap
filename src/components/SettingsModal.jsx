@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { getS3Config } from '../services/s3';
 import {
@@ -14,6 +14,7 @@ import {
 import { saveUserSettings } from '../services/storage';
 import { getEditableItems } from './settings/instructions/helpers';
 import SettingsBasicSection from './settings/SettingsBasicSection';
+import CanvasBackgroundSettings from './settings/CanvasBackgroundSettings';
 import SettingsAISection from './settings/SettingsAISection';
 import SettingsAdvancedSection from './settings/SettingsAdvancedSection';
 import SettingsShell, { SettingsResetDialog } from './settings/SettingsShell';
@@ -21,6 +22,12 @@ import { cloneGlobalRoles, getSuggestedRoleModel } from './settings/modelRoleUti
 import { useLanguage } from '../contexts/LanguageContext';
 import { normalizeGeminiProviderConfig } from '../services/llm/geminiRouting';
 import { hasUsableProviderRoute } from '../services/llm/providerAccess';
+import {
+    MAX_CUSTOM_CANVAS_BACKGROUNDS,
+    loadCustomCanvasBackgroundLibrary,
+    prepareCustomCanvasBackground,
+    saveCustomCanvasBackgroundLibrary
+} from '../services/customCanvasBackgrounds';
 
 const loadWithTimestamp = (key) => {
     const raw = localStorage.getItem(key);
@@ -74,6 +81,16 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         normalizeCustomInstructionsValue(null)
     );
     const [linkageSettings, setLinkageSettings] = useState(createEmptyLinkageSettings());
+    const [canvasBackgroundLibrary, setCanvasBackgroundLibrary] = useState({
+        enabled: false,
+        opacity: 0.34,
+        items: []
+    });
+    const [isLoadingCanvasBackgrounds, setIsLoadingCanvasBackgrounds] = useState(false);
+    const [isProcessingCanvasBackgrounds, setIsProcessingCanvasBackgrounds] = useState(false);
+    const [canvasBackgroundError, setCanvasBackgroundError] = useState('');
+    const canvasBackgroundPreviewUrlsRef = useRef(new Set());
+    const isCanvasBackgroundSettingsActiveRef = useRef(false);
     const storeSettingsSignature = useMemo(() => JSON.stringify({
         providers: storeProviders,
         activeId: storeActiveId,
@@ -111,6 +128,106 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         if (!isOpen || isSaving || isDirty) return;
         hydrateModalStateFromStore();
     }, [hydrateModalStateFromStore, isDirty, isOpen, isSaving, storeSettingsSignature]);
+
+    useEffect(() => {
+        let active = true;
+
+        canvasBackgroundPreviewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+        canvasBackgroundPreviewUrlsRef.current.clear();
+        isCanvasBackgroundSettingsActiveRef.current = isOpen;
+        if (!isOpen) return undefined;
+
+        setIsLoadingCanvasBackgrounds(true);
+        setCanvasBackgroundError('');
+
+        loadCustomCanvasBackgroundLibrary()
+            .then((library) => {
+                if (!active) return;
+                const items = library.items.map((item) => {
+                    const previewUrl = URL.createObjectURL(item.blob);
+                    canvasBackgroundPreviewUrlsRef.current.add(previewUrl);
+                    return { ...item, previewUrl };
+                });
+                setCanvasBackgroundLibrary({ ...library, items });
+            })
+            .catch((error) => {
+                console.error('[Settings] Failed to load canvas backgrounds:', error);
+                if (active) setCanvasBackgroundError('读取画布背景图库失败，请重新打开设置。');
+            })
+            .finally(() => {
+                if (active) setIsLoadingCanvasBackgrounds(false);
+            });
+
+        return () => {
+            active = false;
+            isCanvasBackgroundSettingsActiveRef.current = false;
+            canvasBackgroundPreviewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+            canvasBackgroundPreviewUrlsRef.current.clear();
+        };
+    }, [isOpen]);
+
+    const handleCanvasBackgroundFiles = async (files) => {
+        if (!Array.isArray(files) || files.length === 0 || isProcessingCanvasBackgrounds) return;
+
+        const remainingSlots = Math.max(
+            0,
+            MAX_CUSTOM_CANVAS_BACKGROUNDS - canvasBackgroundLibrary.items.length
+        );
+        const selectedFiles = files.slice(0, remainingSlots);
+        if (selectedFiles.length === 0) return;
+
+        setIsProcessingCanvasBackgrounds(true);
+        setCanvasBackgroundError('');
+        const preparedItems = [];
+        const failedNames = [];
+
+        for (const file of selectedFiles) {
+            try {
+                const prepared = await prepareCustomCanvasBackground(file);
+                if (!isCanvasBackgroundSettingsActiveRef.current) return;
+                const previewUrl = URL.createObjectURL(prepared.blob);
+                canvasBackgroundPreviewUrlsRef.current.add(previewUrl);
+                preparedItems.push({ ...prepared, previewUrl });
+            } catch (error) {
+                console.error('[Settings] Failed to prepare canvas background:', error);
+                failedNames.push(`${file?.name || '图片'}：${error?.message || '处理失败'}`);
+            }
+        }
+
+        if (!isCanvasBackgroundSettingsActiveRef.current) return;
+
+        if (preparedItems.length > 0) {
+            setCanvasBackgroundLibrary(previous => ({
+                ...previous,
+                enabled: true,
+                items: [...previous.items, ...preparedItems].slice(0, MAX_CUSTOM_CANVAS_BACKGROUNDS)
+            }));
+            setIsDirty(true);
+        }
+        if (files.length > remainingSlots) {
+            failedNames.push(`图库最多保存 ${MAX_CUSTOM_CANVAS_BACKGROUNDS} 张图片，多余文件未添加。`);
+        }
+        setCanvasBackgroundError(failedNames.join(' '));
+        setIsProcessingCanvasBackgrounds(false);
+    };
+
+    const handleRemoveCanvasBackground = (itemId) => {
+        setCanvasBackgroundLibrary(previous => {
+            const removed = previous.items.find(item => item.id === itemId);
+            if (removed?.previewUrl) {
+                URL.revokeObjectURL(removed.previewUrl);
+                canvasBackgroundPreviewUrlsRef.current.delete(removed.previewUrl);
+            }
+            const items = previous.items.filter(item => item.id !== itemId);
+            return {
+                ...previous,
+                enabled: items.length > 0 && previous.enabled,
+                items
+            };
+        });
+        setCanvasBackgroundError('');
+        setIsDirty(true);
+    };
 
     const handleLinkageFieldChange = (field, value) => {
         setIsDirty(true);
@@ -290,7 +407,12 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
         try {
             const now = Date.now();
+            const savedCanvasBackgrounds = await saveCustomCanvasBackgroundLibrary(canvasBackgroundLibrary);
             const saveResult = await saveUserSettings(user?.uid || null, buildSettingsPayload(now));
+            setCanvasBackgroundLibrary(previous => ({
+                ...savedCanvasBackgrounds,
+                items: previous.items.map(item => ({ ...item, persisted: true }))
+            }));
             setSaveStatus({
                 type: 'success',
                 title: saveResult.reason === 'firestore' ? '已同步到账号' : '已保存到本地',
@@ -350,15 +472,33 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             )}
         >
             {activeTab === 'basic' && (
-                <SettingsBasicSection
-                    customInstructions={customInstructions}
-                    setCustomInstructions={handleSetCustomInstructions}
-                    advancedInstructionCount={extraInstructionCount}
-                    onOpenAdvancedInstructions={() => {
-                        setActiveTab('advanced');
-                        setRequestedAdvancedPanel('instructions');
-                    }}
-                />
+                <div className="space-y-6">
+                    <SettingsBasicSection
+                        customInstructions={customInstructions}
+                        setCustomInstructions={handleSetCustomInstructions}
+                        advancedInstructionCount={extraInstructionCount}
+                        onOpenAdvancedInstructions={() => {
+                            setActiveTab('advanced');
+                            setRequestedAdvancedPanel('instructions');
+                        }}
+                    />
+                    <CanvasBackgroundSettings
+                        library={canvasBackgroundLibrary}
+                        isLoading={isLoadingCanvasBackgrounds}
+                        isProcessing={isProcessingCanvasBackgrounds}
+                        error={canvasBackgroundError}
+                        onFilesSelected={handleCanvasBackgroundFiles}
+                        onRemove={handleRemoveCanvasBackground}
+                        onEnabledChange={(enabled) => {
+                            setCanvasBackgroundLibrary(previous => ({ ...previous, enabled }));
+                            setIsDirty(true);
+                        }}
+                        onOpacityChange={(opacity) => {
+                            setCanvasBackgroundLibrary(previous => ({ ...previous, opacity }));
+                            setIsDirty(true);
+                        }}
+                    />
+                </div>
             )}
 
             {activeTab === 'ai' && (

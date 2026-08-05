@@ -269,6 +269,7 @@ export default function BoardPage({
                         <ErrorBoundary level="canvas">
                             <div ref={canvasContainerRef} className="absolute inset-0">
                                 <Canvas
+                                    boardId={currentBoardId}
                                     boardBackgroundImage={currentBoard?.backgroundImage || resolvedBoardThumbnailUrl || ''}
                                     isSuspended={Boolean(expandedCardId)}
                                     extraHydratedCardIds={persistentHydratedCardIds}

@@ -23,6 +23,7 @@ const STORAGE_KEYS_TO_REMOVE = [
     'mixboard_board_instruction_settings_map',
     'mixboard_settings',
     'mixboard_settings_sync_meta_v1',
+    'mixboard_custom_canvas_backgrounds_v1',
     'userLanguage',
     'feedback_voted_ids',
     'hasVisitedBefore',

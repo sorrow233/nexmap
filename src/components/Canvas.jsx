@@ -13,6 +13,7 @@ import {
     resolveDraggedCardIds
 } from '../utils/cardDrag';
 import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
+import useCustomCanvasBackground from '../hooks/useCustomCanvasBackground';
 import InstantTooltip from './InstantTooltip';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { capturePerfSnapshot } from '../utils/perfProbe';
@@ -41,6 +42,7 @@ const isSameSelectionRect = (current, next) => {
 };
 
 export default function Canvas({
+    boardId,
     boardBackgroundImage,
     isSuspended = false,
     extraHydratedCardIds = [],
@@ -642,7 +644,11 @@ export default function Canvas({
             ? optimizeImageUrl(boardBackgroundImage.trim(), 1800)
             : ''
     );
-    const cachedBackgroundUrl = useCachedBackgroundImage(normalizedBackgroundUrl);
+    const customBackground = useCustomCanvasBackground(boardId);
+    const fallbackBackgroundUrl = customBackground.isConfigured ? '' : normalizedBackgroundUrl;
+    const cachedBackgroundUrl = useCachedBackgroundImage(fallbackBackgroundUrl);
+    const effectiveBackgroundUrl = customBackground.url || cachedBackgroundUrl || fallbackBackgroundUrl;
+    const backgroundOpacity = customBackground.isCustom ? customBackground.opacity : 0.3;
 
     return (
         <div
@@ -670,14 +676,17 @@ export default function Canvas({
                 backgroundSize: '24px 24px'
             }}
         >
-            {normalizedBackgroundUrl && (
+            {effectiveBackgroundUrl && (
                 <div
-                    className="absolute inset-0 pointer-events-none bg-cover bg-center opacity-30"
-                    style={{ backgroundImage: `url(${cachedBackgroundUrl || normalizedBackgroundUrl})` }}
+                    className="absolute inset-0 pointer-events-none bg-cover bg-center transition-opacity duration-700"
+                    style={{
+                        backgroundImage: `url(${effectiveBackgroundUrl})`,
+                        opacity: backgroundOpacity
+                    }}
                 />
             )}
 
-            {normalizedBackgroundUrl && (
+            {effectiveBackgroundUrl && (
                 <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(248,250,252,0.08)_0%,rgba(248,250,252,0.16)_100%)] dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.25)_0%,rgba(2,6,23,0.45)_100%)]" />
             )}
 
