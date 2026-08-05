@@ -2,6 +2,10 @@ import { LLMProvider } from './base';
 import { resolveAllImages } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
 import {
+    buildGeminiImageRequest,
+    extractGeminiImageDataUrl
+} from '../../image/geminiNativeImage';
+import {
     isRetryableError,
     isRetryableStatus,
     isKeyFailureStatus,
@@ -30,6 +34,7 @@ const MAX_CHAT_ATTEMPTS = 2;
 const MAX_STREAM_ATTEMPTS = 2;
 const OFFICIAL_GEMINI_31_STREAM_ATTEMPTS = 4;
 const GEMINI_31_PRO_MAX_OUTPUT_TOKENS = 65536;
+const MAX_IMAGE_ATTEMPTS = 2;
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -1219,16 +1224,106 @@ export class GeminiProvider extends LLMProvider {
         throw lastError || new Error('Gemini 流式请求失败');
     }
 
-    /**
-     * Generate Image using GMI Cloud Async API
-     */
+    /** Generate an image through Google native generateContent or legacy GMI. */
     async generateImage(prompt, model, options = {}) {
         const baseUrl = this._getResolvedBaseUrl();
-        if (this._isVertexExpressBaseUrl(baseUrl) || this._isOfficialGeminiBaseUrl(baseUrl)) {
-            throw new Error('当前 Vertex / Google Gemini 直连配置尚未接入图片生成链路，请把图片模型切回支持图片的提供商后再试');
+        const keyPool = this._getKeyPool();
+        const usesGoogleNativeImageApi = this._isVertexExpressBaseUrl(baseUrl) ||
+            this._isOfficialGeminiProviderConfig(baseUrl);
+
+        if (!usesGoogleNativeImageApi) {
+            const apiKey = await this._acquireApiKeyWithWait(keyPool, { signal: options.signal });
+            if (!apiKey) throw this._buildNoAvailableKeyError(keyPool);
+            return generateGeminiImage(apiKey, prompt, model, options);
         }
 
-        const apiKey = this._getKeyPool().getNextKey();
-        return generateGeminiImage(apiKey, prompt, model, options);
+        const modelToUse = model || this.config.model || 'gemini-3-pro-image-preview';
+        const cleanModel = modelToUse.replace(/^google\//, '');
+        const requestBody = buildGeminiImageRequest(prompt, options);
+        let activeApiKey = null;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= MAX_IMAGE_ATTEMPTS; attempt += 1) {
+            if (!activeApiKey) {
+                activeApiKey = await this._acquireApiKeyWithWait(keyPool, { signal: options.signal });
+                if (!activeApiKey) throw this._buildNoAvailableKeyError(keyPool);
+            }
+
+            const apiKey = activeApiKey;
+            let releaseConcurrencySlot = null;
+
+            try {
+                releaseConcurrencySlot = await this._acquireRequestConcurrencySlot({
+                    baseUrl,
+                    cleanModel,
+                    stream: false,
+                    options
+                });
+                const response = await this._requestWithTransportFallback({
+                    apiKey,
+                    baseUrl,
+                    cleanModel,
+                    requestBody,
+                    stream: false,
+                    signal: options.signal
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await this._readErrorMessage(response);
+                    const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
+                    this._markKeyFailure(keyPool, apiKey, {
+                        statusCode: response.status,
+                        errorMessage,
+                        retryAfterMs: retryDelayMs
+                    });
+                    throw this._createHandledApiError({
+                        message: `Gemini Image API Error ${response.status}: ${errorMessage}`,
+                        statusCode: response.status,
+                        retryDelayMs
+                    });
+                }
+
+                const responseData = await response.json();
+                return extractGeminiImageDataUrl(responseData);
+            } catch (error) {
+                if (isAbortError(error) || options.signal?.aborted) throw error;
+
+                const errorMessage = error?.message || String(error);
+                const statusCode = Number.isFinite(Number(error?.statusCode))
+                    ? Number(error.statusCode)
+                    : this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs))
+                    ? Number(error.retryDelayMs)
+                    : this._extractRetryDelayMs(errorMessage);
+
+                if (error?.keyAlreadyMarked !== true) {
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                }
+                if (this._shouldSwitchKeyOnRetry(statusCode)) activeApiKey = null;
+
+                if (this._isRateLimited(statusCode, errorMessage) || statusCode === 401 || statusCode === 403) {
+                    throw error;
+                }
+
+                lastError = error;
+                const canRetry = attempt < MAX_IMAGE_ATTEMPTS &&
+                    this._shouldRetry({ statusCode, errorMessage, error });
+                if (!canRetry) throw error;
+
+                releaseConcurrencySlot?.();
+                releaseConcurrencySlot = null;
+                await this._waitWithAbort(this._resolveRetryWaitMs({
+                    statusCode,
+                    errorMessage,
+                    retryDelayMs,
+                    keyPool,
+                    attempt
+                }), options.signal);
+            } finally {
+                releaseConcurrencySlot?.();
+            }
+        }
+
+        throw lastError || new Error('Gemini 图片生成失败');
     }
 }

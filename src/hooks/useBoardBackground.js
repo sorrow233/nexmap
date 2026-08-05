@@ -273,7 +273,9 @@ export default function useBoardBackground() {
                         imageConfig,
                         imageConfig.model
                     ),
-                    { label: 'Image Render', maxAttempts: 3, baseDelayMs: 1000 }
+                    // Image providers own concurrency, key rotation and backoff.
+                    // A second retry layer can multiply one click into six upstream requests.
+                    { label: 'Image Render', maxAttempts: 1, baseDelayMs: 1000 }
                 );
 
                 if (!imageUrl) throw new Error("Failed to generate image");
