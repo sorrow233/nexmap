@@ -1,7 +1,7 @@
 {
   "name": "mixboard-canvas",
   "private": false,
-  "version": "2.4.10",
+  "version": "2.4.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "test:message-batch-delete": "node scripts/test-message-batch-delete.mjs",
     "test:cross-board-card-clipboard": "node scripts/test-cross-board-card-clipboard.mjs",
     "test:answer-performance": "node scripts/test-answer-performance.mjs",
+    "test:user-stats": "node scripts/test-user-stats.mjs",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy:main": "npm run build && npx wrangler pages deploy dist --project-name aimainmap --branch main",

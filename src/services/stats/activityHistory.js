@@ -7,6 +7,23 @@ const normalizeChars = (value) => {
 
 export const buildLocalDateKey = (year, month, day) => `${year}-${pad(month + 1)}-${pad(day)}`;
 
+export const buildLocalDateKeyFromDate = (date = new Date()) => buildLocalDateKey(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+);
+
+export const parseLocalDateKey = (dateKey) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ''));
+    if (!match) return null;
+
+    const [, year, month, day] = match.map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+        ? date
+        : null;
+};
+
 export function buildMonthActivityData(history = {}, year, month) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     return Array.from({ length: daysInMonth }, (_, index) => {

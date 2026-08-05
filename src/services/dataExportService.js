@@ -11,6 +11,7 @@ import {
     normalizeBoardTitleMeta
 } from './boardTitle/metadata';
 import { persistBoardsMetadataList } from './boardPersistence/boardsListStorage';
+import { STATS_STORAGE_KEYS, userStatsService } from './stats/userStatsService';
 
 // localStorage keys to export
 const EXPORT_KEYS = [
@@ -23,6 +24,7 @@ const EXPORT_KEYS = [
     'mixboard_custom_instructions',
     'mixboard_board_instruction_settings_map',
     'mixboard_settings',
+    STATS_STORAGE_KEYS.SNAPSHOT,
     'userLanguage'
 ];
 
@@ -214,6 +216,13 @@ export async function importData(data, options = { importSettings: false }) {
         }
 
         console.log(`[Import] Restored ${restoredSettingsCount} localStorage entries`);
+
+        const hasImportedStats = Object.keys(data.localStorage).some((key) => (
+            key === STATS_STORAGE_KEYS.SNAPSHOT || key.startsWith('nexmap_stats_')
+        ));
+        if (hasImportedStats) {
+            await userStatsService.importStorageValues(data.localStorage);
+        }
 
         // 2. Import board data to IndexedDB AND update boards list
         let boardCount = 0;

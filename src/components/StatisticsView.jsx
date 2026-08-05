@@ -61,54 +61,51 @@ export default function StatisticsView({ boardsList, user }) {
     };
 
     useEffect(() => {
-        // Calculate Board Stats
-        const activeBoards = boardsList.filter(b => !b.deletedAt);
-        const activeCount = activeBoards.length;
-        const trash = boardsList.filter(b => b.deletedAt).length;
-        const totalCards = activeBoards.reduce((acc, b) => acc + (b.cardCount || 0), 0);
+        const refreshStats = () => {
+            // Calculate Board Stats
+            const activeBoards = boardsList.filter(b => !b.deletedAt);
+            const activeCount = activeBoards.length;
+            const trash = boardsList.filter(b => b.deletedAt).length;
+            const totalCards = activeBoards.reduce((acc, b) => acc + (b.cardCount || 0), 0);
 
-        let lastActive = null;
-        if (boardsList.length > 0) {
-            const sorted = [...boardsList].sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0));
-            if (sorted[0].lastAccessedAt) {
-                lastActive = new Date(sorted[0].lastAccessedAt).toLocaleDateString() + ' ' + new Date(sorted[0].lastAccessedAt).toLocaleTimeString();
+            let lastActive = null;
+            if (boardsList.length > 0) {
+                const sorted = [...boardsList].sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0));
+                if (sorted[0].lastAccessedAt) {
+                    lastActive = new Date(sorted[0].lastAccessedAt).toLocaleDateString() + ' ' + new Date(sorted[0].lastAccessedAt).toLocaleTimeString();
+                }
             }
-        }
 
-        // Get local stats
-        const basicStats = userStatsService.getExtendedStats();
-        const modelUsage = userStatsService.getModelUsageStats();
+            const basicStats = userStatsService.getExtendedStats();
+            const modelUsage = userStatsService.getModelUsageStats();
+            const now = new Date();
+            const monthlyData = userStatsService.getDataForMonth(now.getFullYear(), now.getMonth());
+            const yearlyData = userStatsService.getDataForYear(now.getFullYear());
 
-        // Prepare chart data based on view mode (though we fetch all for now for simplicity, 
-        // normally we'd fetch on view change if expensive)
-        // We'll calculate month/year data here or in the service. 
-        // For this view, let's fetch on render.
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
+            setStats(prev => ({
+                ...prev,
+                totalBoards: activeCount,
+                activeBoards: activeCount,
+                trashBoards: trash,
+                totalCards,
+                lastActive,
+                tokenStats: {
+                    ...basicStats,
+                    monthlyHistory: monthlyData,
+                    yearlyHistory: yearlyData,
+                    modelUsage
+                }
+            }));
+        };
 
-        const monthlyData = userStatsService.getDataForMonth(currentYear, currentMonth);
-        const yearlyData = userStatsService.getDataForYear(currentYear);
-
-        setStats(prev => ({
-            ...prev,
-            totalBoards: activeCount, // User specifically asked for "Canvas" count, usually means active ones
-            activeBoards: activeCount,
-            trashBoards: trash,
-            totalCards: totalCards,
-            lastActive: lastActive,
-            tokenStats: {
-                ...basicStats,
-                monthlyHistory: monthlyData,
-                yearlyHistory: yearlyData,
-                modelUsage: modelUsage
-            }
-        }));
+        refreshStats();
+        const unsubscribe = userStatsService.subscribe(refreshStats);
 
         if (user && !storedCredits) {
             refreshCredentials();
         }
 
+        return unsubscribe;
     }, [boardsList, user]); // Note: chartViewMode doesn't need to re-trigger this, we have all data or fetch on demand
 
     // Format utility

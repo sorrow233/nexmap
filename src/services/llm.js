@@ -7,6 +7,15 @@ import { AGENT_INTENT, buildStructuredNumberedPlan, classifyAgentIntent, inferDy
 
 export { DEFAULT_ROLES };
 
+const persistSuccessfulModelUsage = async (model) => {
+    if (!model) return;
+    try {
+        await userStatsService.incrementModelUsage(model);
+    } catch (error) {
+        console.warn('[UserStats] Failed to persist successful model usage', error);
+    }
+};
+
 /**
  * Main chat completion function
  * Requires config to be passed explicitly (Inversion of Control)
@@ -16,8 +25,9 @@ export async function chatCompletion(messages, config, model = null, options = {
         throw new Error("ChatCompletion: Config must be provided");
     }
     const provider = ModelFactory.getProvider(config, { model });
-    if (model) userStatsService.incrementModelUsage(model);
-    return provider.chat(messages, model, options);
+    const result = await provider.chat(messages, model, options);
+    await persistSuccessfulModelUsage(model || config.model);
+    return result;
 }
 
 /**
@@ -40,8 +50,12 @@ export async function streamChatCompletion(messages, config, onToken, model = nu
     // However, to keep it simple for now, we'll rely on the passed model.
 
     const provider = ModelFactory.getProvider(config, { model });
-    if (model) userStatsService.incrementModelUsage(model);
-    return provider.stream(messages, onToken, model, options);
+    const { skipUsageTracking = false, ...providerOptions } = options;
+    const result = await provider.stream(messages, onToken, model, providerOptions);
+    if (!skipUsageTracking) {
+        await persistSuccessfulModelUsage(model || config.model);
+    }
+    return result;
 }
 
 /**
@@ -55,9 +69,9 @@ export async function imageGeneration(prompt, config, model = null, options = {}
     }
 
     const provider = ModelFactory.getProvider(config, { model });
-    // Track image generation as "dall-e-3" (or general image model) usage
-    userStatsService.incrementModelUsage('dall-e-3');
-    return provider.generateImage(prompt, model, options);
+    const result = await provider.generateImage(prompt, model, options);
+    await persistSuccessfulModelUsage(model || config.model || 'image-generation');
+    return result;
 }
 
 /**

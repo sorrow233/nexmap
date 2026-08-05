@@ -3,11 +3,12 @@ import { backupStoreDel, backupStoreGet, backupStoreSet } from './db/backupStore
 import { getBoardsList } from './storage';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from './boardTitle/metadata';
 import { persistBoardsMetadataList } from './boardPersistence/boardsListStorage';
+import { userStatsService } from './stats/userStatsService';
 
 export const SAFETY_BACKUP_META_KEY = 'mixboard_safety_backup';
 
 const SAFETY_BACKUP_RECORD_KEY = 'safety_backup_latest';
-const SAFETY_BACKUP_VERSION = 2;
+const SAFETY_BACKUP_VERSION = 3;
 const BOARD_PREFIX = 'mixboard_board_';
 
 const readLegacyBoardSnapshot = (boardId) => {
@@ -62,7 +63,8 @@ export const createSafetyBackup = async () => {
         id: SAFETY_BACKUP_RECORD_KEY,
         timestamp: Date.now(),
         version: SAFETY_BACKUP_VERSION,
-        boards: boardSnapshots
+        boards: boardSnapshots,
+        stats: userStatsService.exportSnapshot()
     };
 
     await backupStoreSet(SAFETY_BACKUP_RECORD_KEY, backup);
@@ -148,6 +150,10 @@ export const restoreSafetyBackup = async () => {
         normalizeBoardMetadataList(Array.from(mergedBoards.values())),
         { reason: 'safety-backup:restore' }
     );
+
+    if (backup.stats) {
+        await userStatsService.importSnapshot(backup.stats);
+    }
 
     return {
         success: true,

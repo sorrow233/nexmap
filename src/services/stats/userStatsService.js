@@ -1,301 +1,293 @@
 /**
- * User Stats Service
- * Tracks client-side usage statistics like generated characters/tokens.
- * Data is persisted in localStorage.
+ * Durable local usage statistics.
+ *
+ * All counters live in one checksummed snapshot so a generation is committed
+ * atomically. A second snapshot is kept for corruption recovery, and Web Locks
+ * serialize writes made by multiple tabs.
  */
+import { buildLocalDateKeyFromDate, buildMonthActivityData, buildYearActivityData } from './activityHistory.js';
+import { parseStoredJson } from './statsStorage.js';
 import {
-    buildUpdatedActivityLogValue,
-    createEmptyActivityLogValue,
-    normalizeActivityLogStorageValue,
-    readActivityLog
-} from './activityLogStorage';
-import { parseStoredJson, persistStorageValue } from './statsStorage';
-import { buildMonthActivityData, buildYearActivityData } from './activityHistory';
+    applyGenerationToSnapshot,
+    applyModelUsageToSnapshot,
+    buildStatsSnapshotFromLegacy,
+    createEmptyStatsSnapshot,
+    getStatsSnapshotTotalChars,
+    getUnicodeCharacterCount,
+    normalizeStatsSnapshot,
+    parseStatsSnapshot,
+    sealStatsSnapshot
+} from './statsSnapshot.js';
 
-const STORAGE_KEYS = {
+export const STATS_STORAGE_KEYS = Object.freeze({
+    SNAPSHOT: 'nexmap_stats_snapshot_v3',
+    SNAPSHOT_BACKUP: 'nexmap_stats_snapshot_v3_backup',
     TOTAL_CHARS: 'nexmap_stats_total_chars',
     DAILY_HISTORY: 'nexmap_stats_daily_history',
     ACTIVITY_LOG: 'nexmap_stats_activity_log',
     DAILY_SESSIONS: 'nexmap_stats_daily_sessions',
-    MODEL_USAGE: 'nexmap_stats_model_usage',
-    LAST_SYNC: 'nexmap_stats_last_sync'
-};
+    MODEL_USAGE: 'nexmap_stats_model_usage'
+});
+
+const LOCK_NAME = 'nexmap-user-stats-v3';
+
+const readJsonObject = (storage, key) => parseStoredJson(storage?.getItem?.(key), {});
+
+const buildLegacySnapshotFromStorage = (storage) => buildStatsSnapshotFromLegacy({
+    totalChars: storage?.getItem?.(STATS_STORAGE_KEYS.TOTAL_CHARS),
+    dailyHistory: readJsonObject(storage, STATS_STORAGE_KEYS.DAILY_HISTORY),
+    dailySessions: readJsonObject(storage, STATS_STORAGE_KEYS.DAILY_SESSIONS),
+    modelUsage: readJsonObject(storage, STATS_STORAGE_KEYS.MODEL_USAGE),
+    activityLog: storage?.getItem?.(STATS_STORAGE_KEYS.ACTIVITY_LOG)
+});
 
 class UserStatsService {
-    constructor() {
-        this._initLocalStorage();
-    }
+    constructor(storage = globalThis.localStorage) {
+        this.storage = storage;
+        this.listeners = new Set();
+        this.mutationQueue = Promise.resolve();
+        this._initializeSnapshot();
 
-    _initLocalStorage() {
-        this._ensureStorageValue(STORAGE_KEYS.TOTAL_CHARS, '0', 'total char count');
-        this._ensureStorageValue(STORAGE_KEYS.DAILY_HISTORY, '{}', 'daily history');
-        this._ensureStorageValue(STORAGE_KEYS.DAILY_SESSIONS, '{}', 'daily sessions');
-        this._ensureStorageValue(STORAGE_KEYS.MODEL_USAGE, '{}', 'model usage');
-
-        const activityLogValue = localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG);
-        if (!activityLogValue) {
-            this._writeStorageValue(
-                STORAGE_KEYS.ACTIVITY_LOG,
-                createEmptyActivityLogValue(),
-                'activity log',
-                createEmptyActivityLogValue()
-            );
-            return;
-        }
-
-        const normalizedActivityLog = normalizeActivityLogStorageValue(activityLogValue);
-        if (normalizedActivityLog !== activityLogValue) {
-            this._writeStorageValue(
-                STORAGE_KEYS.ACTIVITY_LOG,
-                normalizedActivityLog,
-                'activity log',
-                createEmptyActivityLogValue()
-            );
+        if (typeof window !== 'undefined') {
+            window.addEventListener('storage', (event) => {
+                if (event.key === STATS_STORAGE_KEYS.SNAPSHOT) this._notify();
+            });
         }
     }
 
-    /**
-     * Increment the character count stats
-     * @param {number} count - Number of characters to add
-     */
-    incrementCharCount(count) {
-        if (!count || count <= 0) return;
+    _initializeSnapshot() {
+        if (!this.storage) return;
+        if (parseStatsSnapshot(this.storage.getItem(STATS_STORAGE_KEYS.SNAPSHOT))) return;
 
-        const now = new Date();
-        const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const backup = parseStatsSnapshot(this.storage.getItem(STATS_STORAGE_KEYS.SNAPSHOT_BACKUP));
+        const initial = backup || buildLegacySnapshotFromStorage(this.storage);
+        this._persistSnapshot(initial, { preserveCurrent: false });
+    }
 
-        // 1. Update Total
-        const currentTotal = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10);
-        const newTotal = currentTotal + count;
-        this._writeStorageValue(STORAGE_KEYS.TOTAL_CHARS, newTotal.toString(), 'total char count');
+    _readSnapshot() {
+        if (!this.storage) return sealStatsSnapshot(createEmptyStatsSnapshot());
 
-        // 2. Update Daily History (永久保存所有日期数据)
-        const history = this._getHistory();
-        const todayCount = (history[today] || 0) + count;
-        history[today] = todayCount;
-        this._writeStorageValue(
-            STORAGE_KEYS.DAILY_HISTORY,
-            JSON.stringify(history),
-            'daily history'
-        );
+        const current = parseStatsSnapshot(this.storage.getItem(STATS_STORAGE_KEYS.SNAPSHOT));
+        if (current) return current;
 
-        // 3. Log activity in compact hourly buckets to keep localStorage bounded
-        const updatedActivityLog = buildUpdatedActivityLogValue(
-            localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG),
-            {
-                timestamp: now.getTime(),
-                chars: count
+        const backup = parseStatsSnapshot(this.storage.getItem(STATS_STORAGE_KEYS.SNAPSHOT_BACKUP));
+        if (backup) {
+            this._persistSnapshot(backup, { preserveCurrent: false });
+            return backup;
+        }
+
+        const migrated = buildLegacySnapshotFromStorage(this.storage);
+        this._persistSnapshot(migrated, { preserveCurrent: false });
+        return migrated;
+    }
+
+    _persistSnapshot(snapshot, { preserveCurrent = true } = {}) {
+        if (!this.storage) return false;
+        const sealed = sealStatsSnapshot(snapshot);
+        const serialized = JSON.stringify(sealed);
+
+        try {
+            if (preserveCurrent) {
+                const current = parseStatsSnapshot(this.storage.getItem(STATS_STORAGE_KEYS.SNAPSHOT));
+                if (current) {
+                    this.storage.setItem(STATS_STORAGE_KEYS.SNAPSHOT_BACKUP, JSON.stringify(current));
+                }
             }
-        );
-        this._writeStorageValue(
-            STORAGE_KEYS.ACTIVITY_LOG,
-            updatedActivityLog,
-            'activity log',
-            createEmptyActivityLogValue()
-        );
 
-        // 4. Update daily session count
-        const sessions = this._getDailySessions();
-        sessions[today] = (sessions[today] || 0) + 1;
-        this._writeStorageValue(
-            STORAGE_KEYS.DAILY_SESSIONS,
-            JSON.stringify(sessions),
-            'daily sessions'
-        );
+            this.storage.setItem(STATS_STORAGE_KEYS.SNAPSHOT, serialized);
+            if (!parseStatsSnapshot(this.storage.getItem(STATS_STORAGE_KEYS.SNAPSHOT))) {
+                throw new Error('Stats snapshot verification failed');
+            }
+            return true;
+        } catch (error) {
+            console.warn('[UserStats] Failed to persist atomic stats snapshot', error);
+            return false;
+        }
     }
 
-    /**
-     * Increment usage count for a specific AI model
-     * @param {string} modelName
-     */
+    async _mutate(mutator) {
+        const run = async () => {
+            const current = this._readSnapshot();
+            const next = mutator(current);
+            const persisted = this._persistSnapshot(next);
+            if (persisted) this._notify();
+            return persisted;
+        };
+
+        if (globalThis.navigator?.locks?.request) {
+            return globalThis.navigator.locks.request(LOCK_NAME, { mode: 'exclusive' }, run);
+        }
+
+        const queued = this.mutationQueue.then(run, run);
+        this.mutationQueue = queued.catch(() => undefined);
+        return queued;
+    }
+
+    subscribe(listener) {
+        if (typeof listener !== 'function') return () => {};
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+
+    _notify() {
+        this.listeners.forEach((listener) => {
+            try {
+                listener();
+            } catch (error) {
+                console.warn('[UserStats] Stats subscriber failed', error);
+            }
+        });
+    }
+
+    async recordGeneration({ text = '', chars, model = '', timestamp = Date.now() } = {}) {
+        const count = Number.isFinite(Number(chars))
+            ? Math.max(0, Math.floor(Number(chars)))
+            : getUnicodeCharacterCount(text);
+        if (count <= 0) return false;
+
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return false;
+
+        return this._mutate((snapshot) => applyGenerationToSnapshot(snapshot, {
+            chars: count,
+            dateKey: buildLocalDateKeyFromDate(date),
+            hour: date.getHours(),
+            model,
+            timestamp: date.getTime()
+        }));
+    }
+
+    incrementCharCount(count) {
+        return this.recordGeneration({ chars: count });
+    }
+
     incrementModelUsage(modelName) {
-        if (!modelName) return;
-        const usage = this._getModelUsage();
-        usage[modelName] = (usage[modelName] || 0) + 1;
-        this._writeStorageValue(
-            STORAGE_KEYS.MODEL_USAGE,
-            JSON.stringify(usage),
-            'model usage'
-        );
+        if (!String(modelName || '').trim()) return Promise.resolve(false);
+        return this._mutate((snapshot) => applyModelUsageToSnapshot(snapshot, modelName));
     }
 
-    /**
-     * Get current statistics
-     * @returns {Object} { totalChars, todayChars, yesterdayChars }
-     */
-    getStats() {
-        const totalChars = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10);
-        const history = this._getHistory();
+    exportSnapshot() {
+        return this._readSnapshot();
+    }
 
-        const today = new Date().toISOString().split('T')[0];
-        const yesterdayDate = new Date();
+    importSnapshot(snapshot) {
+        const normalized = snapshot?.checksum
+            ? parseStatsSnapshot(snapshot)
+            : sealStatsSnapshot(normalizeStatsSnapshot(snapshot));
+        if (!normalized) return Promise.resolve(false);
+        return this._mutate(() => normalized);
+    }
+
+    importStorageValues(storageValues = {}) {
+        const rawSnapshot = storageValues[STATS_STORAGE_KEYS.SNAPSHOT];
+        const importedSnapshot = parseStatsSnapshot(
+            typeof rawSnapshot === 'string' ? rawSnapshot : JSON.stringify(rawSnapshot || '')
+        );
+        if (importedSnapshot) return this.importSnapshot(importedSnapshot);
+
+        const getValue = (key) => {
+            const value = storageValues[key];
+            return typeof value === 'string' ? value : JSON.stringify(value ?? '');
+        };
+        return this.importSnapshot(buildStatsSnapshotFromLegacy({
+            totalChars: storageValues[STATS_STORAGE_KEYS.TOTAL_CHARS],
+            dailyHistory: parseStoredJson(getValue(STATS_STORAGE_KEYS.DAILY_HISTORY), {}),
+            dailySessions: parseStoredJson(getValue(STATS_STORAGE_KEYS.DAILY_SESSIONS), {}),
+            modelUsage: parseStoredJson(getValue(STATS_STORAGE_KEYS.MODEL_USAGE), {}),
+            activityLog: getValue(STATS_STORAGE_KEYS.ACTIVITY_LOG)
+        }));
+    }
+
+    getStats() {
+        const snapshot = this._readSnapshot();
+        const todayDate = new Date();
+        const yesterdayDate = new Date(todayDate);
         yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterday = yesterdayDate.toISOString().split('T')[0];
+        const today = buildLocalDateKeyFromDate(todayDate);
+        const yesterday = buildLocalDateKeyFromDate(yesterdayDate);
 
         return {
-            totalChars,
-            todayChars: history[today] || 0,
-            yesterdayChars: history[yesterday] || 0
+            totalChars: getStatsSnapshotTotalChars(snapshot),
+            todayChars: snapshot.dailyHistory[today] || 0,
+            yesterdayChars: snapshot.dailyHistory[yesterday] || 0
         };
     }
 
-    /**
-     * Get weekly history (last 7 days)
-     * @returns {Array} [{ date, chars, dayOfWeek }]
-     */
     getWeeklyHistory() {
         return this.getHistoryForDays(7);
     }
 
-    /**
-     * Get history for specified number of days
-     * @param {number} days - Number of days to retrieve (7, 30, 365, etc.)
-     * @returns {Array} [{ date, chars, dayOfWeek }]
-     */
     getHistoryForDays(days = 7) {
-        const history = this._getHistory();
+        const history = this._readSnapshot().dailyHistory;
         const result = [];
         const now = new Date();
+        const normalizedDays = Math.max(0, Math.floor(Number(days) || 0));
 
-        for (let i = days - 1; i >= 0; i--) {
+        for (let index = normalizedDays - 1; index >= 0; index -= 1) {
             const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            const dateKey = date.toISOString().split('T')[0];
-            const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon, ...
+            date.setDate(date.getDate() - index);
+            const dateKey = buildLocalDateKeyFromDate(date);
             result.push({
                 date: dateKey,
                 chars: history[dateKey] || 0,
-                dayOfWeek
+                dayOfWeek: date.getDay(),
+                isToday: index === 0
             });
         }
-
         return result;
     }
 
-    /**
-     * Get full history (all dates)
-     * @returns {Object} { 'YYYY-MM-DD': charCount, ... }
-     */
     getFullHistory() {
-        return this._getHistory();
+        return { ...this._readSnapshot().dailyHistory };
     }
 
-    /**
-     * Get monthly summary
-     * @returns {Array} [{ month: 'YYYY-MM', totalChars, activeDays }]
-     */
     getMonthlySummary() {
-        const history = this._getHistory();
         const monthlyData = {};
-
-        Object.entries(history).forEach(([date, chars]) => {
-            const month = date.substring(0, 7); // 'YYYY-MM'
-            if (!monthlyData[month]) {
-                monthlyData[month] = { totalChars: 0, activeDays: 0 };
-            }
+        Object.entries(this._readSnapshot().dailyHistory).forEach(([date, chars]) => {
+            const month = date.substring(0, 7);
+            if (!monthlyData[month]) monthlyData[month] = { totalChars: 0, activeDays: 0 };
             monthlyData[month].totalChars += chars;
             monthlyData[month].activeDays += 1;
         });
-
         return Object.entries(monthlyData)
             .map(([month, data]) => ({ month, ...data }))
-            .sort((a, b) => b.month.localeCompare(a.month));
+            .sort((left, right) => right.month.localeCompare(left.month));
     }
 
-    /**
-     * Get active time distribution
-     * @returns {Object} { morning, afternoon, evening, night }
-     */
     getActiveTimeDistribution() {
-        const activityLog = this._getActivityLog();
-        const distribution = {
-            morning: 0,   // 6:00-12:00
-            afternoon: 0, // 12:00-18:00
-            evening: 0,   // 18:00-24:00
-            night: 0      // 0:00-6:00
-        };
-
-        activityLog.forEach(activity => {
-            const hour = activity.hour;
-            if (hour >= 6 && hour < 12) {
-                distribution.morning += activity.chars;
-            } else if (hour >= 12 && hour < 18) {
-                distribution.afternoon += activity.chars;
-            } else if (hour >= 18 && hour < 24) {
-                distribution.evening += activity.chars;
-            } else {
-                distribution.night += activity.chars;
-            }
-        });
-
-        return distribution;
+        return { ...this._readSnapshot().timeDistribution };
     }
 
-    /**
-     * Get today's session count
-     * @returns {number}
-     */
     getTodaySessions() {
-        const sessions = this._getDailySessions();
-        const today = new Date().toISOString().split('T')[0];
-        return sessions[today] || 0;
+        const snapshot = this._readSnapshot();
+        return snapshot.dailySessions[buildLocalDateKeyFromDate(new Date())] || 0;
     }
 
-    /**
-     * Get total session count (all time)
-     * @returns {number}
-     */
     getTotalSessions() {
-        const sessions = this._getDailySessions();
-        return Object.values(sessions).reduce((sum, count) => sum + count, 0);
+        return Object.values(this._readSnapshot().dailySessions).reduce((sum, count) => sum + count, 0);
     }
 
-    /**
-     * Get streak days (consecutive active days)
-     * @returns {number}
-     */
     getStreakDays() {
-        const history = this._getHistory();
-        const dates = Object.keys(history).sort().reverse();
-
-        if (dates.length === 0) return 0;
-
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date();
+        const history = this._readSnapshot().dailyHistory;
+        const today = new Date();
+        const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const startDate = history[buildLocalDateKeyFromDate(today)] ? today : yesterday;
 
-        // Check if user was active today or yesterday (to continue streak)
-        if (!history[today] && !history[yesterdayStr]) {
-            return 0;
-        }
+        if (!history[buildLocalDateKeyFromDate(startDate)]) return 0;
 
         let streak = 0;
-        const startDate = history[today] ? new Date() : yesterday;
-
-        for (let i = 0; i < 365; i++) {
-            const checkDate = new Date(startDate);
-            checkDate.setDate(checkDate.getDate() - i);
-            const dateKey = checkDate.toISOString().split('T')[0];
-
-            if (history[dateKey] && history[dateKey] > 0) {
-                streak++;
-            } else {
-                break;
-            }
+        let cursor = new Date(startDate);
+        while (history[buildLocalDateKeyFromDate(cursor)] > 0) {
+            streak += 1;
+            cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
         }
-
         return streak;
     }
 
-    /**
-     * Get extended stats including all new metrics
-     * @returns {Object}
-     */
     getExtendedStats() {
-        const basicStats = this.getStats();
         return {
-            ...basicStats,
+            ...this.getStats(),
             weeklyHistory: this.getWeeklyHistory(),
             timeDistribution: this.getActiveTimeDistribution(),
             todaySessions: this.getTodaySessions(),
@@ -304,59 +296,18 @@ class UserStatsService {
         };
     }
 
-    _getHistory() {
-        return parseStoredJson(localStorage.getItem(STORAGE_KEYS.DAILY_HISTORY), {});
-    }
-
-    _getActivityLog() {
-        return readActivityLog(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG));
-    }
-
-    _getDailySessions() {
-        return parseStoredJson(localStorage.getItem(STORAGE_KEYS.DAILY_SESSIONS), {});
-    }
-
-    /**
-     * Get data for a specific month
-     * @param {number} year 
-     * @param {number} month (0-11)
-     * @returns {Array} Daily data for the month
-     */
     getDataForMonth(year, month) {
-        return buildMonthActivityData(this._getHistory(), year, month);
+        return buildMonthActivityData(this._readSnapshot().dailyHistory, year, month);
     }
 
-    /**
-     * Get data for a specific year (monthly aggregation)
-     * @param {number} year
-     * @returns {Array} Monthly data for the year
-     */
     getDataForYear(year) {
-        return buildYearActivityData(this._getHistory(), year);
+        return buildYearActivityData(this._readSnapshot().dailyHistory, year);
     }
 
-    /**
-     * Get model usage stats
-     */
     getModelUsageStats() {
-        return this._getModelUsage();
-    }
-
-    _getModelUsage() {
-        return parseStoredJson(localStorage.getItem(STORAGE_KEYS.MODEL_USAGE), {});
-    }
-
-    _ensureStorageValue(key, defaultValue, label) {
-        if (localStorage.getItem(key) !== null) return;
-        this._writeStorageValue(key, defaultValue, label, defaultValue);
-    }
-
-    _writeStorageValue(key, value, label, fallbackValue) {
-        return persistStorageValue(key, value, {
-            fallbackValue,
-            label
-        });
+        return { ...this._readSnapshot().modelUsage };
     }
 }
 
+export { UserStatsService };
 export const userStatsService = new UserStatsService();

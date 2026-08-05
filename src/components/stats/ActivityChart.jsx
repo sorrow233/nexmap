@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Trophy } from 'lucide-react';
+import { parseLocalDateKey } from '../../services/stats/activityHistory.js';
 
 /**
  * Neural Clay Activity Chart Component
@@ -47,7 +48,8 @@ export default function ActivityChart({
     // Format Date Label helper
     const formatDateLabel = (dateStr) => {
         if (!dateStr) return '';
-        const date = new Date(dateStr);
+        const date = parseLocalDateKey(dateStr);
+        if (!date) return '';
         if (viewMode === 'week') {
             return new Intl.DateTimeFormat(language, { weekday: 'short' }).format(date);
         } else if (viewMode === 'month') {

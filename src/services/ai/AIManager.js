@@ -386,7 +386,8 @@ class AIManager {
                             if (typeof onResponseMetadata === 'function') {
                                 onResponseMetadata(metadata);
                             }
-                        }
+                        },
+                        skipUsageTracking: true
                     }
                 );
                 safelyNotifyPerformance(performanceMonitor.onComplete());
@@ -395,10 +396,13 @@ class AIManager {
                 throw error;
             }
 
-            // Track usage stats (characters generated)
+            // Commit the completed generation as one atomic stats event.
             if (fullText && fullText.length > 0) {
                 try {
-                    userStatsService.incrementCharCount(fullText.length);
+                    await userStatsService.recordGeneration({
+                        text: fullText,
+                        model: model || config.model
+                    });
                 } catch (error) {
                     console.warn('[AIManager] Failed to persist usage stats without affecting generation', error);
                 }

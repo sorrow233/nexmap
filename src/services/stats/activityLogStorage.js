@@ -1,4 +1,4 @@
-import { parseStoredJson } from './statsStorage';
+import { parseStoredJson } from './statsStorage.js';
 
 const ACTIVITY_LOG_VERSION = 2;
 const ACTIVITY_LOG_RETENTION_DAYS = 30;

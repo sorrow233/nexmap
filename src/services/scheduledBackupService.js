@@ -12,6 +12,7 @@ import { getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from './boardTitle/metadata';
 import { persistBoardsMetadataList } from './boardPersistence/boardsListStorage';
+import { userStatsService } from './stats/userStatsService';
 import {
     backupStoreDel,
     backupStoreGet,
@@ -72,13 +73,13 @@ const buildBoardBackupFingerprint = (boardMeta = {}, boardData = {}) => {
     ].join(':');
 };
 
-const buildBackupFingerprint = (boardsList = [], boardsData = {}, settingsSignature = '') => {
+const buildBackupFingerprint = (boardsList = [], boardsData = {}, settingsSignature = '', statsSignature = '') => {
     const boardFingerprints = boardsList
         .map((boardMeta) => buildBoardBackupFingerprint(boardMeta, boardsData?.[boardMeta?.id]))
         .sort()
         .join('|');
 
-    return hashString(`${boardFingerprints}::${settingsSignature || ''}`);
+    return hashString(`${boardFingerprints}::${settingsSignature || ''}::${statsSignature || ''}`);
 };
 
 const measureBackupSizeBytes = (backup) => {
@@ -383,11 +384,13 @@ export const performScheduledBackup = async () => {
             // Settings backup is optional
         }
 
-        const fingerprint = buildBackupFingerprint(boardsList, boardsData, settingsSignature);
+        const stats = userStatsService.exportSnapshot();
+        const statsSignature = JSON.stringify(stats);
+        const fingerprint = buildBackupFingerprint(boardsList, boardsData, settingsSignature, statsSignature);
         const lastFingerprint = localStorage.getItem(LAST_BACKUP_FINGERPRINT_KEY) || '';
         if (lastFingerprint && fingerprint === lastFingerprint) {
             localStorage.setItem(LAST_BACKUP_TIME_KEY, Date.now().toString());
-            debugLog.storage('[ScheduledBackup] Skipped backup because board data has not changed since the last snapshot.');
+            debugLog.storage('[ScheduledBackup] Skipped backup because boards, settings, and statistics are unchanged.');
             return { success: true, skipped: true, reason: 'unchanged' };
         }
 
@@ -398,7 +401,8 @@ export const performScheduledBackup = async () => {
             boardsList: boardsList,
             boardsData: boardsData,
             settings: settings,
-            version: 2,
+            stats,
+            version: 3,
             fingerprint
         };
         backup.sizeBytes = measureBackupSizeBytes(backup);
@@ -496,6 +500,10 @@ export const restoreFromBackup = async (backupId) => {
                 normalizeBoardMetadataList(Array.from(mergedBoards.values())),
                 { reason: 'restoreFromBackup' }
             );
+        }
+
+        if (backup.stats) {
+            await userStatsService.importSnapshot(backup.stats);
         }
 
         debugLog.storage(`[ScheduledBackup] Restore complete: metadata=${restoredMetadataCount}, content=${restoredContentCount}`);
