@@ -56,7 +56,6 @@ export default function BoardPage({
         expandedCardId,
         currentBoard,
         saveStatus,
-        clipboard,
         globalImages,
         isSettingsOpen,
         quickPrompt,
@@ -81,7 +80,6 @@ export default function BoardPage({
         setIsSettingsOpen,
         setSaveStatus,
         clearGlobalImages,
-        setClipboard,
         setQuickPrompt,
         setExpandedCardId,
         setSelectedIds,
@@ -226,8 +224,6 @@ export default function BoardPage({
                 isReadOnly={isReadOnly}
                 onUpdateBoardMetadata={onUpdateBoardMetadata}
                 setSaveStatus={setSaveStatus}
-                clipboard={clipboard}
-                setClipboard={setClipboard}
             />
 
             <div className="absolute inset-0 h-full overflow-hidden">

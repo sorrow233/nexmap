@@ -104,7 +104,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         removeImage: removeGlobalImage,
         clearImages: clearGlobalImages
     } = useImageUpload();
-    const [clipboard, setClipboard] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
     const [tempInstructions, setTempInstructions] = useState([]);
@@ -558,8 +557,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         saveStatus,
         globalPrompts,
         globalImages,
-        clipboard,
-        setClipboard,
         isSettingsOpen,
         isInstructionPanelOpen,
         isAutoRecommending,

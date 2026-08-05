@@ -16,9 +16,7 @@ export default function BoardRuntimeEffects({
     user,
     isReadOnly = false,
     onUpdateBoardMetadata,
-    setSaveStatus,
-    clipboard,
-    setClipboard
+    setSaveStatus
 }) {
     const cards = useStore((state) => state.cards);
     const connections = useStore((state) => state.connections);
@@ -96,7 +94,7 @@ export default function BoardRuntimeEffects({
         hasGeneratingCards: generatingCardIds.size > 0
     });
 
-    useGlobalHotkeys(clipboard, setClipboard);
+    useGlobalHotkeys({ boardId, isReadOnly });
 
     return null;
 }

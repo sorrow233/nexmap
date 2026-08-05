@@ -1,20 +1,15 @@
 import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore, undo, redo } from '../store/useStore';
+import { uuid } from '../utils/uuid';
+import {
+    buildPastedCardBatch,
+    readCardClipboardForPaste,
+    stripCardRuntimeBodyState,
+    writeCardClipboard
+} from '../services/cardClipboardService';
 
-const stripRuntimeBodyState = (card) => {
-    if (!card?.data?.runtimeBodyState) {
-        return card;
-    }
-
-    const { runtimeBodyState, ...nextData } = card.data;
-    return {
-        ...card,
-        data: nextData
-    };
-};
-
-export function useGlobalHotkeys(clipboard, setClipboard) {
+export function useGlobalHotkeys({ boardId = '', isReadOnly = false } = {}) {
     // Helper for Copy
     const handleCopy = async () => {
         const { selectedIds, getCardsByIds } = useStore.getState();
@@ -22,8 +17,8 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         const selectedCards = typeof getCardsByIds === 'function'
             ? getCardsByIds(selectedIds)
             : [];
-        const clipboardCards = selectedCards.map((card) => stripRuntimeBodyState(card));
-        setClipboard(clipboardCards);
+        const clipboardCards = selectedCards.map((card) => stripCardRuntimeBodyState(card));
+        writeCardClipboard(clipboardCards, { sourceBoardId: boardId });
         try {
             const textContent = clipboardCards.map(c => {
                 const messages = Array.isArray(c?.data?.messages) ? c.data.messages : [];
@@ -36,7 +31,9 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
 
     // Helper for Paste
     const handlePaste = () => {
-        if (!clipboard || clipboard.length === 0) return;
+        if (isReadOnly) return;
+        const clipboardPayload = readCardClipboardForPaste();
+        if (!clipboardPayload) return;
         const {
             cards,
             offset,
@@ -44,16 +41,16 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
             setCards,
             setSelectedIds
         } = useStore.getState();
-        const newCards = clipboard.map((card, index) => {
-            const newId = (Date.now() + Math.random()).toString();
-            const sanitizedCard = stripRuntimeBodyState(card);
-            return {
-                ...sanitizedCard, id: newId,
-                x: (window.innerWidth / 2 - offset.x) / scale + (index * 20),
-                y: (window.innerHeight / 2 - offset.y) / scale + (index * 20),
-                data: { ...(sanitizedCard.data || {}) }
-            };
+        const newCards = buildPastedCardBatch({
+            clipboardCards: clipboardPayload.cards,
+            offset,
+            scale,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            currentPasteSequence: clipboardPayload.pasteSequence,
+            createId: uuid
         });
+        if (newCards.length === 0) return;
         setCards([...cards, ...newCards], {
             changeType: 'card_add',
             reason: 'handlePaste'
@@ -141,12 +138,12 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         if (window.getSelection()?.toString()) return;
         e.preventDefault();
         handleCopy();
-    }, [clipboard, setClipboard]);
+    }, [boardId]);
 
     useHotkeys('mod+v', (e) => {
         e.preventDefault();
         handlePaste();
-    }, [clipboard]);
+    }, [isReadOnly]);
 
     return { handleCopy, handlePaste };
 }
