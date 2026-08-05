@@ -1,6 +1,8 @@
-const CARD_CLIPBOARD_VERSION = 1;
-const CARD_CLIPBOARD_STORAGE_KEY = 'mixboard_card_clipboard_v1';
-const REPEATED_PASTE_OFFSET_PX = 24;
+import { idbGet, idbSet } from './db/indexedDB.js';
+
+const CARD_CLIPBOARD_VERSION = 2;
+const CARD_CLIPBOARD_STORAGE_KEY = 'mixboard_card_clipboard_v2';
+const CARD_CLIPBOARD_IDB_KEY = 'mixboard_card_clipboard_shared_v2';
 
 let memoryClipboard = null;
 let pasteSequence = 0;
@@ -12,13 +14,16 @@ const cloneSerializable = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
-const getSessionStorage = () => {
+const getStorage = (storageName) => {
     try {
-        return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+        return typeof window === 'undefined' ? null : window[storageName];
     } catch {
         return null;
     }
 };
+
+const getSessionStorage = () => getStorage('sessionStorage');
+const getLocalStorage = () => getStorage('localStorage');
 
 export const stripCardRuntimeBodyState = (card) => {
     if (!card?.data?.runtimeBodyState) {
@@ -34,7 +39,7 @@ export const stripCardRuntimeBodyState = (card) => {
 
 const normalizeClipboardPayload = (payload) => {
     if (
-        payload?.version !== CARD_CLIPBOARD_VERSION
+        ![1, CARD_CLIPBOARD_VERSION].includes(payload?.version)
         || !Array.isArray(payload.cards)
         || payload.cards.length === 0
     ) {
@@ -64,8 +69,8 @@ export const writeCardClipboard = (cards = [], { sourceBoardId = '' } = {}) => {
     memoryClipboard = payload;
     pasteSequence = 0;
 
-    const storage = getSessionStorage();
-    if (storage) {
+    [getSessionStorage(), getLocalStorage()].forEach((storage) => {
+        if (!storage) return;
         try {
             storage.setItem(CARD_CLIPBOARD_STORAGE_KEY, JSON.stringify(payload));
         } catch {
@@ -75,72 +80,66 @@ export const writeCardClipboard = (cards = [], { sourceBoardId = '' } = {}) => {
                 // The in-memory clipboard remains available when storage is blocked or full.
             }
         }
-    }
+    });
+
+    void idbSet(CARD_CLIPBOARD_IDB_KEY, payload).catch(() => {
+        // Synchronous memory/storage copies still support paste if IndexedDB is unavailable.
+    });
 
     return clipboardCards.length;
 };
 
-export const readCardClipboardForPaste = () => {
-    if (!memoryClipboard) {
-        const storage = getSessionStorage();
-        if (storage) {
-            try {
-                memoryClipboard = normalizeClipboardPayload(
-                    JSON.parse(storage.getItem(CARD_CLIPBOARD_STORAGE_KEY) || 'null')
-                );
-            } catch {
-                memoryClipboard = null;
-            }
-        }
+const readClipboardFromStorage = (storage) => {
+    if (!storage) return null;
+    try {
+        return normalizeClipboardPayload(
+            JSON.parse(storage.getItem(CARD_CLIPBOARD_STORAGE_KEY) || 'null')
+        );
+    } catch {
+        return null;
     }
+};
 
-    const payload = normalizeClipboardPayload(memoryClipboard);
-    if (!payload) return null;
+const pickNewestClipboard = (candidates = []) => candidates
+    .map(normalizeClipboardPayload)
+    .filter(Boolean)
+    .reduce((newest, candidate) => (
+        !newest || candidate.copiedAt >= newest.copiedAt ? candidate : newest
+    ), null);
 
+const createPasteRead = (payload) => {
+    const normalizedPayload = normalizeClipboardPayload(payload);
+    if (!normalizedPayload) return null;
+
+    memoryClipboard = normalizedPayload;
     const result = {
-        ...cloneSerializable(payload),
+        ...cloneSerializable(normalizedPayload),
         pasteSequence
     };
     pasteSequence += 1;
     return result;
 };
 
-export const buildPastedCardBatch = ({
-    clipboardCards = [],
-    offset = { x: 0, y: 0 },
-    scale = 1,
-    viewportWidth = 0,
-    viewportHeight = 0,
-    currentPasteSequence = 0,
-    createId
-} = {}) => {
-    const sourceCards = (Array.isArray(clipboardCards) ? clipboardCards : [])
-        .filter((card) => card?.id);
-    if (sourceCards.length === 0 || typeof createId !== 'function') return [];
+export const readCardClipboardForPaste = () => createPasteRead(pickNewestClipboard([
+    memoryClipboard,
+    readClipboardFromStorage(getSessionStorage()),
+    readClipboardFromStorage(getLocalStorage())
+]));
 
-    const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-    const sourcePositions = sourceCards.map((card, index) => ({
-        x: Number.isFinite(card.x) ? card.x : index * 20,
-        y: Number.isFinite(card.y) ? card.y : index * 20
-    }));
-    const sourceX = sourcePositions.map((position) => position.x);
-    const sourceY = sourcePositions.map((position) => position.y);
-    const sourceCenterX = (Math.min(...sourceX) + Math.max(...sourceX)) / 2;
-    const sourceCenterY = (Math.min(...sourceY) + Math.max(...sourceY)) / 2;
-    const repeatOffset = (Math.max(0, currentPasteSequence) * REPEATED_PASTE_OFFSET_PX) / safeScale;
-    const targetCenterX = ((viewportWidth / 2) - (Number(offset.x) || 0)) / safeScale + repeatOffset;
-    const targetCenterY = ((viewportHeight / 2) - (Number(offset.y) || 0)) / safeScale + repeatOffset;
+export const readCardClipboardForPasteAsync = async () => {
+    let indexedDbClipboard = null;
+    try {
+        indexedDbClipboard = await idbGet(CARD_CLIPBOARD_IDB_KEY);
+    } catch {
+        indexedDbClipboard = null;
+    }
 
-    return sourceCards.map((card, index) => {
-        const snapshot = cloneSerializable(stripCardRuntimeBodyState(card));
-        return {
-            ...snapshot,
-            id: createId(),
-            x: targetCenterX + sourcePositions[index].x - sourceCenterX,
-            y: targetCenterY + sourcePositions[index].y - sourceCenterY,
-            data: { ...(snapshot.data || {}) }
-        };
-    });
+    return createPasteRead(pickNewestClipboard([
+        memoryClipboard,
+        readClipboardFromStorage(getSessionStorage()),
+        readClipboardFromStorage(getLocalStorage()),
+        indexedDbClipboard
+    ]));
 };
 
 export const resetCardClipboardForTests = () => {

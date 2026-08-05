@@ -1,17 +1,30 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore, undo, redo } from '../store/useStore';
 import { uuid } from '../utils/uuid';
 import {
-    buildPastedCardBatch,
-    readCardClipboardForPaste,
+    readCardClipboardForPasteAsync,
     stripCardRuntimeBodyState,
     writeCardClipboard
 } from '../services/cardClipboardService';
+import { getCurrentBoardId } from '../services/storage';
+import { isCardPasteTargetReady } from '../services/cardPasteCoordinator';
+import { buildPastedCardBatch } from '../utils/cardPasteLayout';
 
 export function useGlobalHotkeys({ boardId = '', isReadOnly = false } = {}) {
+    const isBoardLoading = useStore((state) => state.isBoardLoading);
+    const pendingPasteBoardIdRef = useRef('');
+    const pasteInFlightRef = useRef(false);
+
+    const isTargetBoardReady = useCallback(() => isCardPasteTargetReady({
+        targetBoardId: boardId,
+        activeBoardId: getCurrentBoardId() || '',
+        isBoardLoading: useStore.getState().isBoardLoading,
+        isReadOnly
+    }), [boardId, isReadOnly]);
+
     // Helper for Copy
-    const handleCopy = async () => {
+    const handleCopy = useCallback(async () => {
         const { selectedIds, getCardsByIds } = useStore.getState();
         if (selectedIds.length === 0) return;
         const selectedCards = typeof getCardsByIds === 'function'
@@ -27,36 +40,65 @@ export function useGlobalHotkeys({ boardId = '', isReadOnly = false } = {}) {
             }).join('\n\n---\n\n');
             if (textContent) await navigator.clipboard.writeText(textContent);
         } catch (e) { console.error(e); }
-    };
+    }, [boardId]);
 
     // Helper for Paste
-    const handlePaste = () => {
+    const handlePaste = useCallback(async () => {
         if (isReadOnly) return;
-        const clipboardPayload = readCardClipboardForPaste();
-        if (!clipboardPayload) return;
-        const {
-            cards,
-            offset,
-            scale,
-            setCards,
-            setSelectedIds
-        } = useStore.getState();
-        const newCards = buildPastedCardBatch({
-            clipboardCards: clipboardPayload.cards,
-            offset,
-            scale,
-            viewportWidth: window.innerWidth,
-            viewportHeight: window.innerHeight,
-            currentPasteSequence: clipboardPayload.pasteSequence,
-            createId: uuid
-        });
-        if (newCards.length === 0) return;
-        setCards([...cards, ...newCards], {
-            changeType: 'card_add',
-            reason: 'handlePaste'
-        });
-        setSelectedIds(newCards.map(c => c.id));
-    };
+        if (!isTargetBoardReady()) {
+            pendingPasteBoardIdRef.current = boardId;
+            return;
+        }
+        if (pasteInFlightRef.current) return;
+
+        pasteInFlightRef.current = true;
+        try {
+            const clipboardPayload = await readCardClipboardForPasteAsync();
+            if (!clipboardPayload) return;
+            if (!isTargetBoardReady()) {
+                pendingPasteBoardIdRef.current = boardId;
+                return;
+            }
+
+            const {
+                offset,
+                scale,
+                setCards,
+                setSelectedIds
+            } = useStore.getState();
+            const newCards = buildPastedCardBatch({
+                clipboardCards: clipboardPayload.cards,
+                offset,
+                scale,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+                currentPasteSequence: clipboardPayload.pasteSequence,
+                createId: uuid
+            });
+            if (newCards.length === 0) return;
+            setCards((currentCards) => [...currentCards, ...newCards], {
+                changeType: 'card_add',
+                reason: 'handlePaste'
+            });
+            setSelectedIds(newCards.map(c => c.id));
+        } finally {
+            pasteInFlightRef.current = false;
+        }
+    }, [boardId, isReadOnly, isTargetBoardReady]);
+
+    useEffect(() => {
+        if (
+            isReadOnly
+            || isBoardLoading
+            || pendingPasteBoardIdRef.current !== boardId
+            || !isTargetBoardReady()
+        ) {
+            return;
+        }
+
+        pendingPasteBoardIdRef.current = '';
+        void handlePaste();
+    }, [boardId, handlePaste, isBoardLoading, isReadOnly, isTargetBoardReady]);
 
     // Delete / Backspace
     useHotkeys('delete, backspace', () => {
@@ -137,13 +179,13 @@ export function useGlobalHotkeys({ boardId = '', isReadOnly = false } = {}) {
     useHotkeys('mod+c', (e) => {
         if (window.getSelection()?.toString()) return;
         e.preventDefault();
-        handleCopy();
-    }, [boardId]);
+        void handleCopy();
+    }, [handleCopy]);
 
     useHotkeys('mod+v', (e) => {
         e.preventDefault();
-        handlePaste();
-    }, [isReadOnly]);
+        void handlePaste();
+    }, [handlePaste]);
 
     return { handleCopy, handlePaste };
 }
