@@ -6,6 +6,12 @@ import { isSafari, isIOS } from '../utils/browser';
 import { useDraggable } from '../hooks/useDraggable';
 import { useContextMenu } from './ContextMenu';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useStore } from '../store/useStore';
+import {
+    buildFullCardClipboardText,
+    resolveFullCardForClipboard,
+    writeCardTextToClipboard
+} from '../utils/cardClipboard';
 
 const Card = React.memo(function Card({
     data, // Now contains id, x, y, and actual data
@@ -27,7 +33,7 @@ const Card = React.memo(function Card({
 }) {
     const { t } = useLanguage();
     const [isDragOver, setIsDragOver] = useState(false);
-    const [copyStatus, setCopyStatus] = useState('idle'); // idle | success | error
+    const [copyStatus, setCopyStatus] = useState('idle'); // idle | copying | success | error
     const cardRef = useRef(null);
     const copyResetTimerRef = useRef(null);
     const {
@@ -132,16 +138,13 @@ const Card = React.memo(function Card({
 
     const handleCopyFullCard = async (e) => {
         e.stopPropagation();
-        const allMessagesText = messages.map((msg, index) => {
-            const roleLabel = msg.role === 'user' ? 'User' : 'Assistant';
-            const contentText = cleanThinkingTags(getPreviewContent(msg.content)) || '(Empty)';
-            return `[${index + 1}] ${roleLabel}\n${contentText}`;
-        }).join('\n\n');
-
-        const fullCardText = `${cardTitle || 'Untitled'}\n\n${allMessagesText || '(No messages)'}`;
+        if (copyStatus === 'copying') return;
+        setCopyStatus('copying');
 
         try {
-            await navigator.clipboard.writeText(fullCardText);
+            const fullCard = resolveFullCardForClipboard(data, useStore.getState().getCardById);
+            const fullCardText = buildFullCardClipboardText(fullCard);
+            await writeCardTextToClipboard(fullCardText);
             setCopyStatus('success');
             if (copyResetTimerRef.current) clearTimeout(copyResetTimerRef.current);
             copyResetTimerRef.current = setTimeout(() => {
@@ -230,17 +233,27 @@ const Card = React.memo(function Card({
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                     onClick={handleCopyFullCard}
+                    disabled={copyStatus === 'copying'}
                     className={`p-1.5 rounded-lg transition-all ${copyStatus === 'success'
                         ? 'text-emerald-600 bg-emerald-100/80 dark:bg-emerald-500/20 scale-105'
                         : copyStatus === 'error'
                             ? 'text-rose-600 bg-rose-100/80 dark:bg-rose-500/20'
-                            : 'text-slate-400 hover:text-blue-500 hover:bg-white/50 dark:hover:bg-white/10'
+                            : copyStatus === 'copying'
+                                ? 'text-blue-500 bg-blue-50/80 dark:bg-blue-500/10 cursor-wait'
+                                : 'text-slate-400 hover:text-blue-500 hover:bg-white/50 dark:hover:bg-white/10'
                         }`}
-                    title={copyStatus === 'success' ? 'Copied full card' : copyStatus === 'error' ? 'Copy failed' : 'Copy full card'}
+                    title={copyStatus === 'success'
+                        ? 'Copied full card'
+                        : copyStatus === 'error'
+                            ? 'Copy failed'
+                            : copyStatus === 'copying'
+                                ? 'Copying full card'
+                                : 'Copy full card'}
+                    aria-label={copyStatus === 'success' ? 'Copied full card' : 'Copy full card'}
                 >
                     {copyStatus === 'success'
                         ? <Check size={14} className="animate-pulse" />
-                        : <Clipboard size={14} />}
+                        : <Clipboard size={14} className={copyStatus === 'copying' ? 'animate-pulse' : ''} />}
                 </button>
                 <button
                     onClick={(e) => {
