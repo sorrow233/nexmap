@@ -5,7 +5,7 @@ const toScreenPoint = (x, y, offset, scale) => ({
     y: y * scale + offset.y
 });
 
-const CanvasLine = ({ line, offset, scale, isSelected, canSelect, onSelect }) => {
+const CanvasLine = ({ line, offset, scale, isSelected, canSelect, onPointerDown }) => {
     const start = toScreenPoint(line.x1, line.y1, offset, scale);
     const end = toScreenPoint(line.x2, line.y2, offset, scale);
 
@@ -17,12 +17,15 @@ const CanvasLine = ({ line, offset, scale, isSelected, canSelect, onSelect }) =>
                 x2={end.x}
                 y2={end.y}
                 stroke="transparent"
-                strokeWidth="14"
+                strokeWidth="22"
                 strokeLinecap="round"
                 pointerEvents={canSelect ? 'stroke' : 'none'}
+                className={canSelect ? 'cursor-grab active:cursor-grabbing' : undefined}
                 onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.preventDefault();
                     event.stopPropagation();
-                    onSelect(line.id);
+                    onPointerDown(line.id, event);
                 }}
             />
             <line
@@ -31,14 +34,14 @@ const CanvasLine = ({ line, offset, scale, isSelected, canSelect, onSelect }) =>
                 x2={end.x}
                 y2={end.y}
                 stroke={line.color}
-                strokeWidth={isSelected ? Math.max(line.width, 3) : line.width}
+                strokeWidth={isSelected ? Math.max(line.width, 4) : Math.max(line.width, 3)}
                 strokeLinecap="round"
                 className="pointer-events-none"
             />
             {isSelected && (
                 <>
-                    <circle cx={start.x} cy={start.y} r="4" fill="#fff" stroke="#0ea5e9" strokeWidth="2" />
-                    <circle cx={end.x} cy={end.y} r="4" fill="#fff" stroke="#0ea5e9" strokeWidth="2" />
+                    <circle cx={start.x} cy={start.y} r="5" fill="#fff" stroke="#0ea5e9" strokeWidth="2" />
+                    <circle cx={end.x} cy={end.y} r="5" fill="#fff" stroke="#0ea5e9" strokeWidth="2" />
                 </>
             )}
         </g>
@@ -48,11 +51,12 @@ const CanvasLine = ({ line, offset, scale, isSelected, canSelect, onSelect }) =>
 const CanvasLineLayer = React.memo(function CanvasLineLayer({
     lines,
     draftLine,
+    previewLine,
     selectedLineId,
     canvasMode,
     offset,
     scale,
-    onSelectLine
+    onLinePointerDown
 }) {
     const draftStart = draftLine
         ? toScreenPoint(draftLine.x1, draftLine.y1, offset, scale)
@@ -62,18 +66,21 @@ const CanvasLineLayer = React.memo(function CanvasLineLayer({
         : null;
 
     return (
-        <svg className="absolute inset-0 h-full w-full pointer-events-none z-[5] overflow-visible">
-            {lines.map((line) => (
-                <CanvasLine
-                    key={line.id}
-                    line={line}
-                    offset={offset}
-                    scale={scale}
-                    isSelected={selectedLineId === line.id}
-                    canSelect={canvasMode === 'select'}
-                    onSelect={onSelectLine}
-                />
-            ))}
+        <svg className="absolute inset-0 h-full w-full pointer-events-none z-[30] overflow-visible">
+            {lines.map((line) => {
+                const displayLine = previewLine?.id === line.id ? previewLine : line;
+                return (
+                    <CanvasLine
+                        key={line.id}
+                        line={displayLine}
+                        offset={offset}
+                        scale={scale}
+                        isSelected={selectedLineId === line.id}
+                        canSelect={canvasMode === 'select'}
+                        onPointerDown={onLinePointerDown}
+                    />
+                );
+            })}
             {draftLine && (
                 <line
                     x1={draftStart.x}
@@ -81,7 +88,7 @@ const CanvasLineLayer = React.memo(function CanvasLineLayer({
                     x2={draftEnd.x}
                     y2={draftEnd.y}
                     stroke="#0ea5e9"
-                    strokeWidth="2"
+                    strokeWidth="3"
                     strokeDasharray="7 5"
                     strokeLinecap="round"
                 />

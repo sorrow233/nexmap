@@ -31,6 +31,27 @@ export const createCanvasLineSlice = (set) => ({
         boardChangeState: bumpBoardChangeState(state.boardChangeState, 'canvas_line_change')
     })),
 
+    updateCanvasLine: (lineId, lineOrUpdater) => set((state) => {
+        const lineIndex = state.canvasLines.findIndex((line) => line.id === lineId);
+        if (lineIndex === -1) return state;
+
+        const currentLine = state.canvasLines[lineIndex];
+        const nextLine = typeof lineOrUpdater === 'function'
+            ? lineOrUpdater(currentLine)
+            : lineOrUpdater;
+        const canvasLines = [...state.canvasLines];
+        canvasLines[lineIndex] = normalizeCanvasLine({
+            ...currentLine,
+            ...nextLine,
+            id: currentLine.id
+        });
+
+        return {
+            canvasLines,
+            boardChangeState: bumpBoardChangeState(state.boardChangeState, 'canvas_line_change')
+        };
+    }),
+
     deleteCanvasLine: (lineId) => set((state) => ({
         canvasLines: state.canvasLines.filter((line) => line.id !== lineId),
         selectedCanvasLineId: state.selectedCanvasLineId === lineId

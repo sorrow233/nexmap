@@ -221,6 +221,7 @@ const Zone = React.memo(function Zone({ group, rect, stats, isSelected }) {
 
     return (
         <div
+            data-canvas-line-surface="true"
             className={`absolute rounded-[3rem] transition-all duration-300 ease-out group
                 ${!hasCustomColor ? `${colorTheme.bg} ${colorTheme.border}` : ''} border
                 ${isSelected ? `ring-4 ${!hasCustomColor ? colorTheme.ring : ''}` : 'hover:ring-2 hover:ring-black/5 dark:hover:ring-white/5'}

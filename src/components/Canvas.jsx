@@ -22,7 +22,8 @@ import { getCardBodyRuntimeCacheSnapshot } from '../services/cardBodyRuntimeCach
 import {
     createCanvasLineDraft,
     getCanvasLineLength,
-    snapCanvasLineEnd
+    snapCanvasLineEnd,
+    translateCanvasLine
 } from '../utils/canvasLines';
 
 const isTextInputElement = (element) => {
@@ -92,6 +93,7 @@ export default function Canvas({
     const toggleCanvasMode = useStore(state => state.toggleCanvasMode);
     const setCanvasMode = useStore(state => state.setCanvasMode);
     const addCanvasLine = useStore(state => state.addCanvasLine);
+    const updateCanvasLineGeometry = useStore(state => state.updateCanvasLine);
     const deleteCanvasLine = useStore(state => state.deleteCanvasLine);
     const setSelectedCanvasLineId = useStore(state => state.setSelectedCanvasLineId);
     const canvasRef = useRef(null);
@@ -99,11 +101,13 @@ export default function Canvas({
     const stateRef = useRef({ offset, scale });
     const rightPressTimerRef = useRef(null);
     const draftLineRef = useRef(null);
+    const lineDragRef = useRef(null);
     const isRightHoldPanningRef = useRef(false);
     const isSpaceHoldPanningRef = useRef(false);
     const suppressNextContextToggleRef = useRef(false);
     const [dragPositionOverrides, setDragPositionOverrides] = React.useState(EMPTY_POSITION_OVERRIDES);
     const [draftLine, setDraftLine] = React.useState(null);
+    const [lineDragPreview, setLineDragPreview] = React.useState(null);
     const dragPreviewContextRef = useRef({
         moveIds: new Set(),
         sourceCardMap: new Map()
@@ -280,6 +284,48 @@ export default function Canvas({
         setSelectedCanvasLineId(lineId);
     }, [setSelectedCanvasLineId, setSelectedIds]);
 
+    const beginCanvasLineDrag = useCallback((lineId, event) => {
+        const sourceLine = useStore.getState().canvasLines.find((line) => line.id === lineId);
+        if (!sourceLine) return;
+
+        lineDragRef.current = {
+            lineId,
+            pointerStart: getCanvasPoint(event.clientX, event.clientY),
+            sourceLine,
+            previewLine: sourceLine,
+            hasMoved: false
+        };
+        setLineDragPreview(sourceLine);
+        handleCanvasLineSelect(lineId);
+        setInteractionMode('dragging-line');
+    }, [getCanvasPoint, handleCanvasLineSelect, setInteractionMode]);
+
+    const updateCanvasLineDrag = useCallback((clientX, clientY) => {
+        const drag = lineDragRef.current;
+        if (!drag) return;
+
+        const pointer = getCanvasPoint(clientX, clientY);
+        const deltaX = pointer.x - drag.pointerStart.x;
+        const deltaY = pointer.y - drag.pointerStart.y;
+        const previewLine = translateCanvasLine(drag.sourceLine, deltaX, deltaY);
+        lineDragRef.current = {
+            ...drag,
+            previewLine,
+            hasMoved: drag.hasMoved || Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01
+        };
+        setLineDragPreview(previewLine);
+    }, [getCanvasPoint]);
+
+    const finishCanvasLineDrag = useCallback(() => {
+        const drag = lineDragRef.current;
+        lineDragRef.current = null;
+        setLineDragPreview(null);
+        if (drag?.hasMoved && drag.previewLine) {
+            updateCanvasLineGeometry(drag.lineId, drag.previewLine);
+        }
+        setInteractionMode('none');
+    }, [setInteractionMode, updateCanvasLineGeometry]);
+
     useEffect(() => {
         if (canvasMode !== 'line') {
             draftLineRef.current = null;
@@ -332,6 +378,12 @@ export default function Canvas({
                 setInteractionMode('none');
             }
 
+            if (lineDragRef.current) {
+                lineDragRef.current = null;
+                setLineDragPreview(null);
+                setInteractionMode('none');
+            }
+
             if (isSpaceHoldPanningRef.current) {
                 isSpaceHoldPanningRef.current = false;
                 setInteractionMode('none');
@@ -373,15 +425,18 @@ export default function Canvas({
         // Interactive elements should call e.stopPropagation()
         const target = e.target;
         const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
+        const isCanvasBackground = target === canvasRef.current || target.classList.contains('canvas-bg');
+        const isCanvasLineSurface = isCanvasBackground || Boolean(target.closest('[data-canvas-line-surface="true"]'));
+
+        // Line mode owns the primary-button gesture. Never let a failed line hit fall through to box selection.
+        if (canvasMode === 'line' && !isSpacePanning && e.button === 0) {
+            if (!isInteractive && isCanvasLineSurface) {
+                beginCanvasLine(e.clientX, e.clientY);
+            }
+            return;
+        }
 
         if (!isInteractive) {
-            const isCanvasBackground = target === canvasRef.current || target.classList.contains('canvas-bg');
-
-            if (canvasMode === 'line' && !isSpacePanning && e.button === 0 && isCanvasBackground) {
-                beginCanvasLine(e.clientX, e.clientY);
-                return;
-            }
-
             // Right-click hold on canvas background: temporary pan mode
             if (e.button === 2 && isCanvasBackground) {
                 suppressNextContextToggleRef.current = false;
@@ -424,7 +479,9 @@ export default function Canvas({
     const selectionFinalizeFrameRef = useRef(null);
 
     const handleMouseMove = (e) => {
-        if (interactionMode === 'drawing-line') {
+        if (interactionMode === 'dragging-line') {
+            updateCanvasLineDrag(e.clientX, e.clientY);
+        } else if (interactionMode === 'drawing-line') {
             updateCanvasLine(e.clientX, e.clientY, e.shiftKey);
         } else if (interactionMode === 'panning') {
             applyPanDelta(e.movementX, e.movementY);
@@ -454,6 +511,11 @@ export default function Canvas({
 
         if (interactionMode === 'drawing-line') {
             finishCanvasLine();
+            return;
+        }
+
+        if (interactionMode === 'dragging-line') {
+            finishCanvasLineDrag();
             return;
         }
 
@@ -777,7 +839,7 @@ export default function Canvas({
     return (
         <div
             ref={canvasRef}
-            className={`w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 ${interactionMode === 'panning'
+            className={`w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 ${interactionMode === 'panning' || interactionMode === 'dragging-line'
                 ? 'cursor-grabbing'
                 : (canvasMode === 'pan' || isSpacePanning
                     ? 'cursor-grab'
@@ -819,11 +881,12 @@ export default function Canvas({
             <CanvasLineLayer
                 lines={canvasLines}
                 draftLine={draftLine}
+                previewLine={lineDragPreview}
                 selectedLineId={selectedCanvasLineId}
                 canvasMode={canvasMode}
                 offset={offset}
                 scale={scale}
-                onSelectLine={handleCanvasLineSelect}
+                onLinePointerDown={beginCanvasLineDrag}
             />
 
             <CanvasViewportLayer
@@ -904,14 +967,14 @@ export default function Canvas({
                             e.stopPropagation();
                             setCanvasMode(canvasMode === 'line' ? 'select' : 'line');
                         }}
-                        className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group ${canvasMode === 'line'
+                        className={`pointer-events-auto p-2.5 backdrop-blur-md border rounded-lg transition-all shadow-sm group ${canvasMode === 'line'
                             ? 'bg-sky-500 border-sky-600 text-white hover:bg-sky-600'
                             : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-sky-500 hover:scale-110'
                             } active:scale-95`}
                         aria-pressed={canvasMode === 'line'}
                         aria-label="直线工具"
                     >
-                        <Minus size={16} />
+                        <Minus size={18} strokeWidth={2.5} />
                     </button>
                 </InstantTooltip>
 

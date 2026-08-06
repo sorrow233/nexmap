@@ -1,5 +1,5 @@
 const DEFAULT_LINE_COLOR = '#64748b';
-const DEFAULT_LINE_WIDTH = 2;
+const DEFAULT_LINE_WIDTH = 3;
 
 const toFiniteNumber = (value, fallback = 0) => {
     const number = Number(value);
@@ -46,6 +46,14 @@ export const snapCanvasLineEnd = (start, end, shouldSnap = false) => {
         y: start.y + Math.sin(snappedAngle) * length
     };
 };
+
+export const translateCanvasLine = (line, deltaX = 0, deltaY = 0) => normalizeCanvasLine({
+    ...line,
+    x1: toFiniteNumber(line?.x1) + toFiniteNumber(deltaX),
+    y1: toFiniteNumber(line?.y1) + toFiniteNumber(deltaY),
+    x2: toFiniteNumber(line?.x2) + toFiniteNumber(deltaX),
+    y2: toFiniteNumber(line?.y2) + toFiniteNumber(deltaY)
+});
 
 export const createCanvasLineDraft = (start, end = start, options = {}) => normalizeCanvasLine({
     id: options.id || '',
