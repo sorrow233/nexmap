@@ -24,6 +24,9 @@ now = 5_000;
 const metrics = monitor.onComplete();
 assert.equal(metrics.durationMs, 4_000);
 assert.equal(metrics.outputTokenCount, 50);
+assert.equal(metrics.thinkingTokenCount, 30);
+assert.equal(metrics.thinkingPercentage, 60);
+assert.equal(metrics.thinkingTokenCountEstimated, false);
 assert.equal(metrics.tokensPerSecond, 12.5);
 assert.equal(metrics.includesHiddenThinking, true);
 assert.equal(metrics.tokenCountEstimated, false);
@@ -39,8 +42,25 @@ fallbackMonitor.onChunk('123456789012345');
 fallbackNow = 13_000;
 const fallbackMetrics = fallbackMonitor.onComplete();
 assert.equal(fallbackMetrics.outputTokenCount, 10);
+assert.equal(fallbackMetrics.thinkingTokenCount, 0);
+assert.equal(fallbackMetrics.thinkingPercentage, 0);
 assert.equal(fallbackMetrics.tokenCountEstimated, true);
 assert.equal(fallbackMetrics.includesHiddenThinking, false);
+
+let estimatedThinkingNow = 20_000;
+const estimatedThinkingMonitor = createPerformanceMonitor({}, {
+    startedAt: estimatedThinkingNow,
+    now: () => estimatedThinkingNow
+});
+estimatedThinkingMonitor.onRawOutputDelta('隐藏思考', { isThinking: true });
+estimatedThinkingMonitor.onRawOutputDelta('最终回答', { isThinking: false });
+estimatedThinkingMonitor.onChunk('最终回答');
+estimatedThinkingNow = 22_000;
+const estimatedThinkingMetrics = estimatedThinkingMonitor.onComplete();
+assert.equal(estimatedThinkingMetrics.outputTokenCount, 6);
+assert.equal(estimatedThinkingMetrics.thinkingTokenCount, 3);
+assert.equal(estimatedThinkingMetrics.thinkingPercentage, 50);
+assert.equal(estimatedThinkingMetrics.thinkingTokenCountEstimated, true);
 
 const parsedOpenAI = parseOpenAIStreamLine(
     'data: {"choices":[{"delta":{"reasoning_content":"hidden","content":"visible"}}],"usage":{"completion_tokens":42}}'

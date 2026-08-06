@@ -132,6 +132,7 @@ export const app = {
             total: "Total",
             tokens: "tokens",
             estimated: "≈ ",
+            thinkingShare: "Thinking",
             includesThinking: "hidden thinking included",
             ariaLabel: "AI response performance"
         },

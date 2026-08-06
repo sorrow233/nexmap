@@ -317,6 +317,7 @@ export const ko = {
             total: "합계",
             tokens: "tokens",
             estimated: "약 ",
+            thinkingShare: "사고",
             includesThinking: "숨겨진 사고 포함",
             ariaLabel: "AI 응답 성능"
         },

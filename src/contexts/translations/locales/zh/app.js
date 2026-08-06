@@ -132,6 +132,7 @@ export const app = {
             total: "共",
             tokens: "tokens",
             estimated: "约 ",
+            thinkingShare: "思考",
             includesThinking: "含隐藏思考",
             ariaLabel: "AI 回答性能"
         },

@@ -10,6 +10,7 @@ const DEFAULT_COPY = {
     total: 'Total',
     tokens: 'tokens',
     estimated: '≈ ',
+    thinkingShare: 'Thinking',
     includesThinking: 'hidden thinking included',
     ariaLabel: 'AI response performance'
 };
@@ -25,6 +26,7 @@ export default function AnswerPerformanceMeta({ metrics }) {
     const durationMs = Number(metrics?.durationMs);
     const tokensPerSecond = Number(metrics?.tokensPerSecond);
     const outputTokenCount = Number(metrics?.outputTokenCount);
+    const thinkingPercentage = Number(metrics?.thinkingPercentage);
 
     if (
         !Number.isFinite(durationMs)
@@ -36,6 +38,10 @@ export default function AnswerPerformanceMeta({ metrics }) {
     }
 
     const estimatedPrefix = metrics?.tokenCountEstimated ? copy.estimated : '';
+    const hasThinkingPercentage = metrics?.includesHiddenThinking === true
+        && Number.isFinite(thinkingPercentage)
+        && thinkingPercentage > 0;
+    const thinkingEstimatedPrefix = metrics?.thinkingTokenCountEstimated ? copy.estimated : '';
 
     return (
         <div
@@ -56,7 +62,9 @@ export default function AnswerPerformanceMeta({ metrics }) {
             {metrics?.includesHiddenThinking === true && (
                 <span className="inline-flex items-center gap-1.5" title={copy.includesThinking}>
                     <BrainCircuit size={12} aria-hidden="true" />
-                    {copy.includesThinking}
+                    {hasThinkingPercentage
+                        ? `${copy.thinkingShare} ${thinkingEstimatedPrefix}${formatMetric(thinkingPercentage, 0)}%`
+                        : copy.includesThinking}
                 </span>
             )}
         </div>

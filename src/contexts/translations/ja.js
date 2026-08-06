@@ -317,6 +317,7 @@ export const ja = {
             total: "合計",
             tokens: "tokens",
             estimated: "約 ",
+            thinkingShare: "思考",
             includesThinking: "非表示の思考を含む",
             ariaLabel: "AI回答パフォーマンス"
         },
