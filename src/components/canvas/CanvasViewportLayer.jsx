@@ -60,7 +60,7 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
 
             <div
                 ref={contentRef}
-                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
+                className="absolute top-0 left-0 z-10 w-full h-full origin-top-left will-change-transform pointer-events-none"
             >
                 {visibleGroups && visibleGroups.map(({ group, rect, stats }) => (
                     <div key={group.id} className="pointer-events-auto">

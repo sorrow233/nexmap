@@ -20,6 +20,7 @@ const RECOVERY_TRACKED_KEYS = Object.freeze([
     'cards',
     'connections',
     'groups',
+    'canvasLines',
     'boardPrompts',
     'boardInstructionSettings'
 ]);

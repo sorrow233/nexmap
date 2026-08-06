@@ -19,6 +19,7 @@ export function useBoardChangeIntegrityMonitor({
     cards,
     connections,
     groups,
+    canvasLines,
     boardPrompts,
     boardInstructionSettings,
     boardChangeState,
@@ -31,6 +32,7 @@ export function useBoardChangeIntegrityMonitor({
         cards,
         connections,
         groups,
+        canvasLines,
         boardPrompts,
         boardInstructionSettings,
         isBoardLoading,
@@ -44,6 +46,7 @@ export function useBoardChangeIntegrityMonitor({
             cards,
             connections,
             groups,
+            canvasLines,
             boardPrompts,
             boardInstructionSettings,
             isBoardLoading,
@@ -56,6 +59,7 @@ export function useBoardChangeIntegrityMonitor({
         cards,
         connections,
         groups,
+        canvasLines,
         hasGeneratingCards,
         isBoardLoading
     ]);
@@ -86,6 +90,7 @@ export function useBoardChangeIntegrityMonitor({
                     cards: mergedCards,
                     connections: latest.connections,
                     groups: latest.groups,
+                    canvasLines: latest.canvasLines,
                     boardPrompts: latest.boardPrompts,
                     boardInstructionSettings: latest.boardInstructionSettings
                 }, {
@@ -151,6 +156,7 @@ export function useBoardChangeIntegrityMonitor({
         cards,
         connections,
         groups,
+        canvasLines,
         hasGeneratingCards,
         isBoardLoading,
         setBoardChangeState

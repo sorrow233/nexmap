@@ -50,6 +50,7 @@ export const extractLegacyRootSnapshot = (rootData = {}) => {
         Array.isArray(rootData.cards) ||
         Array.isArray(rootData.connections) ||
         Array.isArray(rootData.groups) ||
+        Array.isArray(rootData.canvasLines) ||
         Array.isArray(rootData.boardPrompts)
     );
 
@@ -61,6 +62,7 @@ export const extractLegacyRootSnapshot = (rootData = {}) => {
         cards: rootData.cards,
         connections: rootData.connections,
         groups: rootData.groups,
+        canvasLines: rootData.canvasLines,
         boardPrompts: rootData.boardPrompts,
         boardInstructionSettings: rootData.boardInstructionSettings,
         updatedAt: rootData.updatedAt,

@@ -102,7 +102,16 @@ export function useGlobalHotkeys({ boardId = '', isReadOnly = false } = {}) {
 
     // Delete / Backspace
     useHotkeys('delete, backspace', () => {
-        const { selectedIds, handleBatchDelete } = useStore.getState();
+        const {
+            selectedIds,
+            selectedCanvasLineId,
+            deleteCanvasLine,
+            handleBatchDelete
+        } = useStore.getState();
+        if (selectedCanvasLineId) {
+            deleteCanvasLine(selectedCanvasLineId);
+            return;
+        }
         if (selectedIds.length > 0) handleBatchDelete();
     }, []);
 

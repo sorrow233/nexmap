@@ -38,7 +38,7 @@ export const createCanvasSlice = (set, get) => ({
     scale: 1,
     selectedIds: [],
     interactionMode: 'none',
-    canvasMode: 'select', // 'select' or 'pan' - Modern canvas tool mode
+    canvasMode: 'select', // 'select', 'pan', or 'line'
     isSpacePanning: false,
     selectionRect: null,
     isConnecting: false,

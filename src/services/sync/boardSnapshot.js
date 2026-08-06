@@ -4,11 +4,13 @@ import {
 } from '../customInstructionsService';
 import { normalizeCardTimestamps } from '../cards/cardTimestamps';
 import { logBoardLoadStage } from '../../utils/boardLoadDebug';
+import { normalizeCanvasLines } from '../../utils/canvasLines';
 
 const DEFAULT_BOARD_SNAPSHOT = Object.freeze({
     cards: [],
     connections: [],
     groups: [],
+    canvasLines: [],
     boardPrompts: [],
     boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS),
     updatedAt: 0,
@@ -173,6 +175,9 @@ export const normalizeBoardSnapshot = (snapshot = {}) => {
         ),
         connections: Array.isArray(snapshot.connections) ? cloneSerializable(snapshot.connections) : [],
         groups: Array.isArray(snapshot.groups) ? cloneSerializable(snapshot.groups) : [],
+        canvasLines: normalizeCanvasLines(
+            Array.isArray(snapshot.canvasLines) ? cloneSerializable(snapshot.canvasLines) : []
+        ),
         boardPrompts: Array.isArray(snapshot.boardPrompts) ? cloneSerializable(snapshot.boardPrompts) : [],
         boardInstructionSettings: normalizeBoardInstructionSettings(
             snapshot.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
@@ -196,6 +201,7 @@ export const isMeaningfullyEmptyBoardSnapshot = (snapshot = {}, options = {}) =>
         normalized.cards.length === 0 &&
         normalized.connections.length === 0 &&
         normalized.groups.length === 0 &&
+        normalized.canvasLines.length === 0 &&
         normalized.boardPrompts.length === 0
     );
 };

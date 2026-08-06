@@ -170,11 +170,13 @@ function AppContent() {
     const cards = useStore(state => state.cards);
     const connections = useStore(state => state.connections);
     const groups = useStore(state => state.groups);
+    const canvasLines = useStore(state => state.canvasLines);
     const boardPrompts = useStore(state => state.boardPrompts);
     const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const setCards = useStore(state => state.setCards);
     const setConnections = useStore(state => state.setConnections);
     const setGroups = useStore(state => state.setGroups);
+    const setCanvasLines = useStore(state => state.setCanvasLines);
     const setBoardPrompts = useStore(state => state.setBoardPrompts);
     const setBoardInstructionSettings = useStore(state => state.setBoardInstructionSettings);
     const setLastSavedAt = useStore(state => state.setLastSavedAt);
@@ -208,6 +210,7 @@ function AppContent() {
         cards,
         connections,
         groups,
+        canvasLines,
         boardPrompts,
         boardInstructionSettings,
         isBoardLoading
@@ -261,6 +264,7 @@ function AppContent() {
             cards: mergeRuntimeCardBodies(currentStoreState.cards, { boardId: currentBoardId }),
             connections: currentStoreState.connections,
             groups: currentStoreState.groups,
+            canvasLines: currentStoreState.canvasLines,
             boardPrompts: currentStoreState.boardPrompts,
             boardInstructionSettings: currentStoreState.boardInstructionSettings,
             updatedAt: Number(currentCursor?.updatedAt) || 0,
@@ -342,6 +346,8 @@ function AppContent() {
         if (mode !== 'body') {
             patch.connections = normalizedSnapshot.connections;
             patch.groups = normalizedSnapshot.groups;
+            patch.canvasLines = normalizedSnapshot.canvasLines;
+            patch.selectedCanvasLineId = null;
             patch.boardPrompts = normalizedSnapshot.boardPrompts;
             patch.boardInstructionSettings = normalizeBoardInstructionSettings(
                 normalizedSnapshot.boardInstructionSettings
@@ -679,6 +685,7 @@ function AppContent() {
                     setCards([]);
                     setConnections([]);
                     setGroups([]);
+                    setCanvasLines([]);
                     setBoardPrompts([]);
                     setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
                     setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
@@ -835,6 +842,7 @@ function AppContent() {
         setCards,
         setConnections,
         setGroups,
+        setCanvasLines,
         setLastSavedAt,
         resolveRemoteSnapshotToStore,
         syncBoardSnapshotMetadataIntoList,
@@ -925,6 +933,7 @@ function AppContent() {
                     cards: mergedCards,
                     connections,
                     groups,
+                    canvasLines,
                     boardPrompts,
                     boardInstructionSettings,
                     updatedAt: nextUpdatedAt,
@@ -973,6 +982,7 @@ function AppContent() {
         currentBoardId,
         generatingCardIds?.size,
         groups,
+        canvasLines,
         isBoardLoading,
         setActiveBoardPersistence,
         setBoardsList,

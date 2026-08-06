@@ -3,6 +3,7 @@ import { temporal } from 'zundo';
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 
 import { createCanvasSlice } from './slices/canvasSlice';
+import { createCanvasLineSlice } from './slices/canvasLineSlice';
 import { createCardSlice } from './slices/cardSlice';
 import { createConnectionSlice } from './slices/connectionSlice';
 import { createGroupSlice } from './slices/groupSlice';
@@ -173,6 +174,7 @@ const useStoreBase = create(
 
             return {
                 ...createCanvasSlice(set, get),
+                ...createCanvasLineSlice(set, get),
                 ...createCardSlice(set, get),
                 ...createConnectionSlice(set, get),
                 ...createGroupSlice(set, get),
@@ -190,6 +192,7 @@ const useStoreBase = create(
                     get().resetCardState?.();
                     get().resetConnectionState?.();
                     get().resetGroupState?.();
+                    get().resetCanvasLineState?.();
                     get().resetSettingsState?.();
                     get().resetCreditsState?.();
                     console.log('[Store] All state reset complete');
@@ -202,6 +205,7 @@ const useStoreBase = create(
                 a.cards === b.cards &&
                 a.connections === b.connections &&
                 a.groups === b.groups &&
+                a.canvasLines === b.canvasLines &&
                 a.boardPrompts === b.boardPrompts &&
                 a.boardInstructionSettings === b.boardInstructionSettings
             ),
@@ -252,6 +256,7 @@ const useStoreBase = create(
                 cards: buildHistoryCardsForRuntime(state.cards),
                 connections: state.connections,
                 groups: state.groups,
+                canvasLines: state.canvasLines,
                 boardPrompts: state.boardPrompts,
                 boardInstructionSettings: state.boardInstructionSettings
             })
@@ -268,6 +273,7 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
         cards: mergedCards,
         connections: currentState.connections,
         groups: currentState.groups,
+        canvasLines: currentState.canvasLines,
         boardPrompts: currentState.boardPrompts,
         boardInstructionSettings: currentState.boardInstructionSettings
     }, {

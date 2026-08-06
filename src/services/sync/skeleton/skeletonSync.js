@@ -8,6 +8,7 @@ const SKELETON_CHANGE_TYPES = new Set([
     'card_restore',
     'connection_change',
     'group_change',
+    'canvas_line_change',
     'card_content'
 ]);
 
@@ -18,6 +19,7 @@ const SKELETON_SYNC_DELAY_MS = Object.freeze({
     card_restore: 320,
     connection_change: 420,
     group_change: 420,
+    canvas_line_change: 320,
     card_content: 500
 });
 
@@ -48,6 +50,7 @@ export const buildSkeletonSyncSnapshot = ({
     cards = [],
     connections = [],
     groups = [],
+    canvasLines = [],
     boardPrompts = [],
     boardInstructionSettings,
     clientRevision = 0,
@@ -56,6 +59,7 @@ export const buildSkeletonSyncSnapshot = ({
     cards,
     connections,
     groups,
+    canvasLines,
     boardPrompts,
     boardInstructionSettings,
     clientRevision,
@@ -94,6 +98,7 @@ export const mergeSkeletonSnapshot = (currentSnapshot = {}, incomingSnapshot = {
         cards,
         connections: incoming.connections,
         groups: incoming.groups,
+        canvasLines: incoming.canvasLines,
         boardPrompts: incoming.boardPrompts,
         boardInstructionSettings: incoming.boardInstructionSettings,
         clientRevision: Math.max(

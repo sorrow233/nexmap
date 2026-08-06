@@ -16,6 +16,7 @@ const looksLikeBoardSnapshot = (value) => {
         Array.isArray(value.cards) ||
         Array.isArray(value.connections) ||
         Array.isArray(value.groups) ||
+        Array.isArray(value.canvasLines) ||
         Array.isArray(value.boardPrompts) ||
         Boolean(value.boardInstructionSettings)
     );

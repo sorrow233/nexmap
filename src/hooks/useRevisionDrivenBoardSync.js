@@ -22,6 +22,7 @@ export function useRevisionDrivenBoardSync({
     cards,
     connections,
     groups,
+    canvasLines,
     boardPrompts,
     boardInstructionSettings,
     isBoardLoading
@@ -77,6 +78,7 @@ export function useRevisionDrivenBoardSync({
                 cards: mergeRuntimeCardBodies(cards, { boardId }),
                 connections,
                 groups,
+                canvasLines,
                 boardPrompts,
                 boardInstructionSettings,
                 clientRevision: revision,
@@ -106,6 +108,7 @@ export function useRevisionDrivenBoardSync({
         cards,
         connections,
         groups,
+        canvasLines,
         isBoardLoading
     ]);
 }

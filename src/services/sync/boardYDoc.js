@@ -11,6 +11,7 @@ const ROOT_KEYS = [
     'cards',
     'connections',
     'groups',
+    'canvasLines',
     'boardPrompts',
     'boardInstructionSettings',
     'updatedAt',
@@ -291,6 +292,7 @@ export const isBoardDocEmpty = (doc) => {
         snapshot.cards.length === 0 &&
         snapshot.connections.length === 0 &&
         snapshot.groups.length === 0 &&
+        snapshot.canvasLines.length === 0 &&
         snapshot.boardPrompts.length === 0
     );
 };

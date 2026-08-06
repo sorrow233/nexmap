@@ -98,6 +98,7 @@ const buildBoardPayload = (data, options = {}) => {
         cards: data.cards || [],
         connections: data.connections || [],
         groups: data.groups || [],
+        canvasLines: data.canvasLines || [],
         boardPrompts: data.boardPrompts || [],
         boardInstructionSettings: normalizeBoardInstructionSettings(
             data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
@@ -136,6 +137,7 @@ export function useBoardPersistence({
     cards,
     connections,
     groups,
+    canvasLines,
     boardPrompts,
     boardInstructionSettings,
     offset,
@@ -160,6 +162,7 @@ export function useBoardPersistence({
         cards,
         connections,
         groups,
+        canvasLines,
         boardPrompts,
         boardInstructionSettings
     });
@@ -194,12 +197,13 @@ export function useBoardPersistence({
             cards,
             connections,
             groups,
+            canvasLines,
             boardPrompts,
             boardInstructionSettings: normalizeBoardInstructionSettings(
                 boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
             )
         };
-    }, [cards, connections, groups, boardPrompts, boardInstructionSettings]);
+    }, [cards, connections, groups, canvasLines, boardPrompts, boardInstructionSettings]);
 
     useLayoutEffect(() => {
         streamingMessagesRef.current = streamingMessages || {};
@@ -265,6 +269,7 @@ export function useBoardPersistence({
             cards: mergeRuntimeCardBodies(data.cards || [], { boardId }),
             connections: data.connections || [],
             groups: data.groups || [],
+            canvasLines: data.canvasLines || [],
             boardPrompts: data.boardPrompts || [],
             boardInstructionSettings: normalizeBoardInstructionSettings(
                 data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS

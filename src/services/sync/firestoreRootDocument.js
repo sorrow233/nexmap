@@ -6,6 +6,7 @@ const LEGACY_ROOT_FIELDS = [
     'cards',
     'connections',
     'groups',
+    'canvasLines',
     'boardPrompts',
     'boardInstructionSettings',
     'snapshotData',

@@ -82,6 +82,7 @@ export const pickTrackedBoardIntegrityPayload = (snapshot = {}, options = {}) =>
         cards: normalized.cards,
         connections: normalized.connections,
         groups: normalized.groups,
+        canvasLines: normalized.canvasLines,
         boardPrompts: normalized.boardPrompts,
         boardInstructionSettings: normalized.boardInstructionSettings
     };

@@ -171,6 +171,7 @@ export const createBoard = async (name) => {
         cards: [],
         connections: [],
         groups: [],
+        canvasLines: [],
         boardPrompts: [],
         boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
     });
@@ -348,6 +349,7 @@ export const loadBoard = async (id) => {
             cards: [],
             connections: [],
             groups: [],
+            canvasLines: [],
             boardPrompts: [],
             boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
         };

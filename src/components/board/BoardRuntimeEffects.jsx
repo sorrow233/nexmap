@@ -21,6 +21,7 @@ export default function BoardRuntimeEffects({
     const cards = useStore((state) => state.cards);
     const connections = useStore((state) => state.connections);
     const groups = useStore((state) => state.groups);
+    const canvasLines = useStore((state) => state.canvasLines);
     const generatingCardIds = useStore((state) => state.generatingCardIds);
     const offset = useStore((state) => state.offset);
     const scale = useStore((state) => state.scale);
@@ -64,6 +65,7 @@ export default function BoardRuntimeEffects({
         cards,
         connections,
         groups,
+        canvasLines,
         boardPrompts,
         boardInstructionSettings: normalizedBoardInstructionSettings,
         offset,
@@ -87,6 +89,7 @@ export default function BoardRuntimeEffects({
         cards,
         connections,
         groups,
+        canvasLines,
         boardPrompts,
         boardInstructionSettings: normalizedBoardInstructionSettings,
         boardChangeState,
