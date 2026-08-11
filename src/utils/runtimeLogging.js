@@ -146,6 +146,16 @@ const normalizeFetchRequest = (input, init = {}) => {
     };
 };
 
+const isSdkManagedFirestoreChannel = (url = '') => {
+    try {
+        const parsedUrl = new URL(url, window.location.href);
+        return parsedUrl.hostname === 'firestore.googleapis.com'
+            && /\/google\.firestore\.v1\.Firestore\/(Write|Listen)\/channel$/.test(parsedUrl.pathname);
+    } catch {
+        return false;
+    }
+};
+
 export const installGlobalErrorLogging = () => {
     if (typeof window === 'undefined') return;
     if (window.__NEXMAP_GLOBAL_ERROR_LOGGING__ === true) return;
@@ -191,7 +201,7 @@ export const installFetchErrorLogging = () => {
 
         try {
             const response = await originalFetch(input, init);
-            if (!response.ok) {
+            if (!response.ok && !isSdkManagedFirestoreChannel(requestMeta.url)) {
                 console.error('[GlobalFetchError] Non-OK response', {
                     ...requestMeta,
                     status: response.status,

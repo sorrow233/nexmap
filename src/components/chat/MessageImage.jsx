@@ -29,6 +29,7 @@ const createObjectUrlFromBase64 = (base64Data, mimeType) => {
  */
 const MessageImage = ({ img }) => {
     const [imgSrc, setImgSrc] = React.useState(null);
+    const [loadState, setLoadState] = React.useState('loading');
     const objectUrlRef = React.useRef('');
 
     const revokeObjectUrl = React.useCallback(() => {
@@ -50,10 +51,14 @@ const MessageImage = ({ img }) => {
         let active = true;
         const load = async () => {
             setImageSource(null);
+            setLoadState('loading');
 
             // 1. S3 URL (Primary)
             if (img.source?.s3Url) {
-                if (active) setImageSource(img.source.s3Url);
+                if (active) {
+                    setImageSource(img.source.s3Url);
+                    setLoadState('ready');
+                }
                 return;
             }
             // 2. IDB (Async)
@@ -62,6 +67,9 @@ const MessageImage = ({ img }) => {
                 if (active && data) {
                     const objectUrl = createObjectUrlFromBase64(data, img.source.media_type);
                     setImageSource(objectUrl, { objectUrl: true });
+                    setLoadState('ready');
+                } else if (active) {
+                    setLoadState('missing');
                 }
                 return;
             }
@@ -70,8 +78,12 @@ const MessageImage = ({ img }) => {
                 if (active) {
                     const objectUrl = createObjectUrlFromBase64(img.source.data, img.source.media_type);
                     setImageSource(objectUrl, { objectUrl: true });
+                    setLoadState('ready');
                 }
+                return;
             }
+
+            if (active) setLoadState('missing');
         };
         load();
         return () => {
@@ -79,6 +91,14 @@ const MessageImage = ({ img }) => {
             revokeObjectUrl();
         };
     }, [img, revokeObjectUrl, setImageSource]);
+
+    if (loadState === 'missing') {
+        return (
+            <div className="flex h-32 w-32 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-3 text-center text-xs text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
+                Image unavailable on this device
+            </div>
+        );
+    }
 
     if (!imgSrc) return <div className="h-32 w-32 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl border border-slate-200 dark:border-white/10" />;
 
@@ -88,19 +108,27 @@ const MessageImage = ({ img }) => {
             alt="Uploaded"
             className="h-32 w-auto rounded-xl border border-slate-200 dark:border-white/10"
             onError={() => {
-                console.warn("Image load failed, trying fallbacks");
                 // If S3 failed, try IDB or Base64 fallback if available
                 if (img.source?.s3Url) {
                     if (img.source?.type === 'idb' && img.source.id) {
                         getImageFromIDB(img.source.id).then(data => {
-                            if (!data) return;
+                            if (!data) {
+                                setLoadState('missing');
+                                return;
+                            }
                             const objectUrl = createObjectUrlFromBase64(data, img.source.media_type);
                             setImageSource(objectUrl, { objectUrl: true });
+                            setLoadState('ready');
                         });
                     } else if (img.source?.data) {
                         const objectUrl = createObjectUrlFromBase64(img.source.data, img.source.media_type);
                         setImageSource(objectUrl, { objectUrl: true });
+                        setLoadState('ready');
+                    } else {
+                        setLoadState('missing');
                     }
+                } else {
+                    setLoadState('missing');
                 }
             }}
         />

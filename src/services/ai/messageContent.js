@@ -3,6 +3,14 @@ import { uuid } from '../../utils/uuid';
 
 const IMAGE_PERSIST_CONCURRENCY = 2;
 
+export class ImagePersistenceError extends Error {
+    constructor(message = '图片无法保存到本地，请检查浏览器存储空间后重试。') {
+        super(message);
+        this.name = 'ImagePersistenceError';
+        this.code = 'IMAGE_PERSISTENCE_FAILED';
+    }
+}
+
 export const estimateBase64Bytes = (base64Data = '') => {
     if (!base64Data) return 0;
     const len = String(base64Data).length;
@@ -152,7 +160,7 @@ export const prepareImageForMessageStorage = async (image, context = {}) => {
         });
     }
 
-    return buildInlineImagePart(image);
+    throw new ImagePersistenceError();
 };
 
 export const prepareImagesForMessageStorage = async ({
@@ -309,11 +317,19 @@ export const migrateInlineMessageImagesToIDB = async ({
     if (tasks.length === 0) return [];
 
     const replacements = await runWithConcurrency(tasks, 1, async (task) => {
-        const nextPart = await prepareImageForMessageStorage(task.part, {
-            cardId,
-            messageId: task.messageId || `message_${task.messageIndex}`,
-            index: task.partIndex
-        });
+        let nextPart = null;
+        try {
+            nextPart = await prepareImageForMessageStorage(task.part, {
+                cardId,
+                messageId: task.messageId || `message_${task.messageIndex}`,
+                index: task.partIndex
+            });
+        } catch (error) {
+            if (error?.code !== 'IMAGE_PERSISTENCE_FAILED') {
+                throw error;
+            }
+            return null;
+        }
 
         if (nextPart?.source?.type !== 'idb') return null;
 

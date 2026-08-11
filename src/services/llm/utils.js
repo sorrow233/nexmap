@@ -4,6 +4,15 @@ const IMAGE_RESOLVE_CONCURRENCY = 2;
 const IMAGE_RESOLVE_RETRY_ATTEMPTS = 2;
 const IMAGE_RESOLVE_RETRY_DELAY_MS = 160;
 
+export class ImageResolutionError extends Error {
+    constructor(message, details = {}) {
+        super(message);
+        this.name = 'ImageResolutionError';
+        this.code = 'IMAGE_RESOLUTION_FAILED';
+        this.details = details;
+    }
+}
+
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const runWithConcurrency = async (items = [], concurrency = 1, worker) => {
@@ -74,16 +83,18 @@ const resolveImagePart = async (part) => {
         return null;
     }
 
-    try {
-        if (source.type === 'idb' && source.id) {
-            const data = await withRetry(async () => {
-                const idbData = await getImageFromIDB(source.id);
-                if (!idbData) throw new Error(`IDB image not found: ${source.id}`);
-                return idbData;
-            });
-            return buildResolvedImagePart(source.media_type || 'image/png', data);
+    if (source.type === 'idb' && source.id) {
+        const data = await getImageFromIDB(source.id);
+        if (!data) {
+            throw new ImageResolutionError(
+                '当前消息中的图片仅保存在原设备，现已不可用，请重新上传图片后再试。',
+                { imageId: source.id, sourceType: 'idb' }
+            );
         }
+        return buildResolvedImagePart(source.media_type || 'image/png', data);
+    }
 
+    try {
         if (source.type === 'url' || source.media_type === 'url') {
             const url = source.url || source.data;
             const result = await fetchImageAsBase64(url);
@@ -102,8 +113,10 @@ const resolveImagePart = async (part) => {
         console.warn('[LLM Utils] Unknown image source type, skipping:', source);
         return null;
     } catch (error) {
-        console.error('[LLM Utils] Image resolution failed:', error);
-        return null;
+        throw new ImageResolutionError(
+            '当前消息中的图片读取失败，请重新上传图片后再试。',
+            { cause: error, sourceType: source.type || 'unknown' }
+        );
     }
 };
 
@@ -149,9 +162,7 @@ export const resolveAllImages = async (messages) => {
             }
 
             const resolvedPart = resolvedImageByPosition.get(`${messageIndex}:${partIndex}`);
-            if (resolvedPart) {
-                filteredContent.push(resolvedPart);
-            }
+            if (resolvedPart) filteredContent.push(resolvedPart);
         });
         msg.content = filteredContent;
     }

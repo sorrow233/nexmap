@@ -1,7 +1,6 @@
-import { idbSet, idbGet, idbDel, idbGetEntriesByPrefix } from './db/indexedDB';
+import { idbSet, idbGet } from './db/indexedDB';
 
 const IMAGE_PREFIX = 'img_';
-const IMAGE_CACHE_LIMIT_BYTES = 300 * 1024 * 1024; // 300MB
 
 const estimateBase64Bytes = (base64Data = '') => {
     if (!base64Data) return 0;
@@ -38,43 +37,6 @@ const normalizeRecord = (storedValue) => {
     return null;
 };
 
-const ensureImageCacheBudget = async (incomingBytes, incomingKey) => {
-    const entries = await idbGetEntriesByPrefix(IMAGE_PREFIX);
-    const records = entries.map(entry => {
-        const normalized = normalizeRecord(entry.value);
-        if (!normalized) return null;
-        return {
-            key: entry.key,
-            sizeBytes: normalized.sizeBytes,
-            updatedAt: normalized.updatedAt || normalized.createdAt || 0
-        };
-    }).filter(Boolean);
-
-    const currentBytesExcludingIncoming = records
-        .filter(record => record.key !== incomingKey)
-        .reduce((sum, record) => sum + record.sizeBytes, 0);
-
-    if (incomingBytes > IMAGE_CACHE_LIMIT_BYTES) {
-        throw new Error('Single image exceeds local image cache limit (300MB).');
-    }
-
-    if (currentBytesExcludingIncoming + incomingBytes <= IMAGE_CACHE_LIMIT_BYTES) {
-        return;
-    }
-
-    const reclaimTarget = (currentBytesExcludingIncoming + incomingBytes) - IMAGE_CACHE_LIMIT_BYTES;
-    let reclaimed = 0;
-    const candidates = records
-        .filter(record => record.key !== incomingKey)
-        .sort((a, b) => a.updatedAt - b.updatedAt);
-
-    for (const candidate of candidates) {
-        await idbDel(candidate.key);
-        reclaimed += candidate.sizeBytes;
-        if (reclaimed >= reclaimTarget) break;
-    }
-};
-
 export const saveImageToIDB = async (imageId, base64Data) => {
     if (!imageId || !base64Data) return;
     try {
@@ -82,7 +44,6 @@ export const saveImageToIDB = async (imageId, base64Data) => {
         const now = Date.now();
         const sizeBytes = estimateBase64Bytes(base64Data);
 
-        await ensureImageCacheBudget(sizeBytes, key);
         await idbSet(key, {
             data: base64Data,
             sizeBytes,
