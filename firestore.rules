@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      function ownsDocument() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow read, delete: if ownsDocument();
+      allow create, update: if ownsDocument()
+        && request.resource.data.keys().hasOnly([
+          'schemaVersion', 'bgId', 'cinematicPrefs', 'bookmarks', 'bookmarkGroups',
+          'activeBookmarkGroup', 'search', 'weather', 'focus', 'tasks', 'notes',
+          'calendarEvents', 'preferences', 'customWallpaper', 'onboardingComplete',
+          'updatedAt', 'serverUpdatedAt'
+        ])
+        && request.resource.data.bgId is string
+        && request.resource.data.bookmarks is list
+        && request.resource.data.bookmarks.size() <= 24
+        && request.resource.data.updatedAt is int
+        && request.resource.data.serverUpdatedAt == request.time
+        && (
+          (!request.resource.data.keys().hasAny(['schemaVersion']))
+          || (
+            request.resource.data.schemaVersion == 27
+            && request.resource.data.bookmarkGroups is list
+            && request.resource.data.bookmarkGroups.size() <= 12
+            && request.resource.data.tasks is list
+            && request.resource.data.tasks.size() <= 20
+            && request.resource.data.notes is list
+            && request.resource.data.notes.size() <= 30
+            && request.resource.data.calendarEvents is list
+            && request.resource.data.calendarEvents.size() <= 50
+          )
+        );
+
+      // NexMap stores checkpoints and card bodies below boards. Requiring one
+      // named subcollection segment keeps the parent document validation above
+      // intact even with Rules v2 recursive wildcard semantics.
+      match /{nexMapCollection}/{userDocument=**} {
+        allow read, write: if ownsDocument()
+          && nexMapCollection in ['boards', 'settings', 'board_thumbnails'];
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

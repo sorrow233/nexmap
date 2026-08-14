@@ -142,6 +142,8 @@ export function useAppInit() {
                     if (disposed || auth.currentUser?.uid !== activeUserId) return;
 
                     debugLog.auth(`[SettingsSync] ${syncResult.reason || 'unknown'} for ${activeUserId}`);
+                    if (!syncResult.ok) return;
+
                     unsubscribeUserSettingsSync = subscribeUserSettingsSync(activeUserId, {
                         onUpdate: (result) => {
                             if (!result?.applied) return;

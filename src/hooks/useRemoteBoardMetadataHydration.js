@@ -5,7 +5,8 @@ import {
 } from '../services/sync/boardMetadataSync';
 import {
     getRemoteMetadataRetryDelay,
-    isNetworkAvailable
+    isNetworkAvailable,
+    isRetryableFirestoreError
 } from '../services/sync/networkRetryPolicy';
 import { persistBoardsMetadataList } from '../services/boardPersistence/boardsListStorage';
 
@@ -79,9 +80,17 @@ export const useRemoteBoardMetadataHydration = ({ userId, setBoardsList }) => {
                 retryAttempt = 0;
                 setHasHydratedRemoteBoards(true);
             } catch (error) {
-                if (!cancelled) {
-                    scheduleRetry(hydrateRemoteBoards, error);
+                if (cancelled) return;
+
+                if (!isRetryableFirestoreError(error)) {
+                    console.error(
+                        '[FirebaseSync] Remote boards metadata hydration stopped after a non-retryable error.',
+                        describeHydrationError(error, null)
+                    );
+                    return;
                 }
+
+                scheduleRetry(hydrateRemoteBoards, error);
             } finally {
                 hydrationInFlight = false;
             }

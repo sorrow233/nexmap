@@ -2,6 +2,16 @@ export const REMOTE_METADATA_RETRY_BASE_MS = 10_000;
 export const REMOTE_METADATA_RETRY_MAX_MS = 300_000;
 export const REMOTE_METADATA_RETRY_JITTER = 0.2;
 
+const RETRYABLE_FIRESTORE_ERROR_CODES = new Set([
+    'aborted',
+    'cancelled',
+    'deadline-exceeded',
+    'internal',
+    'resource-exhausted',
+    'unavailable',
+    'unknown'
+]);
+
 const normalizeAttempt = (attempt) => Math.max(0, Math.floor(Number(attempt) || 0));
 
 export const getRemoteMetadataRetryDelay = (
@@ -29,3 +39,15 @@ export const getRemoteMetadataRetryDelay = (
 export const isNetworkAvailable = () => (
     typeof navigator === 'undefined' || navigator.onLine !== false
 );
+
+export const isRetryableFirestoreError = (error) => {
+    const normalizedCode = String(error?.code || '')
+        .replace(/^firestore\//, '')
+        .toLowerCase();
+
+    if (!normalizedCode) {
+        return true;
+    }
+
+    return RETRYABLE_FIRESTORE_ERROR_CODES.has(normalizedCode);
+};
