@@ -17,10 +17,6 @@ import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser.
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { extractCandidateText } from './gemini/partUtils.js';
 import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
-import {
-    resolveGeminiDefaultMaxOutputTokens,
-    shouldDefaultGeminiThinkingHigh
-} from './gemini/modelCapabilities.js';
 import { getKeyPool } from '../keyPoolManager';
 import {
     classifyGeminiApiKey,
@@ -37,6 +33,7 @@ const KEY_ACQUIRE_POLL_MAX_MS = 5000;
 const MAX_CHAT_ATTEMPTS = 2;
 const MAX_STREAM_ATTEMPTS = 2;
 const OFFICIAL_GEMINI_31_STREAM_ATTEMPTS = 4;
+const GEMINI_31_PRO_MAX_OUTPUT_TOKENS = 65536;
 const MAX_IMAGE_ATTEMPTS = 2;
 const transportCircuitState = {
     proxyDegradedUntil: 0
@@ -158,13 +155,18 @@ export class GeminiProvider extends LLMProvider {
         return this._isOfficialGeminiProviderConfig(baseUrl) || this._isVertexExpressBaseUrl(baseUrl);
     }
 
+    _isGemini3FlashModel(modelName = '') {
+        const lower = String(modelName).toLowerCase();
+        return lower.includes('gemini-3-flash');
+    }
+
     _isGemini31ProPreviewModel(modelName = '') {
         const lower = String(modelName).toLowerCase();
         return lower.includes('gemini-3.1-pro-preview');
     }
 
     _resolveThinkingLevel(modelName = '', options = {}) {
-        if (shouldDefaultGeminiThinkingHigh(modelName)) {
+        if (this._isGemini3FlashModel(modelName) || this._isGemini31ProPreviewModel(modelName)) {
             return 'HIGH';
         }
 
@@ -547,8 +549,9 @@ export class GeminiProvider extends LLMProvider {
             temperature: options.temperature !== undefined ? options.temperature : 1.0
         };
         const explicitMaxOutputTokens = resolveChatMaxOutputTokens(options);
-        const maxOutputTokens = explicitMaxOutputTokens
-            ?? resolveGeminiDefaultMaxOutputTokens(modelName);
+        const maxOutputTokens = explicitMaxOutputTokens ?? (
+            this._isGemini31ProPreviewModel(modelName) ? GEMINI_31_PRO_MAX_OUTPUT_TOKENS : null
+        );
         if (maxOutputTokens !== null) {
             generationConfig.maxOutputTokens = maxOutputTokens;
         }

@@ -12,9 +12,7 @@ const monitor = createPerformanceMonitor({ model: 'thinking-model' }, {
 monitor.onRawOutputDelta('隐藏思考', { isThinking: true });
 now = 2_000;
 monitor.onRawOutputDelta('最终回答', { isThinking: false });
-monitor.onChunk('最终');
-now = 2_500;
-monitor.onChunk('回答');
+monitor.onChunk('最终回答');
 monitor.onProviderMetadata({
     usage: {
         candidatesTokenCount: 20,
@@ -25,18 +23,11 @@ now = 5_000;
 
 const metrics = monitor.onComplete();
 assert.equal(metrics.durationMs, 4_000);
-assert.equal(metrics.requestDurationMs, 4_000);
-assert.equal(metrics.queueDurationMs, 0);
 assert.equal(metrics.outputTokenCount, 50);
-assert.equal(metrics.visibleOutputTokenCount, 20);
 assert.equal(metrics.thinkingTokenCount, 30);
 assert.equal(metrics.thinkingPercentage, 60);
 assert.equal(metrics.thinkingTokenCountEstimated, false);
 assert.equal(metrics.tokensPerSecond, 12.5);
-assert.equal(metrics.endToEndTokensPerSecond, 12.5);
-assert.equal(metrics.firstVisibleChunkMs, 1_000);
-assert.equal(metrics.visibleDurationMs, 3_000);
-assert.equal(metrics.visibleTokensPerSecond, 6.67);
 assert.equal(metrics.includesHiddenThinking, true);
 assert.equal(metrics.tokenCountEstimated, false);
 assert.equal(metrics.visibleCharCount, 4);
@@ -51,8 +42,6 @@ fallbackMonitor.onChunk('123456789012345');
 fallbackNow = 13_000;
 const fallbackMetrics = fallbackMonitor.onComplete();
 assert.equal(fallbackMetrics.outputTokenCount, 10);
-assert.equal(fallbackMetrics.visibleOutputTokenCount, 10);
-assert.equal(fallbackMetrics.visibleTokensPerSecond, null);
 assert.equal(fallbackMetrics.thinkingTokenCount, 0);
 assert.equal(fallbackMetrics.thinkingPercentage, 0);
 assert.equal(fallbackMetrics.tokenCountEstimated, true);
@@ -65,31 +54,13 @@ const estimatedThinkingMonitor = createPerformanceMonitor({}, {
 });
 estimatedThinkingMonitor.onRawOutputDelta('隐藏思考', { isThinking: true });
 estimatedThinkingMonitor.onRawOutputDelta('最终回答', { isThinking: false });
-estimatedThinkingMonitor.onChunk('最终');
-estimatedThinkingNow = 21_000;
-estimatedThinkingMonitor.onChunk('回答');
+estimatedThinkingMonitor.onChunk('最终回答');
 estimatedThinkingNow = 22_000;
 const estimatedThinkingMetrics = estimatedThinkingMonitor.onComplete();
 assert.equal(estimatedThinkingMetrics.outputTokenCount, 6);
-assert.equal(estimatedThinkingMetrics.visibleOutputTokenCount, 3);
 assert.equal(estimatedThinkingMetrics.thinkingTokenCount, 3);
 assert.equal(estimatedThinkingMetrics.thinkingPercentage, 50);
 assert.equal(estimatedThinkingMetrics.thinkingTokenCountEstimated, true);
-
-let queuedNow = 30_000;
-const queuedMonitor = createPerformanceMonitor({}, {
-    queuedAt: 28_000,
-    startedAt: 29_000,
-    now: () => queuedNow
-});
-queuedMonitor.onChunk('123');
-queuedNow = 31_000;
-queuedMonitor.onChunk('456');
-queuedNow = 32_000;
-const queuedMetrics = queuedMonitor.onComplete();
-assert.equal(queuedMetrics.queueDurationMs, 1_000);
-assert.equal(queuedMetrics.requestDurationMs, 3_000);
-assert.equal(queuedMetrics.durationMs, 4_000);
 
 const parsedOpenAI = parseOpenAIStreamLine(
     'data: {"choices":[{"delta":{"reasoning_content":"hidden","content":"visible"}}],"usage":{"completion_tokens":42}}'
