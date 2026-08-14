@@ -1,7 +1,7 @@
 {
   "name": "mixboard-canvas",
   "private": false,
-  "version": "2.4.17",
+  "version": "2.4.18",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "test:cross-board-card-clipboard": "node scripts/test-cross-board-card-clipboard.mjs",
     "test:answer-performance": "node scripts/test-answer-performance.mjs",
     "test:chat-context-images": "node scripts/test-chat-context-images.mjs",
+    "test:firestore-network-retry": "node scripts/test-firestore-network-retry.mjs",
     "test:user-stats": "node scripts/test-user-stats.mjs",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

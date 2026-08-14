@@ -65,8 +65,6 @@ import {
     isSampleBoardId
 } from './services/sync/config';
 import {
-    loadRemoteBoardMetadataList,
-    mergeBoardMetadataLists,
     syncBoardMetadataListToRemote
 } from './services/sync/boardMetadataSync';
 import { normalizeBoardSnapshot } from './services/sync/boardSnapshot';
@@ -75,7 +73,6 @@ import {
     persistBoardDisplayMetadataSnapshot,
     prepareBoardDisplayMetadataPatch
 } from './services/boardPersistence/boardDisplayMetadataStorage';
-import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
 import {
     buildPersistenceVersionKey
 } from './services/boardPersistence/persistenceCursor';
@@ -84,6 +81,7 @@ import {
     syncBoardChangeStateToCursor
 } from './store/slices/utils/boardChangeState';
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
+import { useRemoteBoardMetadataHydration } from './hooks/useRemoteBoardMetadataHydration';
 import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
 import {
@@ -127,7 +125,6 @@ export default function App() {
 }
 
 const SESSION_START_TIME = Date.now();
-const REMOTE_METADATA_RETRY_MS = 5000;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
 );
@@ -188,8 +185,10 @@ function AppContent() {
     const { createCardWithText } = useCardCreator();
     const boardSyncControllerRef = useRef(null);
     const metadataSyncTimerRef = useRef(null);
-    const metadataHydrationRetryTimerRef = useRef(null);
-    const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
+    const hasHydratedRemoteBoards = useRemoteBoardMetadataHydration({
+        userId: user?.uid,
+        setBoardsList
+    });
 
     // Dialog State
     const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => { } });
@@ -502,61 +501,6 @@ function AppContent() {
 
         return () => unsubscribe?.();
     }, [currentBoardId, syncBoardSnapshotMetadataIntoList]);
-
-    useEffect(() => {
-        let cancelled = false;
-        setHasHydratedRemoteBoards(false);
-        if (metadataHydrationRetryTimerRef.current) {
-            clearTimeout(metadataHydrationRetryTimerRef.current);
-            metadataHydrationRetryTimerRef.current = null;
-        }
-
-        if (!user?.uid) {
-            return () => {
-                cancelled = true;
-                if (metadataHydrationRetryTimerRef.current) {
-                    clearTimeout(metadataHydrationRetryTimerRef.current);
-                    metadataHydrationRetryTimerRef.current = null;
-                }
-            };
-        }
-
-        const hydrateRemoteBoards = async () => {
-            try {
-                const remoteBoards = await loadRemoteBoardMetadataList(user.uid);
-                if (cancelled) return;
-
-                setBoardsList((prev) => {
-                    const merged = mergeBoardMetadataLists(prev, remoteBoards);
-                    if (merged.length > 0) {
-                        persistBoardsMetadataList(merged, { reason: 'firebase_sync:hydrate_remote_metadata' });
-                    }
-                    return merged.length > 0 ? merged : prev;
-                });
-                setHasHydratedRemoteBoards(true);
-            } catch (error) {
-                if (cancelled) return;
-                console.error('[FirebaseSync] Failed to hydrate remote boards metadata:', error);
-                setHasHydratedRemoteBoards(false);
-                metadataHydrationRetryTimerRef.current = setTimeout(() => {
-                    metadataHydrationRetryTimerRef.current = null;
-                    if (!cancelled) {
-                        void hydrateRemoteBoards();
-                    }
-                }, REMOTE_METADATA_RETRY_MS);
-            }
-        };
-
-        void hydrateRemoteBoards();
-
-        return () => {
-            cancelled = true;
-            if (metadataHydrationRetryTimerRef.current) {
-                clearTimeout(metadataHydrationRetryTimerRef.current);
-                metadataHydrationRetryTimerRef.current = null;
-            }
-        };
-    }, [user?.uid, setBoardsList]);
 
     useEffect(() => {
         if (!user?.uid || !hasHydratedRemoteBoards) return undefined;

@@ -150,7 +150,9 @@ const mergeFieldByPresence = (preferredBoard, fallbackBoard, key) => {
 
 export const loadRemoteBoardMetadataList = async (userId) => {
     if (!db || !userId) return [];
-    const snapshot = await withRetry(() => getDocs(getBoardCollectionRef(userId)));
+    // The hydration hook owns retry scheduling. Retrying here as well would
+    // multiply one network interruption into a burst of Firestore requests.
+    const snapshot = await getDocs(getBoardCollectionRef(userId));
     const boards = await Promise.all(snapshot.docs.map(async (item) => {
         const rawBoard = item.data();
         const migratedRecord = await migrateBoardThumbnailRecord(rawBoard?.id, rawBoard, {
