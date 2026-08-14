@@ -1,7 +1,7 @@
 {
   "name": "mixboard-canvas",
   "private": false,
-  "version": "2.4.19",
+  "version": "2.4.20",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
     "ext:build": "rm -rf dist-extension && mkdir -p dist-extension && cp -R browser-extension/. dist-extension/",
     "ext:zip": "npm run ext:build && cd dist-extension && zip -r ../dist-extension.zip .",
     "test:gemini-parser": "node scripts/test-gemini-parser.mjs",
+    "test:gemini-model-capabilities": "node scripts/test-gemini-model-capabilities.mjs",
     "test:gemini-image": "node scripts/test-gemini-image.mjs",
     "test:card-clipboard": "node scripts/test-card-clipboard.mjs",
     "test:message-batch-delete": "node scripts/test-message-batch-delete.mjs",

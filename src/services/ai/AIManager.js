@@ -340,7 +340,8 @@ class AIManager {
                 model,
                 providerId: task.payload.config?.id || task.payload.config?.providerId || ''
             }, {
-                startedAt: task.timestamp
+                queuedAt: task.timestamp,
+                startedAt: Date.now()
             });
             const safelyNotifyPerformance = (metrics) => {
                 if (typeof onPerformanceMetrics !== 'function') return;

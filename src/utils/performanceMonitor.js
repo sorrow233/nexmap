@@ -17,15 +17,23 @@ const resolveProviderUsage = (metadata = {}) => {
     );
 
     if (completionTokens !== null) {
+        const visibleOutputTokenCount = thoughtTokens === null
+            ? completionTokens
+            : Math.max(0, completionTokens - thoughtTokens);
         return {
             outputTokenCount: completionTokens,
+            visibleOutputTokenCount,
             thinkingTokenCount: thoughtTokens,
             isEstimated: false
         };
     }
     if (outputTokens !== null) {
+        const visibleOutputTokenCount = thoughtTokens === null
+            ? outputTokens
+            : Math.max(0, outputTokens - thoughtTokens);
         return {
             outputTokenCount: outputTokens,
+            visibleOutputTokenCount,
             thinkingTokenCount: thoughtTokens,
             isEstimated: false
         };
@@ -33,6 +41,7 @@ const resolveProviderUsage = (metadata = {}) => {
     if (candidateTokens !== null || (thoughtTokens !== null && thoughtTokens > 0)) {
         return {
             outputTokenCount: (candidateTokens || 0) + (thoughtTokens || 0),
+            visibleOutputTokenCount: candidateTokens || 0,
             thinkingTokenCount: thoughtTokens,
             isEstimated: false
         };
@@ -47,6 +56,7 @@ class PerformanceMonitor {
         this.params = params;
         this.now = typeof options.now === 'function' ? options.now : Date.now;
         this.startedAt = Number(options.startedAt) || this.now();
+        this.queuedAt = Number(options.queuedAt) || this.startedAt;
         this.firstVisibleChunkAt = null;
         this.visibleCharCount = 0;
         this.rawOutputCharCount = 0;
@@ -94,12 +104,16 @@ class PerformanceMonitor {
         if (this.finishedMetrics) return this.finishedMetrics;
 
         const completedAt = this.now();
-        const durationMs = Math.max(1, completedAt - this.startedAt);
+        const requestDurationMs = Math.max(1, completedAt - this.startedAt);
+        const queueDurationMs = Math.max(0, this.startedAt - this.queuedAt);
+        const durationMs = Math.max(1, completedAt - this.queuedAt);
         const outputCharCount = this.hasRawOutputTelemetry
             ? this.rawOutputCharCount
             : this.visibleCharCount;
         const estimatedOutputTokens = Math.ceil(outputCharCount / ESTIMATED_CHARS_PER_TOKEN);
+        const estimatedVisibleOutputTokens = Math.ceil(this.visibleCharCount / ESTIMATED_CHARS_PER_TOKEN);
         const outputTokenCount = this.providerUsage?.outputTokenCount ?? estimatedOutputTokens;
+        const visibleOutputTokenCount = this.providerUsage?.visibleOutputTokenCount ?? estimatedVisibleOutputTokens;
         const providerThinkingTokenCount = this.providerUsage?.thinkingTokenCount;
         const hasExactThinkingTokenCount = providerThinkingTokenCount !== null
             && providerThinkingTokenCount !== undefined;
@@ -122,20 +136,33 @@ class PerformanceMonitor {
         const thinkingPercentage = outputTokenCount > 0 && thinkingTokenCount > 0
             ? Math.max(1, Math.min(100, Math.round((thinkingTokenCount / outputTokenCount) * 100)))
             : 0;
+        const visibleDurationMs = this.firstVisibleChunkAt === null
+            ? null
+            : Math.max(1, completedAt - this.firstVisibleChunkAt);
+        const visibleTokensPerSecond = visibleDurationMs !== null && this.chunkCount > 1
+            ? Number((visibleOutputTokenCount / (visibleDurationMs / 1000)).toFixed(2))
+            : null;
+        const endToEndTokensPerSecond = Number((outputTokenCount / (durationMs / 1000)).toFixed(2));
 
         this.finishedMetrics = {
             status,
             startedAt: this.startedAt,
             completedAt,
             durationMs,
+            requestDurationMs,
+            queueDurationMs,
             firstVisibleChunkMs: this.firstVisibleChunkAt === null
                 ? null
                 : Math.max(0, this.firstVisibleChunkAt - this.startedAt),
             outputTokenCount,
+            visibleOutputTokenCount,
             thinkingTokenCount,
             thinkingPercentage,
             thinkingTokenCountEstimated: includesHiddenThinking && !hasExactThinkingTokenCount,
-            tokensPerSecond: Number((outputTokenCount / (durationMs / 1000)).toFixed(2)),
+            visibleDurationMs,
+            visibleTokensPerSecond,
+            endToEndTokensPerSecond,
+            tokensPerSecond: endToEndTokensPerSecond,
             outputCharCount,
             visibleCharCount: this.visibleCharCount,
             hiddenThinkingCharCount: this.hiddenThinkingCharCount,
